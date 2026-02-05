@@ -137,15 +137,63 @@ PRs welcome! Please:
 3. Make your changes
 4. Submit a PR
 
-## 📜 Credits
+---
 
-- Original [WebClaw](https://github.com/ibelick/webclaw) by [@ibelick](https://github.com/ibelick)
-- Built for [OpenClaw](https://github.com/openclaw/openclaw)
+## 📜 Credits & Attribution
 
-## 📄 License
+### Original Project: WebClaw
 
-MIT License — see [LICENSE](LICENSE)
+OpenCami is a **fork** of [WebClaw](https://github.com/ibelick/webclaw), an excellent open-source web client for OpenClaw created by **[@ibelick](https://github.com/ibelick)** (Julien Thibeaut).
+
+We are deeply grateful for the original work that made this project possible.
+
+#### What Comes From WebClaw (Original)
+
+| Category | Components |
+|----------|------------|
+| **Core Architecture** | TanStack Start/Router setup, Vite config, React 19 integration |
+| **UI Components** | Button, Menu, Dialog, PromptInput, ChatMessage, ThemeToggle |
+| **Chat System** | Chat screen, message streaming, history management, WebSocket handling |
+| **Gateway Client** | RPC client, authentication, connection management |
+| **Styling** | Tailwind config, theming system, responsive design |
+| **Routes** | Root layout, session routing, connection flow |
+
+#### What's New in OpenCami
+
+| Feature | Description |
+|---------|-------------|
+| **Model Selector** | Dynamic dropdown to switch AI models |
+| **Command Help** | Slash command reference panel |
+| **Keyboard Shortcuts** | Power-user navigation (⌘K, ⌘/, etc.) |
+| **Conversation Export** | Download as Markdown/JSON/Text |
+| **Follow-up Suggestions** | Contextual next-question buttons |
+| **API Routes** | `/api/models`, `/api/follow-ups` |
+
+For a complete breakdown of attribution, see **[CREDITS.md](CREDITS.md)**.
+
+### License
+
+Both WebClaw and OpenCami are released under the **MIT License**.
+
+```
+Copyright (c) 2025 Julien Thibeaut (WebClaw)
+Copyright (c) 2026 robbyczgw-cla (OpenCami additions)
+```
+
+See [LICENSE](LICENSE) for full text.
+
+---
+
+## 🙏 Acknowledgments
+
+- **[@ibelick](https://github.com/ibelick)** — Creator of WebClaw. Thank you for the clean codebase and modern architecture!
+- **[OpenClaw](https://github.com/openclaw/openclaw)** — The AI assistant platform this client connects to
+- **[TanStack](https://tanstack.com/)** — For Router and Start frameworks
+- **[Tailwind CSS](https://tailwindcss.com/)** — For the styling system
+- **[Radix UI](https://www.radix-ui.com/)** — For accessible component primitives
 
 ---
 
 Made with 🦎 by [@robbyczgw-cla](https://github.com/robbyczgw-cla)
+
+*If you find this useful, please star both [OpenCami](https://github.com/robbyczgw-cla/opencami) and the original [WebClaw](https://github.com/ibelick/webclaw)!*
