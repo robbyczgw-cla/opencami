@@ -129,6 +129,24 @@ function thinkingFromMessage(msg: GatewayMessage): string | null {
   return null
 }
 
+type ImagePart = {
+  type: 'image'
+  source: {
+    type: 'base64'
+    media_type: string
+    data: string
+  }
+}
+
+function imagesFromMessage(msg: GatewayMessage): ImagePart[] {
+  const parts = Array.isArray(msg.content) ? msg.content : []
+  return parts.filter((part): part is ImagePart => 
+    part.type === 'image' && 
+    'source' in part && 
+    typeof (part as any).source?.data === 'string'
+  ) as ImagePart[]
+}
+
 function MessageItemComponent({
   message,
   toolResultsByCallId,
@@ -141,6 +159,7 @@ function MessageItemComponent({
   const role = message.role || 'assistant'
   const text = textFromMessage(message)
   const thinking = thinkingFromMessage(message)
+  const images = imagesFromMessage(message)
   const isUser = role === 'user'
   const timestamp = getMessageTimestamp(message)
 
@@ -165,6 +184,22 @@ function MessageItemComponent({
       {thinking && settings.showReasoningBlocks && (
         <div className="w-full max-w-[900px]">
           <Thinking content={thinking} />
+        </div>
+      )}
+      {/* Render images if present */}
+      {images.length > 0 && (
+        <div className={cn(
+          'flex flex-wrap gap-2 mb-2',
+          isUser ? 'justify-end' : 'justify-start'
+        )}>
+          {images.map((img, idx) => (
+            <img
+              key={idx}
+              src={`data:${img.source.media_type};base64,${img.source.data}`}
+              alt={`Attachment ${idx + 1}`}
+              className="max-w-[300px] max-h-[300px] rounded-lg object-cover"
+            />
+          ))}
         </div>
       )}
       <Message className={cn(isUser ? 'flex-row-reverse' : '')}>

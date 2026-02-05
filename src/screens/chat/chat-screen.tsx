@@ -360,7 +360,7 @@ export function ChatScreen({
   ) {
     let optimisticClientId = ''
     if (!skipOptimistic) {
-      const { clientId, optimisticMessage } = createOptimisticMessage(body)
+      const { clientId, optimisticMessage } = createOptimisticMessage(body, attachments)
       optimisticClientId = clientId
       appendHistoryMessage(
         queryClient,
@@ -475,7 +475,7 @@ export function ChatScreen({
 
       if (isNewChat) {
         const { clientId, optimisticId, optimisticMessage } =
-          createOptimisticMessage(body)
+          createOptimisticMessage(body, attachments)
         appendHistoryMessage(queryClient, 'new', 'new', optimisticMessage)
         setPendingGeneration(true)
         setSending(true)
