@@ -72,9 +72,7 @@ export const Route = createFileRoute('/api/models')({
       GET: async () => {
         try {
           // Try to get model configuration from Gateway
-          const res = await gatewayRpc<GatewayConfigResponse>('config.get', {
-            keys: ['agents', 'chat', 'model'],
-          })
+          const res = await gatewayRpc<GatewayConfigResponse>('config.get', {})
 
           const models: ModelInfo[] = []
 
