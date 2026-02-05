@@ -6,6 +6,7 @@
 }
 
 @custom-variant dark (&:where(.dark, .dark *));
+@custom-variant chameleon (&:where(.chameleon, .chameleon *));
 
 @theme {
   --color-transparent: transparent;
@@ -75,6 +76,26 @@
     --color-ink: var(--color-white);
     --color-surface-deep: oklch(0.18 0 0);
   }
+}
+
+/* Chameleon theme - minimalistic nature-inspired */
+.chameleon {
+  color-scheme: light;
+  /* Soft sage/mint backgrounds with teal accents */
+  --color-primary-50: oklch(0.975 0.012 155);   /* Very light sage - main bg */
+  --color-primary-100: oklch(0.955 0.018 155);  /* Light sage */
+  --color-primary-200: oklch(0.915 0.025 155);  /* Soft mint border */
+  --color-primary-300: oklch(0.86 0.035 160);   /* Muted seafoam */
+  --color-primary-400: oklch(0.75 0.045 165);   /* Teal accent light */
+  --color-primary-500: oklch(0.62 0.055 168);   /* Teal accent */
+  --color-primary-600: oklch(0.50 0.055 168);   /* Deep teal */
+  --color-primary-700: oklch(0.42 0.045 165);   /* Forest teal */
+  --color-primary-800: oklch(0.35 0.035 160);   /* Deep forest - main text */
+  --color-primary-900: oklch(0.28 0.025 155);   /* Very deep forest */
+  --color-primary-950: oklch(0.22 0.018 155);   /* Near black forest */
+
+  --color-surface: oklch(0.98 0.008 155);       /* Warm sage white */
+  --color-ink: oklch(0.25 0.025 155);           /* Deep forest green text */
 }
 
 html,
