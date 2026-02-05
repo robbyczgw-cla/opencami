@@ -18,6 +18,7 @@ import { Route as ApiSendRouteImport } from './routes/api/send'
 import { Route as ApiPingRouteImport } from './routes/api/ping'
 import { Route as ApiPathsRouteImport } from './routes/api/paths'
 import { Route as ApiHistoryRouteImport } from './routes/api/history'
+import { Route as ApiFollowUpsRouteImport } from './routes/api/follow-ups'
 
 const NewRoute = NewRouteImport.update({
   id: '/new',
@@ -64,11 +65,17 @@ const ApiHistoryRoute = ApiHistoryRouteImport.update({
   path: '/api/history',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiFollowUpsRoute = ApiFollowUpsRouteImport.update({
+  id: '/api/follow-ups',
+  path: '/api/follow-ups',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/connect': typeof ConnectRoute
   '/new': typeof NewRoute
+  '/api/follow-ups': typeof ApiFollowUpsRoute
   '/api/history': typeof ApiHistoryRoute
   '/api/paths': typeof ApiPathsRoute
   '/api/ping': typeof ApiPingRoute
@@ -80,6 +87,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/connect': typeof ConnectRoute
   '/new': typeof NewRoute
+  '/api/follow-ups': typeof ApiFollowUpsRoute
   '/api/history': typeof ApiHistoryRoute
   '/api/paths': typeof ApiPathsRoute
   '/api/ping': typeof ApiPingRoute
@@ -92,6 +100,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/connect': typeof ConnectRoute
   '/new': typeof NewRoute
+  '/api/follow-ups': typeof ApiFollowUpsRoute
   '/api/history': typeof ApiHistoryRoute
   '/api/paths': typeof ApiPathsRoute
   '/api/ping': typeof ApiPingRoute
@@ -105,6 +114,7 @@ export interface FileRouteTypes {
     | '/'
     | '/connect'
     | '/new'
+    | '/api/follow-ups'
     | '/api/history'
     | '/api/paths'
     | '/api/ping'
@@ -116,6 +126,7 @@ export interface FileRouteTypes {
     | '/'
     | '/connect'
     | '/new'
+    | '/api/follow-ups'
     | '/api/history'
     | '/api/paths'
     | '/api/ping'
@@ -127,6 +138,7 @@ export interface FileRouteTypes {
     | '/'
     | '/connect'
     | '/new'
+    | '/api/follow-ups'
     | '/api/history'
     | '/api/paths'
     | '/api/ping'
@@ -139,6 +151,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ConnectRoute: typeof ConnectRoute
   NewRoute: typeof NewRoute
+  ApiFollowUpsRoute: typeof ApiFollowUpsRoute
   ApiHistoryRoute: typeof ApiHistoryRoute
   ApiPathsRoute: typeof ApiPathsRoute
   ApiPingRoute: typeof ApiPingRoute
@@ -212,6 +225,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiHistoryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/follow-ups': {
+      id: '/api/follow-ups'
+      path: '/api/follow-ups'
+      fullPath: '/api/follow-ups'
+      preLoaderRoute: typeof ApiFollowUpsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -219,6 +239,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ConnectRoute: ConnectRoute,
   NewRoute: NewRoute,
+  ApiFollowUpsRoute: ApiFollowUpsRoute,
   ApiHistoryRoute: ApiHistoryRoute,
   ApiPathsRoute: ApiPathsRoute,
   ApiPingRoute: ApiPingRoute,

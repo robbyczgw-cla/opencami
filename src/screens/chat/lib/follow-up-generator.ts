@@ -1,16 +1,80 @@
 /**
  * Smart Follow-up Generator
  *
- * Generates contextual follow-up suggestions based on AI response content.
- * Uses client-side heuristics for fast, no-latency suggestions.
- *
- * Future: Could be extended to call the gateway for AI-powered suggestions.
+ * Generates contextual follow-up suggestions using LLM via the OpenClaw Gateway.
+ * Falls back to client-side heuristics if the LLM request fails or times out.
  */
 
 type FollowUpSuggestion = {
   text: string
   type: 'clarify' | 'expand' | 'example' | 'alternative' | 'actionable'
 }
+
+// ============================================================================
+// LLM-Powered Generation (Primary)
+// ============================================================================
+
+type FollowUpApiResponse = {
+  ok: boolean
+  suggestions?: string[]
+  error?: string
+}
+
+/**
+ * Fetch LLM-generated follow-up suggestions from the API
+ */
+export async function fetchFollowUpSuggestions(
+  responseText: string,
+  contextSummary?: string,
+  options?: { signal?: AbortSignal; timeoutMs?: number },
+): Promise<string[]> {
+  const timeoutMs = options?.timeoutMs ?? 8000
+
+  // Create abort controller for timeout
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+
+  // Combine signals if one was provided
+  if (options?.signal) {
+    options.signal.addEventListener('abort', () => controller.abort())
+  }
+
+  try {
+    const res = await fetch('/api/follow-ups', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ responseText, contextSummary }),
+      signal: controller.signal,
+    })
+
+    clearTimeout(timeoutId)
+
+    if (!res.ok) {
+      throw new Error(`API error: ${res.status}`)
+    }
+
+    const data = (await res.json()) as FollowUpApiResponse
+
+    if (data.ok && Array.isArray(data.suggestions) && data.suggestions.length > 0) {
+      return data.suggestions.slice(0, 3)
+    }
+
+    // API succeeded but no suggestions - use fallback
+    return []
+  } catch (err) {
+    clearTimeout(timeoutId)
+    if (err instanceof Error && err.name === 'AbortError') {
+      console.debug('[follow-ups] Request timed out, using fallback')
+    } else {
+      console.debug('[follow-ups] API error, using fallback:', err)
+    }
+    return []
+  }
+}
+
+// ============================================================================
+// Heuristic Fallback (Client-side)
+// ============================================================================
 
 // Code-related patterns
 const CODE_PATTERNS = [
@@ -71,11 +135,10 @@ function hasCaveats(text: string): boolean {
   return /\b(however|but|note|warning|caution|careful|important|keep in mind|be aware)\b/i.test(text)
 }
 
-// Generate follow-up suggestions based on response content
-export function generateFollowUps(
-  responseText: string,
-  _conversationContext?: string[],
-): FollowUpSuggestion[] {
+/**
+ * Generate follow-up suggestions using client-side heuristics (fallback)
+ */
+export function generateHeuristicFollowUps(responseText: string): FollowUpSuggestion[] {
   const suggestions: FollowUpSuggestion[] = []
   const topics = extractTopics(responseText)
 
@@ -171,7 +234,31 @@ export function generateFollowUps(
   return suggestions.slice(0, 3)
 }
 
-// Get just the text of suggestions (for simpler usage)
+/**
+ * Get just the text of heuristic suggestions (for fallback usage)
+ */
+export function getHeuristicFollowUpTexts(responseText: string): string[] {
+  return generateHeuristicFollowUps(responseText).map((s) => s.text)
+}
+
+// ============================================================================
+// Legacy exports (deprecated - use fetchFollowUpSuggestions or hooks)
+// ============================================================================
+
+/**
+ * @deprecated Use fetchFollowUpSuggestions for LLM-powered suggestions
+ * or getHeuristicFollowUpTexts for synchronous fallback
+ */
+export function generateFollowUps(
+  responseText: string,
+  _conversationContext?: string[],
+): FollowUpSuggestion[] {
+  return generateHeuristicFollowUps(responseText)
+}
+
+/**
+ * @deprecated Use fetchFollowUpSuggestions for LLM-powered suggestions
+ */
 export function getFollowUpTexts(responseText: string): string[] {
-  return generateFollowUps(responseText).map((s) => s.text)
+  return getHeuristicFollowUpTexts(responseText)
 }

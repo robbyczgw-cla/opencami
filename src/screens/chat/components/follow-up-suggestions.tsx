@@ -1,12 +1,14 @@
-import { memo, useMemo } from 'react'
+import { memo } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
-import { ArrowRight01Icon } from '@hugeicons/core-free-icons'
-import { getFollowUpTexts } from '../lib/follow-up-generator'
+import { ArrowRight01Icon, Loading03Icon } from '@hugeicons/core-free-icons'
+import { useFollowUpSuggestions } from '../hooks/use-follow-up-suggestions'
 import { cn } from '@/lib/utils'
 
 type FollowUpSuggestionsProps = {
   /** The assistant's response text to generate follow-ups from */
   responseText: string
+  /** Optional conversation context summary for better suggestions */
+  contextSummary?: string
   /** Callback when a suggestion is clicked */
   onSuggestionClick: (suggestion: string) => void
   /** Whether suggestions are disabled (e.g., while waiting for response) */
@@ -17,20 +19,22 @@ type FollowUpSuggestionsProps = {
 
 function FollowUpSuggestionsComponent({
   responseText,
+  contextSummary,
   onSuggestionClick,
   disabled = false,
   className,
 }: FollowUpSuggestionsProps) {
-  // Generate suggestions based on the response
-  const suggestions = useMemo(() => {
-    if (!responseText || responseText.trim().length < 50) {
-      return []
-    }
-    return getFollowUpTexts(responseText)
-  }, [responseText])
+  const { suggestions, isLoading, source } = useFollowUpSuggestions(
+    responseText,
+    contextSummary,
+    {
+      minResponseLength: 50,
+      timeoutMs: 8000,
+    },
+  )
 
-  // Don't render if no suggestions or response is too short
-  if (suggestions.length === 0) {
+  // Don't render if no suggestions and not loading
+  if (suggestions.length === 0 && !isLoading) {
     return null
   }
 
@@ -38,12 +42,28 @@ function FollowUpSuggestionsComponent({
     <div className={cn('flex flex-col gap-2 mt-3', className)}>
       <div className="flex items-center gap-1.5 text-xs text-primary-500">
         <span className="text-primary-400">✨</span>
-        <span>Follow-up suggestions</span>
+        <span>
+          {isLoading ? (
+            <span className="flex items-center gap-1">
+              Thinking of follow-ups
+              <HugeiconsIcon
+                icon={Loading03Icon}
+                size={12}
+                strokeWidth={2}
+                className="animate-spin text-primary-400"
+              />
+            </span>
+          ) : source === 'llm' ? (
+            'AI suggestions'
+          ) : (
+            'Follow-up suggestions'
+          )}
+        </span>
       </div>
       <div className="flex flex-wrap gap-2">
         {suggestions.map((suggestion, index) => (
           <button
-            key={index}
+            key={`${index}-${suggestion.slice(0, 20)}`}
             type="button"
             disabled={disabled}
             onClick={() => onSuggestionClick(suggestion)}
@@ -54,6 +74,8 @@ function FollowUpSuggestionsComponent({
               'focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:ring-offset-1',
               'transition-all duration-150 cursor-pointer',
               'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-primary-50 disabled:hover:border-primary-200',
+              // Subtle animation when suggestions update from heuristic to LLM
+              isLoading && 'opacity-75',
             )}
           >
             <span>{suggestion}</span>
