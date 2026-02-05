@@ -11,6 +11,18 @@ import { gatewayRpc } from '../../server/gateway'
 
 type GatewayConfigResponse = {
   config?: {
+    agents?: {
+      defaults?: {
+        model?: {
+          primary?: string
+          fallbacks?: string[]
+        }
+        models?: Record<string, {
+          alias?: string
+          params?: Record<string, unknown>
+        }>
+      }
+    }
     chat?: {
       defaultModel?: string
       models?: Array<{
@@ -61,13 +73,27 @@ export const Route = createFileRoute('/api/models')({
         try {
           // Try to get model configuration from Gateway
           const res = await gatewayRpc<GatewayConfigResponse>('config.get', {
-            keys: ['chat', 'model'],
+            keys: ['agents', 'chat', 'model'],
           })
 
           const models: ModelInfo[] = []
 
-          // Try to extract models from chat.models array
-          if (res.config?.chat?.models && Array.isArray(res.config.chat.models)) {
+          // Primary source: agents.defaults.models (OpenClaw's actual config structure)
+          if (res.config?.agents?.defaults?.models) {
+            const agentModels = res.config.agents.defaults.models
+            for (const [modelId, modelConfig] of Object.entries(agentModels)) {
+              models.push({
+                id: modelId,
+                name: modelConfig.alias 
+                  ? `${modelConfig.alias.charAt(0).toUpperCase() + modelConfig.alias.slice(1)} (${parseModelName(modelId)})`
+                  : parseModelName(modelId),
+                provider: modelId.split('/')[0],
+              })
+            }
+          }
+
+          // Fallback: try chat.models array
+          if (models.length === 0 && res.config?.chat?.models && Array.isArray(res.config.chat.models)) {
             for (const model of res.config.chat.models) {
               if (model.enabled !== false && model.id) {
                 models.push({
@@ -91,6 +117,7 @@ export const Route = createFileRoute('/api/models')({
 
           // Get default model
           const defaultModel =
+            res.config?.agents?.defaults?.model?.primary ||
             res.config?.chat?.defaultModel ||
             res.config?.model?.defaultModel ||
             models[0]?.id ||
