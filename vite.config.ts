@@ -9,6 +9,11 @@ import { defineConfig } from 'vite'
 import viteTsConfigPaths from 'vite-tsconfig-paths'
 
 const config = defineConfig({
+  server: {
+    host: '0.0.0.0',
+    port: 3001,
+    allowedHosts: ['YOUR_OPENCLAW_SERVER.ts.net', 'YOUR_OPENCAMI_SERVER.ts.net'],
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

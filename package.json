@@ -1,5 +1,5 @@
 {
-  "name": "webclaw",
+  "name": "opencami",
   "private": true,
   "type": "module",
   "scripts": {
@@ -53,5 +53,11 @@
     "vite": "^7.1.7",
     "vitest": "^3.0.5",
     "web-vitals": "^5.1.0"
-  }
+  },
+  "description": "OpenCami - A beautiful web client for OpenClaw",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/robbyczgw-cla/opencami.git"
+  },
+  "author": "Robby (robbyczgw-cla)"
 }
