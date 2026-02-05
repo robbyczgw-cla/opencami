@@ -21,20 +21,19 @@ function formatShort(timestamp: number): string {
   const date = new Date(timestamp)
   const now = new Date()
   if (isSameDay(date, now)) {
-    return new Intl.DateTimeFormat(undefined, {
+    return new Intl.DateTimeFormat('en-GB', {
       hour: '2-digit',
       minute: '2-digit',
     }).format(date)
   }
-
-  return new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat('en-GB', {
     day: '2-digit',
     month: 'short',
   }).format(date)
 }
 
 function formatFull(timestamp: number): string {
-  return new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat('en-GB', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
