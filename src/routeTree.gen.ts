@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as NewRouteImport } from './routes/new'
+import { Route as FilesRouteImport } from './routes/files'
 import { Route as ConnectRouteImport } from './routes/connect'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ChatSessionKeyRouteImport } from './routes/chat/$sessionKey'
@@ -24,10 +25,24 @@ import { Route as ApiModelsRouteImport } from './routes/api/models'
 import { Route as ApiLlmFeaturesRouteImport } from './routes/api/llm-features'
 import { Route as ApiHistoryRouteImport } from './routes/api/history'
 import { Route as ApiFollowUpsRouteImport } from './routes/api/follow-ups'
+import { Route as ApiFilesUploadRouteImport } from './routes/api/files/upload'
+import { Route as ApiFilesSaveRouteImport } from './routes/api/files/save'
+import { Route as ApiFilesRenameRouteImport } from './routes/api/files/rename'
+import { Route as ApiFilesReadRouteImport } from './routes/api/files/read'
+import { Route as ApiFilesMkdirRouteImport } from './routes/api/files/mkdir'
+import { Route as ApiFilesListRouteImport } from './routes/api/files/list'
+import { Route as ApiFilesInfoRouteImport } from './routes/api/files/info'
+import { Route as ApiFilesDownloadRouteImport } from './routes/api/files/download'
+import { Route as ApiFilesDeleteRouteImport } from './routes/api/files/delete'
 
 const NewRoute = NewRouteImport.update({
   id: '/new',
   path: '/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FilesRoute = FilesRouteImport.update({
+  id: '/files',
+  path: '/files',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ConnectRoute = ConnectRouteImport.update({
@@ -100,10 +115,56 @@ const ApiFollowUpsRoute = ApiFollowUpsRouteImport.update({
   path: '/api/follow-ups',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiFilesUploadRoute = ApiFilesUploadRouteImport.update({
+  id: '/api/files/upload',
+  path: '/api/files/upload',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiFilesSaveRoute = ApiFilesSaveRouteImport.update({
+  id: '/api/files/save',
+  path: '/api/files/save',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiFilesRenameRoute = ApiFilesRenameRouteImport.update({
+  id: '/api/files/rename',
+  path: '/api/files/rename',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiFilesReadRoute = ApiFilesReadRouteImport.update({
+  id: '/api/files/read',
+  path: '/api/files/read',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiFilesMkdirRoute = ApiFilesMkdirRouteImport.update({
+  id: '/api/files/mkdir',
+  path: '/api/files/mkdir',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiFilesListRoute = ApiFilesListRouteImport.update({
+  id: '/api/files/list',
+  path: '/api/files/list',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiFilesInfoRoute = ApiFilesInfoRouteImport.update({
+  id: '/api/files/info',
+  path: '/api/files/info',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiFilesDownloadRoute = ApiFilesDownloadRouteImport.update({
+  id: '/api/files/download',
+  path: '/api/files/download',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiFilesDeleteRoute = ApiFilesDeleteRouteImport.update({
+  id: '/api/files/delete',
+  path: '/api/files/delete',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/connect': typeof ConnectRoute
+  '/files': typeof FilesRoute
   '/new': typeof NewRoute
   '/api/follow-ups': typeof ApiFollowUpsRoute
   '/api/history': typeof ApiHistoryRoute
@@ -117,10 +178,20 @@ export interface FileRoutesByFullPath {
   '/api/stream': typeof ApiStreamRoute
   '/api/tts': typeof ApiTtsRoute
   '/chat/$sessionKey': typeof ChatSessionKeyRoute
+  '/api/files/delete': typeof ApiFilesDeleteRoute
+  '/api/files/download': typeof ApiFilesDownloadRoute
+  '/api/files/info': typeof ApiFilesInfoRoute
+  '/api/files/list': typeof ApiFilesListRoute
+  '/api/files/mkdir': typeof ApiFilesMkdirRoute
+  '/api/files/read': typeof ApiFilesReadRoute
+  '/api/files/rename': typeof ApiFilesRenameRoute
+  '/api/files/save': typeof ApiFilesSaveRoute
+  '/api/files/upload': typeof ApiFilesUploadRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/connect': typeof ConnectRoute
+  '/files': typeof FilesRoute
   '/new': typeof NewRoute
   '/api/follow-ups': typeof ApiFollowUpsRoute
   '/api/history': typeof ApiHistoryRoute
@@ -134,11 +205,21 @@ export interface FileRoutesByTo {
   '/api/stream': typeof ApiStreamRoute
   '/api/tts': typeof ApiTtsRoute
   '/chat/$sessionKey': typeof ChatSessionKeyRoute
+  '/api/files/delete': typeof ApiFilesDeleteRoute
+  '/api/files/download': typeof ApiFilesDownloadRoute
+  '/api/files/info': typeof ApiFilesInfoRoute
+  '/api/files/list': typeof ApiFilesListRoute
+  '/api/files/mkdir': typeof ApiFilesMkdirRoute
+  '/api/files/read': typeof ApiFilesReadRoute
+  '/api/files/rename': typeof ApiFilesRenameRoute
+  '/api/files/save': typeof ApiFilesSaveRoute
+  '/api/files/upload': typeof ApiFilesUploadRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/connect': typeof ConnectRoute
+  '/files': typeof FilesRoute
   '/new': typeof NewRoute
   '/api/follow-ups': typeof ApiFollowUpsRoute
   '/api/history': typeof ApiHistoryRoute
@@ -152,12 +233,22 @@ export interface FileRoutesById {
   '/api/stream': typeof ApiStreamRoute
   '/api/tts': typeof ApiTtsRoute
   '/chat/$sessionKey': typeof ChatSessionKeyRoute
+  '/api/files/delete': typeof ApiFilesDeleteRoute
+  '/api/files/download': typeof ApiFilesDownloadRoute
+  '/api/files/info': typeof ApiFilesInfoRoute
+  '/api/files/list': typeof ApiFilesListRoute
+  '/api/files/mkdir': typeof ApiFilesMkdirRoute
+  '/api/files/read': typeof ApiFilesReadRoute
+  '/api/files/rename': typeof ApiFilesRenameRoute
+  '/api/files/save': typeof ApiFilesSaveRoute
+  '/api/files/upload': typeof ApiFilesUploadRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/connect'
+    | '/files'
     | '/new'
     | '/api/follow-ups'
     | '/api/history'
@@ -171,10 +262,20 @@ export interface FileRouteTypes {
     | '/api/stream'
     | '/api/tts'
     | '/chat/$sessionKey'
+    | '/api/files/delete'
+    | '/api/files/download'
+    | '/api/files/info'
+    | '/api/files/list'
+    | '/api/files/mkdir'
+    | '/api/files/read'
+    | '/api/files/rename'
+    | '/api/files/save'
+    | '/api/files/upload'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/connect'
+    | '/files'
     | '/new'
     | '/api/follow-ups'
     | '/api/history'
@@ -188,10 +289,20 @@ export interface FileRouteTypes {
     | '/api/stream'
     | '/api/tts'
     | '/chat/$sessionKey'
+    | '/api/files/delete'
+    | '/api/files/download'
+    | '/api/files/info'
+    | '/api/files/list'
+    | '/api/files/mkdir'
+    | '/api/files/read'
+    | '/api/files/rename'
+    | '/api/files/save'
+    | '/api/files/upload'
   id:
     | '__root__'
     | '/'
     | '/connect'
+    | '/files'
     | '/new'
     | '/api/follow-ups'
     | '/api/history'
@@ -205,11 +316,21 @@ export interface FileRouteTypes {
     | '/api/stream'
     | '/api/tts'
     | '/chat/$sessionKey'
+    | '/api/files/delete'
+    | '/api/files/download'
+    | '/api/files/info'
+    | '/api/files/list'
+    | '/api/files/mkdir'
+    | '/api/files/read'
+    | '/api/files/rename'
+    | '/api/files/save'
+    | '/api/files/upload'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ConnectRoute: typeof ConnectRoute
+  FilesRoute: typeof FilesRoute
   NewRoute: typeof NewRoute
   ApiFollowUpsRoute: typeof ApiFollowUpsRoute
   ApiHistoryRoute: typeof ApiHistoryRoute
@@ -223,6 +344,15 @@ export interface RootRouteChildren {
   ApiStreamRoute: typeof ApiStreamRoute
   ApiTtsRoute: typeof ApiTtsRoute
   ChatSessionKeyRoute: typeof ChatSessionKeyRoute
+  ApiFilesDeleteRoute: typeof ApiFilesDeleteRoute
+  ApiFilesDownloadRoute: typeof ApiFilesDownloadRoute
+  ApiFilesInfoRoute: typeof ApiFilesInfoRoute
+  ApiFilesListRoute: typeof ApiFilesListRoute
+  ApiFilesMkdirRoute: typeof ApiFilesMkdirRoute
+  ApiFilesReadRoute: typeof ApiFilesReadRoute
+  ApiFilesRenameRoute: typeof ApiFilesRenameRoute
+  ApiFilesSaveRoute: typeof ApiFilesSaveRoute
+  ApiFilesUploadRoute: typeof ApiFilesUploadRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -232,6 +362,13 @@ declare module '@tanstack/react-router' {
       path: '/new'
       fullPath: '/new'
       preLoaderRoute: typeof NewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/files': {
+      id: '/files'
+      path: '/files'
+      fullPath: '/files'
+      preLoaderRoute: typeof FilesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/connect': {
@@ -332,12 +469,76 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiFollowUpsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/files/upload': {
+      id: '/api/files/upload'
+      path: '/api/files/upload'
+      fullPath: '/api/files/upload'
+      preLoaderRoute: typeof ApiFilesUploadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/files/save': {
+      id: '/api/files/save'
+      path: '/api/files/save'
+      fullPath: '/api/files/save'
+      preLoaderRoute: typeof ApiFilesSaveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/files/rename': {
+      id: '/api/files/rename'
+      path: '/api/files/rename'
+      fullPath: '/api/files/rename'
+      preLoaderRoute: typeof ApiFilesRenameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/files/read': {
+      id: '/api/files/read'
+      path: '/api/files/read'
+      fullPath: '/api/files/read'
+      preLoaderRoute: typeof ApiFilesReadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/files/mkdir': {
+      id: '/api/files/mkdir'
+      path: '/api/files/mkdir'
+      fullPath: '/api/files/mkdir'
+      preLoaderRoute: typeof ApiFilesMkdirRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/files/list': {
+      id: '/api/files/list'
+      path: '/api/files/list'
+      fullPath: '/api/files/list'
+      preLoaderRoute: typeof ApiFilesListRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/files/info': {
+      id: '/api/files/info'
+      path: '/api/files/info'
+      fullPath: '/api/files/info'
+      preLoaderRoute: typeof ApiFilesInfoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/files/download': {
+      id: '/api/files/download'
+      path: '/api/files/download'
+      fullPath: '/api/files/download'
+      preLoaderRoute: typeof ApiFilesDownloadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/files/delete': {
+      id: '/api/files/delete'
+      path: '/api/files/delete'
+      fullPath: '/api/files/delete'
+      preLoaderRoute: typeof ApiFilesDeleteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ConnectRoute: ConnectRoute,
+  FilesRoute: FilesRoute,
   NewRoute: NewRoute,
   ApiFollowUpsRoute: ApiFollowUpsRoute,
   ApiHistoryRoute: ApiHistoryRoute,
@@ -351,6 +552,15 @@ const rootRouteChildren: RootRouteChildren = {
   ApiStreamRoute: ApiStreamRoute,
   ApiTtsRoute: ApiTtsRoute,
   ChatSessionKeyRoute: ChatSessionKeyRoute,
+  ApiFilesDeleteRoute: ApiFilesDeleteRoute,
+  ApiFilesDownloadRoute: ApiFilesDownloadRoute,
+  ApiFilesInfoRoute: ApiFilesInfoRoute,
+  ApiFilesListRoute: ApiFilesListRoute,
+  ApiFilesMkdirRoute: ApiFilesMkdirRoute,
+  ApiFilesReadRoute: ApiFilesReadRoute,
+  ApiFilesRenameRoute: ApiFilesRenameRoute,
+  ApiFilesSaveRoute: ApiFilesSaveRoute,
+  ApiFilesUploadRoute: ApiFilesUploadRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
