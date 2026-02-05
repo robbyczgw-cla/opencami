@@ -110,17 +110,6 @@ OpenCami adds these server-side API routes:
 | `GET /api/models` | List available models from Gateway config |
 | `POST /api/follow-ups` | Generate contextual follow-up suggestions |
 
-## 🆚 OpenCami vs WebClaw
-
-| Feature | WebClaw | OpenCami |
-|---------|---------|----------|
-| Basic Chat | ✅ | ✅ |
-| Model Selector | ❌ | ✅ |
-| Keyboard Shortcuts | ❌ | ✅ |
-| Export Conversations | ❌ | ✅ |
-| Follow-up Suggestions | ❌ | ✅ |
-| Safe Delete | ❌ | ✅ |
-
 ## 🛠️ Tech Stack
 
 - **Framework:** React 19 + TanStack Router
