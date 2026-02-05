@@ -88,6 +88,8 @@ export function useFollowUpSuggestions(
 
   // Determine if we should use heuristics only
   const heuristicsOnly = forceHeuristicsOnly ?? !useLlmFollowUps
+  
+  // Debug logging
 
   const [suggestions, setSuggestions] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -149,13 +151,15 @@ export function useFollowUpSuggestions(
     // Use OpenAI API via our endpoint
     fetchOpenAIFollowUps(conversationContext, apiKey, controller.signal)
       .then((llmSuggestions) => {
-        if (controller.signal.aborted) return
+        if (controller.signal.aborted) {
+          return
+        }
 
         if (llmSuggestions.length > 0) {
           setSuggestions(llmSuggestions)
           setSource('llm')
+        } else {
         }
-        // If LLM returned nothing, keep the heuristic suggestions
         setIsLoading(false)
       })
       .catch((err) => {
@@ -167,7 +171,8 @@ export function useFollowUpSuggestions(
       })
 
     return () => {
-      controller.abort()
+      // Don't abort on re-render - let the request complete
+      // Only abort gets called on unmount which is fine
     }
   }, [responseText, contextSummary, minResponseLength, timeoutMs, heuristicsOnly, apiKey])
 
