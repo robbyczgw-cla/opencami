@@ -6,6 +6,8 @@ type KeyboardShortcutHandlers = {
   onEscape?: () => void
   onCopyLastResponse?: () => void
   onShowHelp?: () => void
+  onSearch?: () => void
+  onSearchGlobal?: () => void
 }
 
 /**
@@ -59,6 +61,20 @@ export function useKeyboardShortcuts(handlers: KeyboardShortcutHandlers) {
       if (modifierKey && event.shiftKey && event.key === 'C') {
         event.preventDefault()
         handlers.onCopyLastResponse?.()
+        return
+      }
+
+      // ⌘/Ctrl + F → Search current conversation
+      if (modifierKey && event.key === 'f' && !event.shiftKey) {
+        event.preventDefault()
+        handlers.onSearch?.()
+        return
+      }
+
+      // ⌘/Ctrl + Shift + F → Search all conversations (global)
+      if (modifierKey && event.shiftKey && event.key === 'F') {
+        event.preventDefault()
+        handlers.onSearchGlobal?.()
         return
       }
     },

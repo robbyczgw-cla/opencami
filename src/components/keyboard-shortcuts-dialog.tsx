@@ -28,6 +28,14 @@ const shortcuts: Shortcut[] = [
     description: 'Start a new chat',
   },
   {
+    keys: [isMac ? '⌘' : 'Ctrl', 'F'],
+    description: 'Search current conversation',
+  },
+  {
+    keys: [isMac ? '⌘' : 'Ctrl', 'Shift', 'F'],
+    description: 'Search all conversations',
+  },
+  {
     keys: [isMac ? '⌘' : 'Ctrl', '/'],
     description: 'Focus message input',
   },

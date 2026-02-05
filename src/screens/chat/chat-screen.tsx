@@ -50,6 +50,8 @@ import type { HistoryResponse } from './types'
 import { cn } from '@/lib/utils'
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
 import { KeyboardShortcutsDialog } from '@/components/keyboard-shortcuts-dialog'
+import { SearchDialog } from '@/components/search-dialog'
+import type { SearchResult } from '@/hooks/use-search'
 
 type ChatScreenProps = {
   activeFriendlyId: string
@@ -82,6 +84,8 @@ export function ChatScreen({
     () => hasPendingSend() || hasPendingGeneration(),
   )
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false)
+  const [showSearchDialog, setShowSearchDialog] = useState(false)
+  const [searchMode, setSearchMode] = useState<'global' | 'current'>('global')
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
   const streamTimer = useRef<number | null>(null)
   const streamIdleTimer = useRef<number | null>(null)
@@ -616,6 +620,34 @@ export function ChatScreen({
     setShowShortcutsHelp(true)
   }, [])
 
+  const handleOpenSearch = useCallback(() => {
+    setSearchMode('global')
+    setShowSearchDialog(true)
+  }, [])
+
+  const handleSearchCurrent = useCallback(() => {
+    if (isNewChat) {
+      // Can't search in a new chat, fall back to global
+      setSearchMode('global')
+    } else {
+      setSearchMode('current')
+    }
+    setShowSearchDialog(true)
+  }, [isNewChat])
+
+  const handleSearchGlobal = useCallback(() => {
+    setSearchMode('global')
+    setShowSearchDialog(true)
+  }, [])
+
+  // Jump to message in current conversation (scroll to it)
+  const handleJumpToMessage = useCallback((result: SearchResult) => {
+    // For now, just close the dialog - scrolling to specific message
+    // would require message refs which is more complex
+    // The message will be visible after navigation
+    setShowSearchDialog(false)
+  }, [])
+
   // Register keyboard shortcuts
   useKeyboardShortcuts({
     onNewChat: startNewChat,
@@ -623,6 +655,8 @@ export function ChatScreen({
     onEscape: handleEscape,
     onCopyLastResponse: handleCopyLastResponse,
     onShowHelp: handleShowHelp,
+    onSearch: handleSearchCurrent,
+    onSearchGlobal: handleSearchGlobal,
   })
 
   const historyLoading =
