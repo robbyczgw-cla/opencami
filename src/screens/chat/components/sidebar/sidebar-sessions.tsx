@@ -1,0 +1,90 @@
+'use client'
+
+import { HugeiconsIcon } from '@hugeicons/react'
+import { ArrowRight01Icon } from '@hugeicons/core-free-icons'
+import {
+  Collapsible,
+  CollapsibleTrigger,
+  CollapsiblePanel,
+} from '@/components/ui/collapsible'
+import { SessionItem } from './session-item'
+import type { SessionMeta } from '../../types'
+import { memo } from 'react'
+
+type SidebarSessionsProps = {
+  sessions: Array<SessionMeta>
+  activeFriendlyId: string
+  defaultOpen?: boolean
+  onSelect?: () => void
+  onRename: (session: SessionMeta) => void
+  onDelete: (session: SessionMeta) => void
+}
+
+export const SidebarSessions = memo(function SidebarSessions({
+  sessions,
+  activeFriendlyId,
+  defaultOpen = true,
+  onSelect,
+  onRename,
+  onDelete,
+}: SidebarSessionsProps) {
+  return (
+    <Collapsible
+      className="flex flex-col flex-1 min-h-0 w-full px-2"
+      defaultOpen={defaultOpen}
+    >
+      <CollapsibleTrigger className="w-fit pl-1.5 shrink-0">
+        Sessions
+        <span className="opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+          <HugeiconsIcon
+            icon={ArrowRight01Icon}
+            className="size-3 transition-transform duration-150 group-data-panel-open:rotate-90"
+          />
+        </span>
+      </CollapsibleTrigger>
+      <CollapsiblePanel
+        className="w-full flex-1 min-h-0 !h-full data-starting-style:!h-0 data-ending-style:!h-0"
+        contentClassName="flex-1 min-h-0"
+      >
+        <div className="h-full w-full overflow-y-auto">
+          <div className="flex flex-col gap-px">
+            {sessions.map((session) => (
+              <SessionItem
+                key={session.key}
+                session={session}
+                active={session.friendlyId === activeFriendlyId}
+                onSelect={onSelect}
+                onRename={onRename}
+                onDelete={onDelete}
+              />
+            ))}
+          </div>
+        </div>
+      </CollapsiblePanel>
+    </Collapsible>
+  )
+}, areSidebarSessionsEqual)
+
+function areSidebarSessionsEqual(
+  prev: SidebarSessionsProps,
+  next: SidebarSessionsProps,
+) {
+  if (prev.activeFriendlyId !== next.activeFriendlyId) return false
+  if (prev.defaultOpen !== next.defaultOpen) return false
+  if (prev.onSelect !== next.onSelect) return false
+  if (prev.onRename !== next.onRename) return false
+  if (prev.onDelete !== next.onDelete) return false
+  if (prev.sessions === next.sessions) return true
+  if (prev.sessions.length !== next.sessions.length) return false
+  for (let i = 0; i < prev.sessions.length; i += 1) {
+    const prevSession = prev.sessions[i]
+    const nextSession = next.sessions[i]
+    if (prevSession.key !== nextSession.key) return false
+    if (prevSession.friendlyId !== nextSession.friendlyId) return false
+    if (prevSession.label !== nextSession.label) return false
+    if (prevSession.title !== nextSession.title) return false
+    if (prevSession.derivedTitle !== nextSession.derivedTitle) return false
+    if (prevSession.updatedAt !== nextSession.updatedAt) return false
+  }
+  return true
+}
