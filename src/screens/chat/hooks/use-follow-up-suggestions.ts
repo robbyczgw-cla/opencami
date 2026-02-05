@@ -35,7 +35,8 @@ export function useFollowUpSuggestions(
   const {
     minResponseLength = 50,
     timeoutMs = 8000,
-    heuristicsOnly = false,
+    // LLM follow-ups disabled - gateway doesn't support chat.complete yet
+    heuristicsOnly = true,
   } = options ?? {}
 
   const [suggestions, setSuggestions] = useState<string[]>([])

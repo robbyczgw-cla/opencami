@@ -48,6 +48,8 @@ import { useChatSessions } from './hooks/use-chat-sessions'
 import type { ChatComposerHelpers } from './components/chat-composer'
 import type { HistoryResponse } from './types'
 import { cn } from '@/lib/utils'
+import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
+import { KeyboardShortcutsDialog } from '@/components/keyboard-shortcuts-dialog'
 
 type ChatScreenProps = {
   activeFriendlyId: string
@@ -79,6 +81,8 @@ export function ChatScreen({
   const [pinToTop, setPinToTop] = useState(
     () => hasPendingSend() || hasPendingGeneration(),
   )
+  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false)
+  const inputRef = useRef<HTMLTextAreaElement | null>(null)
   const streamTimer = useRef<number | null>(null)
   const streamIdleTimer = useRef<number | null>(null)
   const lastAssistantSignature = useRef('')
@@ -565,6 +569,58 @@ export function ChatScreen({
     ],
   )
 
+  // Keyboard shortcut handlers
+  const handleFocusInput = useCallback(() => {
+    inputRef.current?.focus()
+  }, [])
+
+  const handleEscape = useCallback(() => {
+    // Close shortcuts dialog if open
+    if (showShortcutsHelp) {
+      setShowShortcutsHelp(false)
+      return
+    }
+    // Clear focus from input
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur()
+    }
+  }, [showShortcutsHelp])
+
+  const handleCopyLastResponse = useCallback(() => {
+    // Find the last assistant message
+    const lastAssistantMessage = [...displayMessages]
+      .reverse()
+      .find((msg) => msg.role === 'assistant')
+    
+    if (!lastAssistantMessage) return
+
+    const textContent = textFromMessage(lastAssistantMessage)
+    if (!textContent) return
+
+    navigator.clipboard
+      .writeText(textContent)
+      .then(() => {
+        // Could add a toast notification here if available
+        console.log('Last response copied to clipboard')
+      })
+      .catch((err) => {
+        console.error('Failed to copy to clipboard:', err)
+      })
+  }, [displayMessages])
+
+  const handleShowHelp = useCallback(() => {
+    setShowShortcutsHelp(true)
+  }, [])
+
+  // Register keyboard shortcuts
+  useKeyboardShortcuts({
+    onNewChat: startNewChat,
+    onFocusInput: handleFocusInput,
+    onEscape: handleEscape,
+    onCopyLastResponse: handleCopyLastResponse,
+    onShowHelp: handleShowHelp,
+  })
+
   const historyLoading =
     (historyQuery.isLoading && !historyQuery.data) || isRedirecting
   const showGatewayDown = Boolean(gatewayStatusError)
@@ -649,11 +705,17 @@ export function ChatScreen({
                 isLoading={sending}
                 disabled={sending}
                 wrapperRef={composerRef}
+                inputRef={inputRef}
               />
             </>
           )}
         </main>
       </div>
+
+      <KeyboardShortcutsDialog
+        open={showShortcutsHelp}
+        onOpenChange={setShowShortcutsHelp}
+      />
     </div>
   )
 }

@@ -16,6 +16,7 @@ type ChatComposerProps = {
   isLoading: boolean
   disabled: boolean
   wrapperRef?: Ref<HTMLDivElement>
+  inputRef?: Ref<HTMLTextAreaElement>
 }
 
 type ChatComposerHelpers = {
@@ -28,9 +29,26 @@ function ChatComposerComponent({
   isLoading,
   disabled,
   wrapperRef,
+  inputRef: externalInputRef,
 }: ChatComposerProps) {
   const [value, setValue] = useState('')
   const promptRef = useRef<HTMLTextAreaElement | null>(null)
+  
+  // Sync internal ref with external ref if provided
+  const setPromptRef = useCallback(
+    (element: HTMLTextAreaElement | null) => {
+      promptRef.current = element
+      if (externalInputRef) {
+        if (typeof externalInputRef === 'function') {
+          externalInputRef(element)
+        } else {
+          ;(externalInputRef as React.MutableRefObject<HTMLTextAreaElement | null>).current = element
+        }
+      }
+    },
+    [externalInputRef],
+  )
+  
   const focusPrompt = useCallback(() => {
     if (typeof window === 'undefined') return
     window.requestAnimationFrame(() => {
@@ -71,7 +89,7 @@ function ChatComposerComponent({
       >
         <PromptInputTextarea
           placeholder="Type a message…"
-          inputRef={promptRef}
+          inputRef={setPromptRef}
         />
         <PromptInputActions className="justify-end px-3">
           <PromptInputAction tooltip="Send message">
