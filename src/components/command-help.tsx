@@ -66,12 +66,12 @@ export function CommandHelp({ className, onCommandSelect }: CommandHelpProps) {
 
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-background border border-primary-200 rounded-xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-hidden">
+          <div className="bg-white dark:bg-neutral-900 border border-primary-200 dark:border-neutral-700 rounded-xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-hidden">
             {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-primary-200">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-primary-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800">
               <div className="flex items-center gap-2">
-                <HugeiconsIcon icon={CommandIcon} size={18} className="text-primary-600" />
-                <h2 className="font-semibold text-primary-900">Slash Commands</h2>
+                <HugeiconsIcon icon={CommandIcon} size={18} className="text-primary-600 dark:text-primary-400" />
+                <h2 className="font-semibold text-primary-900 dark:text-white">Slash Commands</h2>
               </div>
               <Button
                 variant="ghost"
@@ -84,8 +84,8 @@ export function CommandHelp({ className, onCommandSelect }: CommandHelpProps) {
             </div>
 
             {/* Commands List */}
-            <div className="overflow-y-auto max-h-[60vh] p-2">
-              <div className="text-xs text-primary-500 px-2 py-1 mb-2">
+            <div className="overflow-y-auto max-h-[60vh] p-2 bg-white dark:bg-neutral-900">
+              <div className="text-xs text-primary-500 dark:text-neutral-400 px-2 py-1 mb-2">
                 Type these commands in the chat input
               </div>
               
@@ -93,15 +93,15 @@ export function CommandHelp({ className, onCommandSelect }: CommandHelpProps) {
                 <button
                   key={cmd.command}
                   onClick={() => handleCommandClick(cmd.command)}
-                  className="w-full flex items-start gap-3 px-3 py-2 rounded-lg hover:bg-primary-100 transition-colors text-left"
+                  className="w-full flex items-start gap-3 px-3 py-2 rounded-lg hover:bg-primary-100 dark:hover:bg-neutral-800 transition-colors text-left"
                 >
-                  <code className="text-sm font-mono font-medium text-primary-700 bg-primary-100 px-1.5 py-0.5 rounded min-w-[80px]">
+                  <code className="text-sm font-mono font-medium text-primary-700 dark:text-primary-300 bg-primary-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded min-w-[80px]">
                     {cmd.command}
                   </code>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm text-primary-900">{cmd.description}</div>
+                    <div className="text-sm text-primary-900 dark:text-neutral-100">{cmd.description}</div>
                     {cmd.usage && cmd.usage !== cmd.command && (
-                      <div className="text-xs text-primary-500 font-mono mt-0.5">
+                      <div className="text-xs text-primary-500 dark:text-neutral-500 font-mono mt-0.5">
                         {cmd.usage}
                       </div>
                     )}
@@ -111,9 +111,9 @@ export function CommandHelp({ className, onCommandSelect }: CommandHelpProps) {
             </div>
 
             {/* Footer */}
-            <div className="px-4 py-2 border-t border-primary-200 bg-primary-50">
-              <div className="text-xs text-primary-500">
-                Press <kbd className="px-1 py-0.5 bg-primary-200 rounded text-primary-700">Esc</kbd> to close
+            <div className="px-4 py-2 border-t border-primary-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800">
+              <div className="text-xs text-primary-500 dark:text-neutral-400">
+                Press <kbd className="px-1 py-0.5 bg-primary-200 dark:bg-neutral-700 rounded text-primary-700 dark:text-neutral-300">Esc</kbd> to close
               </div>
             </div>
           </div>
