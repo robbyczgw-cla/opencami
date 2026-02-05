@@ -27,14 +27,14 @@ function formatShort(timestamp: number): string {
     }).format(date)
   }
 
-  return new Intl.DateTimeFormat('fr-FR', {
+  return new Intl.DateTimeFormat(undefined, {
     day: '2-digit',
     month: 'short',
   }).format(date)
 }
 
 function formatFull(timestamp: number): string {
-  const value = new Intl.DateTimeFormat('fr-FR', {
+  return new Intl.DateTimeFormat(undefined, {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
@@ -42,7 +42,6 @@ function formatFull(timestamp: number): string {
     minute: '2-digit',
     second: '2-digit',
   }).format(new Date(timestamp))
-  return value.replace(' à ', ', ')
 }
 
 export function MessageTimestamp({ timestamp }: MessageTimestampProps) {
