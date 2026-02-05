@@ -1,4 +1,5 @@
 import type { GatewayMessage } from './types'
+import type { AttachmentFile } from '@/components/attachment-button'
 
 export type PendingSendPayload = {
   sessionKey: string
@@ -6,6 +7,7 @@ export type PendingSendPayload = {
   message: string
   optimisticMessage: GatewayMessage
   model?: string
+  attachments?: AttachmentFile[]
 }
 
 let pendingSend: PendingSendPayload | null = null

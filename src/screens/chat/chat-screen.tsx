@@ -30,6 +30,7 @@ import { ChatSidebar } from './components/chat-sidebar'
 import { ChatHeader } from './components/chat-header'
 import { ChatMessageList } from './components/chat-message-list'
 import { ChatComposer } from './components/chat-composer'
+import type { AttachmentFile } from '@/components/attachment-button'
 import { GatewayStatusMessage } from './components/gateway-status-message'
 import {
   consumePendingSend,
@@ -339,7 +340,7 @@ export function ChatScreen({
     }
     setWaitingForResponse(true)
     setPinToTop(true)
-    sendMessage(pending.sessionKey, pending.friendlyId, pending.message, true, pending.model)
+    sendMessage(pending.sessionKey, pending.friendlyId, pending.message, true, pending.model, pending.attachments)
   }, [
     activeFriendlyId,
     activeSessionKey,
@@ -355,6 +356,7 @@ export function ChatScreen({
     body: string,
     skipOptimistic = false,
     model?: string,
+    attachments?: AttachmentFile[],
   ) {
     let optimisticClientId = ''
     if (!skipOptimistic) {
@@ -380,6 +382,13 @@ export function ChatScreen({
     setWaitingForResponse(true)
     setPinToTop(true)
 
+    // Build attachments payload for API
+    const attachmentsPayload = attachments?.map((a) => ({
+      filename: a.file.name,
+      mimeType: a.file.type,
+      base64: a.base64,
+    }))
+
     fetch('/api/send', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -389,6 +398,7 @@ export function ChatScreen({
         message: body,
         thinking: 'low',
         idempotencyKey: crypto.randomUUID(),
+        attachments: attachmentsPayload,
         // model: model || undefined, // TODO: Gateway doesnt support this yet
       }),
     })
@@ -458,7 +468,9 @@ export function ChatScreen({
 
   const send = useCallback(
     (body: string, helpers: ChatComposerHelpers) => {
-      if (body.length === 0) return
+      const attachments = helpers.attachments
+      // Allow submit if there's text OR attachments
+      if (body.length === 0 && (!attachments || attachments.length === 0)) return
       const model = helpers.model
       helpers.reset()
 
@@ -480,6 +492,7 @@ export function ChatScreen({
               message: body,
               optimisticMessage,
               model,
+              attachments,
             })
             if (onSessionResolved) {
               onSessionResolved({ sessionKey, friendlyId })
@@ -513,7 +526,7 @@ export function ChatScreen({
 
       const sessionKeyForSend =
         forcedSessionKey || resolvedSessionKey || activeSessionKey
-      sendMessage(sessionKeyForSend, activeFriendlyId, body, false, model)
+      sendMessage(sessionKeyForSend, activeFriendlyId, body, false, model, attachments)
     },
     [
       activeFriendlyId,
