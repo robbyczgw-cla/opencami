@@ -165,8 +165,8 @@ For a complete breakdown of attribution, see **[CREDITS.md](CREDITS.md)**.
 Both WebClaw and OpenCami are released under the **MIT License**.
 
 ```
-Copyright (c) 2025 Julien Thibeaut (WebClaw)
-Copyright (c) 2025 robbyczgw-cla (OpenCami additions)
+Copyright (c) 2026 Julien Thibeaut (WebClaw)
+Copyright (c) 2026 robbyczgw-cla (OpenCami additions)
 ```
 
 See [LICENSE](LICENSE) for full text.
