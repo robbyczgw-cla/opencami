@@ -6,7 +6,8 @@ import { Attachment01Icon } from '@hugeicons/core-free-icons'
 
 import { Button } from '@/components/ui/button'
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
+const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB for images (will be compressed)
+const MAX_DOC_SIZE = 1 * 1024 * 1024 // 1MB for documents (no compression)
 const MAX_IMAGE_DIMENSION = 1920 // Max width or height for images
 const IMAGE_QUALITY = 0.85 // JPEG quality (0-1)
 const TARGET_IMAGE_SIZE = 500 * 1024 // Target ~500KB for images
@@ -152,14 +153,18 @@ export function AttachmentButton({
         return
       }
 
-      if (file.size > MAX_FILE_SIZE) {
+      // Different size limits: images get compressed, documents don't
+      const maxSize = fileType === 'image' ? MAX_FILE_SIZE : MAX_DOC_SIZE
+      const maxSizeLabel = fileType === 'image' ? '10MB' : '1MB'
+      
+      if (file.size > maxSize) {
         onFileSelect({
           id,
           file,
           preview: null,
           type: fileType,
           base64: null,
-          error: 'File is too large. Maximum size is 10MB.',
+          error: `File is too large. Maximum size for ${fileType}s is ${maxSizeLabel}.`,
         })
         return
       }
