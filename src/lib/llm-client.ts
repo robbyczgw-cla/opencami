@@ -38,7 +38,7 @@ export type LlmClientOptions = {
 }
 
 const DEFAULT_BASE_URL = 'https://api.openai.com/v1'
-const DEFAULT_MODEL = 'gpt-5-nano'
+const DEFAULT_MODEL = 'gpt-4.1-nano'
 const DEFAULT_TIMEOUT_MS = 10000
 
 /**
@@ -46,13 +46,14 @@ const DEFAULT_TIMEOUT_MS = 10000
  */
 export async function chatCompletion(
   messages: ChatMessage[],
-  options: LlmClientOptions,
+  options: LlmClientOptions & { maxTokens?: number },
 ): Promise<string> {
   const {
     apiKey,
     baseUrl = DEFAULT_BASE_URL,
     model = DEFAULT_MODEL,
     timeoutMs = DEFAULT_TIMEOUT_MS,
+    maxTokens = 100,
   } = options
 
   const controller = new AbortController()
@@ -68,6 +69,8 @@ export async function chatCompletion(
       body: JSON.stringify({
         model,
         messages,
+        max_tokens: maxTokens,
+        temperature: 0.7,
       }),
       signal: controller.signal,
     })
@@ -75,20 +78,18 @@ export async function chatCompletion(
     clearTimeout(timeoutId)
 
     if (!response.ok) {
-      const errorBody = await response.text().catch(() => '')
-      throw new Error(`OpenAI API error: ${response.status} ${errorBody}`)
+      const errorText = await response.text()
+      throw new Error(`OpenAI API error: ${response.status} ${errorText}`)
     }
 
-    const data = (await response.json()) as ChatCompletionResponse
-    const content = data.choices?.[0]?.message?.content?.trim() || ''
-
-    return content
-  } catch (err) {
+    const data = await response.json() as ChatCompletionResponse
+    return data.choices[0]?.message?.content?.trim() || ''
+  } catch (error) {
     clearTimeout(timeoutId)
-    if (err instanceof Error && err.name === 'AbortError') {
-      throw new Error('Request timed out')
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('OpenAI API request timed out')
     }
-    throw err
+    throw error
   }
 }
 
@@ -96,33 +97,23 @@ export async function chatCompletion(
  * Generate a smart session title from the first message
  */
 export async function generateSessionTitle(
-  firstMessage: string,
+  message: string,
   options: LlmClientOptions,
 ): Promise<string> {
-  const systemPrompt = `Generate a concise 3-6 word title for this conversation. Rules:
-- No quotes around the title
-- No punctuation at the end
-- Be specific and descriptive
-- Use title case
-- Do not include filler words like "Help with" or "Question about"
-- Just output the title, nothing else`
+  const systemPrompt = `Generate a concise 3-6 word title for this conversation. 
+Rules:
+- No quotes or punctuation at the end
+- Capture the main topic/intent
+- Be specific, not generic
+- Use title case`
 
-  const content = await chatCompletion(
+  return chatCompletion(
     [
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: firstMessage.slice(0, 1000) },
+      { role: 'user', content: message },
     ],
-    {
-      ...options,
-    },
+    { ...options, maxTokens: 25 },
   )
-
-  // Clean up the title
-  return content
-    .replace(/^["']|["']$/g, '') // Remove quotes
-    .replace(/[.!?]+$/, '') // Remove trailing punctuation
-    .trim()
-    .slice(0, 100) // Limit length
 }
 
 /**
@@ -132,63 +123,45 @@ export async function generateFollowUps(
   conversationContext: string,
   options: LlmClientOptions,
 ): Promise<string[]> {
-  const systemPrompt = `Based on this conversation, suggest 3 short follow-up questions the user might ask.
+  const systemPrompt = `Based on this conversation, suggest 3 natural follow-up questions the user might ask.
 Rules:
-- Each question should be 3-8 words max
-- Make them contextually relevant
-- Vary the types: clarification, exploration, practical application
-- Return ONLY a JSON array of 3 strings, nothing else
-- Example: ["How do I implement this?", "What are the alternatives?", "Can you explain more?"]`
+- Each question max 10 words
+- Make them specific to the conversation context
+- Vary the types: clarification, deeper dive, related topic
+- Return ONLY a JSON array of 3 strings, nothing else`
 
-  const content = await chatCompletion(
+  const response = await chatCompletion(
     [
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: conversationContext.slice(0, 2000) },
+      { role: 'user', content: conversationContext },
     ],
-    {
-      ...options,
-    },
+    { ...options, maxTokens: 150 },
   )
 
-  // Parse JSON array from response
   try {
-    // Try to extract JSON array from the response
-    const jsonMatch = content.match(/\[[\s\S]*\]/)
-    if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0]) as unknown
-      if (Array.isArray(parsed)) {
-        return parsed
-          .filter((item): item is string => typeof item === 'string')
-          .map((s) => s.trim())
-          .filter((s) => s.length > 0 && s.length < 100)
-          .slice(0, 3)
-      }
+    // Parse JSON response, handling potential markdown code blocks
+    let jsonStr = response.trim()
+    if (jsonStr.startsWith('```')) {
+      jsonStr = jsonStr.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '')
+    }
+    const parsed = JSON.parse(jsonStr)
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      return parsed.slice(0, 3).map(String)
     }
   } catch {
-    // If JSON parsing fails, try to extract lines
-    const lines = content
-      .split('\n')
-      .map((line) => line.replace(/^[-*\d.)\s]+/, '').replace(/^["']|["']$/g, '').trim())
-      .filter((line) => line.length > 0 && line.length < 100)
-    return lines.slice(0, 3)
+    // If parsing fails, return empty array (will fallback to heuristic)
   }
-
   return []
 }
 
 /**
- * Test if an API key is valid by making a minimal request
+ * Test if an API key is valid
  */
-export async function testApiKey(apiKey: string, baseUrl?: string): Promise<boolean> {
+export async function testApiKey(apiKey: string): Promise<boolean> {
   try {
-    // Make a minimal request to test the key
     await chatCompletion(
       [{ role: 'user', content: 'Hi' }],
-      {
-        apiKey,
-        baseUrl,
-        timeoutMs: 5000,
-      },
+      { apiKey, maxTokens: 1, timeoutMs: 5000 },
     )
     return true
   } catch {
