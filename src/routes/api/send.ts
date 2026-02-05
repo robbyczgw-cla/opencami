@@ -25,10 +25,6 @@ export const Route = createFileRoute('/api/send')({
           const message = String(body.message ?? '')
           const thinking =
             typeof body.thinking === 'string' ? body.thinking : undefined
-          const model =
-            typeof body.model === 'string' && body.model.trim().length > 0
-              ? body.model.trim()
-              : undefined
 
           // Parse attachments array
           const rawAttachments = body.attachments
@@ -42,18 +38,6 @@ export const Route = createFileRoute('/api/send')({
               )
             : undefined
           
-          // Debug logging
-          console.log('[API /send] attachments:', {
-            hasRaw: !!rawAttachments,
-            rawCount: Array.isArray(rawAttachments) ? rawAttachments.length : 0,
-            parsedCount: attachments?.length ?? 0,
-            sizes: attachments?.map(a => ({ 
-              mime: a.mimeType, 
-              bytes: a.content?.length ?? 0,
-              kb: Math.round((a.content?.length ?? 0) / 1024)
-            }))
-          })
-
           if (!message.trim() && (!attachments || attachments.length === 0)) {
             return json(
               { ok: false, error: 'message required' },

@@ -340,7 +340,7 @@ export function ChatScreen({
     }
     setWaitingForResponse(true)
     setPinToTop(true)
-    sendMessage(pending.sessionKey, pending.friendlyId, pending.message, true, pending.model, pending.attachments)
+    sendMessage(pending.sessionKey, pending.friendlyId, pending.message, true, pending.attachments)
   }, [
     activeFriendlyId,
     activeSessionKey,
@@ -355,7 +355,6 @@ export function ChatScreen({
     friendlyId: string,
     body: string,
     skipOptimistic = false,
-    model?: string,
     attachments?: AttachmentFile[],
   ) {
     let optimisticClientId = ''
@@ -470,7 +469,6 @@ export function ChatScreen({
       const attachments = helpers.attachments
       // Allow submit if there's text OR attachments
       if (body.length === 0 && (!attachments || attachments.length === 0)) return
-      const model = helpers.model
       helpers.reset()
 
       if (isNewChat) {
@@ -490,7 +488,6 @@ export function ChatScreen({
               friendlyId,
               message: body,
               optimisticMessage,
-              model,
               attachments,
             })
             if (onSessionResolved) {
@@ -525,7 +522,7 @@ export function ChatScreen({
 
       const sessionKeyForSend =
         forcedSessionKey || resolvedSessionKey || activeSessionKey
-      sendMessage(sessionKeyForSend, activeFriendlyId, body, false, model, attachments)
+      sendMessage(sessionKeyForSend, activeFriendlyId, body, false, attachments)
     },
     [
       activeFriendlyId,
@@ -617,24 +614,13 @@ export function ChatScreen({
     const textContent = textFromMessage(lastAssistantMessage)
     if (!textContent) return
 
-    navigator.clipboard
-      .writeText(textContent)
-      .then(() => {
-        // Could add a toast notification here if available
-        console.log('Last response copied to clipboard')
-      })
-      .catch((err) => {
-        console.error('Failed to copy to clipboard:', err)
-      })
+    navigator.clipboard.writeText(textContent).catch(() => {
+      // Silently fail - clipboard may not be available
+    })
   }, [displayMessages])
 
   const handleShowHelp = useCallback(() => {
     setShowShortcutsHelp(true)
-  }, [])
-
-  const handleOpenSearch = useCallback(() => {
-    setSearchMode('global')
-    setShowSearchDialog(true)
   }, [])
 
   const handleSearchCurrent = useCallback(() => {
@@ -650,14 +636,6 @@ export function ChatScreen({
   const handleSearchGlobal = useCallback(() => {
     setSearchMode('global')
     setShowSearchDialog(true)
-  }, [])
-
-  // Jump to message in current conversation (scroll to it)
-  const handleJumpToMessage = useCallback((result: SearchResult) => {
-    // For now, just close the dialog - scrolling to specific message
-    // would require message refs which is more complex
-    // The message will be visible after navigation
-    setShowSearchDialog(false)
   }, [])
 
   // Register keyboard shortcuts
@@ -769,12 +747,14 @@ export function ChatScreen({
       <SearchDialog
         open={showSearchDialog}
         onOpenChange={setShowSearchDialog}
+        sessions={sessions}
+        currentFriendlyId={activeFriendlyId}
+        currentSessionKey={activeSessionKey}
         mode={searchMode}
-        currentMessages={displayMessages}
-        onResultClick={(result: SearchResult) => {
+        onJumpToMessage={(result: SearchResult) => {
           setShowSearchDialog(false)
-          if (result.sessionKey) {
-            navigate({ to: '/chat/$sessionKey', params: { sessionKey: result.sessionKey } })
+          if (result.friendlyId) {
+            navigate({ to: '/chat/$sessionKey', params: { sessionKey: result.friendlyId } })
           }
         }}
       />

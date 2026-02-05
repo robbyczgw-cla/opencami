@@ -30,7 +30,7 @@ type ConnectParams = {
 
 type GatewayWaiter = {
   waitForRes: (id: string) => Promise<unknown>
-  handleMessage: (evt: MessageEvent) => void
+  handleMessage: (data: WebSocket.Data) => void
 }
 
 function getGatewayConfig() {
@@ -84,10 +84,10 @@ function createGatewayWaiter(): GatewayWaiter {
     })
   }
 
-  function handleMessage(evt: MessageEvent) {
+  function handleMessage(data: WebSocket.Data) {
     try {
-      const data = typeof evt.data === 'string' ? evt.data : ''
-      const parsed = JSON.parse(data) as GatewayFrame
+      const str = typeof data === 'string' ? data : data.toString()
+      const parsed = JSON.parse(str) as GatewayFrame
       if (parsed.type !== 'res') return
       const w = waiters.get(parsed.id)
       if (!w) return
@@ -109,16 +109,16 @@ async function wsOpen(ws: WebSocket): Promise<void> {
       cleanup()
       resolve()
     }
-    const onError = (e: Event) => {
+    const onError = (err: Error) => {
       cleanup()
-      reject(new Error(`WebSocket error: ${String((e as any)?.message ?? e)}`))
+      reject(new Error(`WebSocket error: ${err.message}`))
     }
     const cleanup = () => {
-      ws.removeEventListener('open', onOpen)
-      ws.removeEventListener('error', onError)
+      ws.off('open', onOpen)
+      ws.off('error', onError)
     }
-    ws.addEventListener('open', onOpen)
-    ws.addEventListener('error', onError)
+    ws.on('open', onOpen)
+    ws.on('error', onError)
   })
 }
 
@@ -161,7 +161,7 @@ export async function gatewayRpc<TPayload = unknown>(
 
     const waiter = createGatewayWaiter()
 
-    ws.addEventListener('message', waiter.handleMessage)
+    ws.on('message', waiter.handleMessage)
 
     ws.send(JSON.stringify(connectReq))
     await waiter.waitForRes(connectId)
@@ -169,7 +169,7 @@ export async function gatewayRpc<TPayload = unknown>(
     ws.send(JSON.stringify(req))
     const payload = await waiter.waitForRes(requestId)
 
-    ws.removeEventListener('message', waiter.handleMessage)
+    ws.off('message', waiter.handleMessage)
     return payload as TPayload
   } finally {
     try {
@@ -197,10 +197,10 @@ export async function gatewayConnectCheck(): Promise<void> {
     }
 
     const waiter = createGatewayWaiter()
-    ws.addEventListener('message', waiter.handleMessage)
+    ws.on('message', waiter.handleMessage)
     ws.send(JSON.stringify(connectReq))
     await waiter.waitForRes(connectId)
-    ws.removeEventListener('message', waiter.handleMessage)
+    ws.off('message', waiter.handleMessage)
   } finally {
     try {
       await wsClose(ws)

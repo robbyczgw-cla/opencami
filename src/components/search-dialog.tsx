@@ -142,7 +142,6 @@ export function SearchDialog({
     [results, selectedIndex, handleSelectResult, onOpenChange]
   )
 
-  const title = mode === 'global' ? 'Search All Conversations' : 'Search Current Conversation'
   const placeholder = mode === 'global' 
     ? 'Search across all conversations...' 
     : 'Search in this conversation...'

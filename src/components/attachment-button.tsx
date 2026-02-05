@@ -6,119 +6,181 @@ import { Attachment01Icon } from '@hugeicons/core-free-icons'
 
 import { Button } from '@/components/ui/button'
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB for images (will be compressed)
-const MAX_DOC_SIZE = 350 * 1024 // 350KB for documents (WebSocket limit is 512KB)
-const MAX_IMAGE_DIMENSION = 1280 // Max width or height for images
-const IMAGE_QUALITY = 0.75 // JPEG quality (0-1)
-const TARGET_IMAGE_SIZE = 300 * 1024 // Target ~300KB (WebSocket limit is 512KB, base64 adds 33%)
+/** Maximum file size before compression (10MB) */
+const MAX_FILE_SIZE = 10 * 1024 * 1024
 
+/** Maximum dimension (width or height) for resized images */
+const MAX_IMAGE_DIMENSION = 1280
+
+/** Initial JPEG compression quality (0-1) */
+const IMAGE_QUALITY = 0.75
+
+/** 
+ * Target compressed image size in bytes (~300KB).
+ * WebSocket limit is 512KB, and base64 encoding adds ~33% overhead.
+ */
+const TARGET_IMAGE_SIZE = 300 * 1024
+
+/** Supported image MIME types */
 const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
-const ACCEPTED_DOC_TYPES = ['application/pdf', 'text/plain', 'text/markdown']
-const ACCEPTED_EXTENSIONS = '.png,.jpg,.jpeg,.gif,.webp,.pdf,.txt,.md'
 
+/** File extensions accepted by the file input */
+const ACCEPTED_EXTENSIONS = '.png,.jpg,.jpeg,.gif,.webp'
+
+/**
+ * Represents a file attachment ready to be sent with a message.
+ */
 export type AttachmentFile = {
+  /** Unique identifier for the attachment */
   id: string
+  /** Original file reference */
   file: File
+  /** Object URL for image preview (null for non-images) */
   preview: string | null
-  type: 'image' | 'document'
+  /** Attachment type */
+  type: 'image'
+  /** Base64-encoded file content (without data URL prefix) */
   base64: string | null
+  /** Error message if processing failed */
   error?: string
 }
 
 type AttachmentButtonProps = {
+  /** Callback when a file is selected */
   onFileSelect: (file: AttachmentFile) => void
+  /** Whether the button is disabled */
   disabled?: boolean
+  /** Additional CSS classes */
   className?: string
 }
 
 /**
- * Compress and resize an image using Canvas
- * Returns base64 string (without data URL prefix)
+ * Checks if Canvas API is available in the current environment.
+ * @returns true if canvas is supported
+ */
+function isCanvasSupported(): boolean {
+  if (typeof document === 'undefined') return false
+  try {
+    const canvas = document.createElement('canvas')
+    return Boolean(canvas.getContext && canvas.getContext('2d'))
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Compresses and resizes an image using the Canvas API.
+ * 
+ * - Resizes images larger than MAX_IMAGE_DIMENSION
+ * - Converts to JPEG (except PNG which may have transparency)
+ * - Progressively reduces quality until under TARGET_IMAGE_SIZE
+ * 
+ * @param file - Image file to compress
+ * @returns Base64-encoded compressed image (without data URL prefix)
+ * @throws Error if canvas is unavailable or image fails to load
  */
 async function compressImage(file: File): Promise<string> {
+  if (!isCanvasSupported()) {
+    throw new Error('Image compression not available in this browser')
+  }
+
   return new Promise((resolve, reject) => {
     const img = new Image()
-    img.onload = () => {
-      // Calculate new dimensions
-      let width = img.width
-      let height = img.height
-      
-      if (width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION) {
-        if (width > height) {
-          height = Math.round((height * MAX_IMAGE_DIMENSION) / width)
-          width = MAX_IMAGE_DIMENSION
-        } else {
-          width = Math.round((width * MAX_IMAGE_DIMENSION) / height)
-          height = MAX_IMAGE_DIMENSION
-        }
-      }
+    const objectUrl = URL.createObjectURL(file)
 
-      // Create canvas and draw resized image
-      const canvas = document.createElement('canvas')
-      canvas.width = width
-      canvas.height = height
-      
-      const ctx = canvas.getContext('2d')
-      if (!ctx) {
-        reject(new Error('Failed to get canvas context'))
-        return
-      }
-      
-      ctx.drawImage(img, 0, 0, width, height)
-      
-      // Convert to JPEG for better compression (unless it's a PNG with transparency)
-      const outputType = file.type === 'image/png' ? 'image/png' : 'image/jpeg'
-      let quality = IMAGE_QUALITY
-      
-      // Try to get the image under target size with progressive quality reduction
-      let dataUrl = canvas.toDataURL(outputType, quality)
-      
-      // If still too large and it's not PNG, reduce quality
-      if (outputType === 'image/jpeg') {
-        while (dataUrl.length > TARGET_IMAGE_SIZE * 1.37 && quality > 0.3) {
-          quality -= 0.1
-          dataUrl = canvas.toDataURL(outputType, quality)
+    const cleanup = () => {
+      URL.revokeObjectURL(objectUrl)
+    }
+
+    img.onload = () => {
+      try {
+        // Calculate new dimensions maintaining aspect ratio
+        let width = img.width
+        let height = img.height
+        
+        if (width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION) {
+          if (width > height) {
+            height = Math.round((height * MAX_IMAGE_DIMENSION) / width)
+            width = MAX_IMAGE_DIMENSION
+          } else {
+            width = Math.round((width * MAX_IMAGE_DIMENSION) / height)
+            height = MAX_IMAGE_DIMENSION
+          }
         }
+
+        // Create canvas and draw resized image
+        const canvas = document.createElement('canvas')
+        canvas.width = width
+        canvas.height = height
+        
+        const ctx = canvas.getContext('2d')
+        if (!ctx) {
+          cleanup()
+          reject(new Error('Failed to get canvas context'))
+          return
+        }
+        
+        ctx.drawImage(img, 0, 0, width, height)
+        
+        // Use PNG for images that might have transparency, JPEG otherwise
+        const outputType = file.type === 'image/png' ? 'image/png' : 'image/jpeg'
+        let quality = IMAGE_QUALITY
+        
+        // Progressive quality reduction for JPEG
+        let dataUrl = canvas.toDataURL(outputType, quality)
+        
+        if (outputType === 'image/jpeg') {
+          // Account for base64 overhead (~37% larger than binary)
+          const targetDataUrlSize = TARGET_IMAGE_SIZE * 1.37
+          while (dataUrl.length > targetDataUrlSize && quality > 0.3) {
+            quality -= 0.1
+            dataUrl = canvas.toDataURL(outputType, quality)
+          }
+        }
+        
+        // Extract base64 from data URL (remove "data:image/...;base64," prefix)
+        const base64 = dataUrl.split(',')[1]
+        if (!base64) {
+          cleanup()
+          reject(new Error('Failed to encode image'))
+          return
+        }
+
+        cleanup()
+        resolve(base64)
+      } catch (err) {
+        cleanup()
+        reject(err instanceof Error ? err : new Error('Image compression failed'))
       }
-      
-      // Extract base64 from data URL
-      const base64 = dataUrl.split(',')[1]
-      resolve(base64)
     }
     
-    img.onerror = () => reject(new Error('Failed to load image'))
-    img.src = URL.createObjectURL(file)
-  })
-}
-
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => {
-      const result = reader.result as string
-      // Extract base64 data after the data URL prefix
-      const base64 = result.split(',')[1]
-      resolve(base64)
+    img.onerror = () => {
+      cleanup()
+      reject(new Error('Failed to load image'))
     }
-    reader.onerror = reject
-    reader.readAsDataURL(file)
+    
+    img.src = objectUrl
   })
 }
 
-function getFileType(file: File): 'image' | 'document' | null {
-  if (ACCEPTED_IMAGE_TYPES.includes(file.type)) {
-    return 'image'
-  }
-  if (ACCEPTED_DOC_TYPES.includes(file.type)) {
-    return 'document'
-  }
-  // Check by extension for markdown files
-  if (file.name.endsWith('.md')) {
-    return 'document'
-  }
-  return null
+/**
+ * Checks if a file is a supported image type.
+ * @param file - File to check
+ * @returns true if the file is a supported image
+ */
+function isAcceptedImage(file: File): boolean {
+  return ACCEPTED_IMAGE_TYPES.includes(file.type)
 }
 
+/**
+ * Button component for attaching image files to messages.
+ * 
+ * Features:
+ * - Accepts PNG, JPG, GIF, WebP images
+ * - Automatically compresses and resizes large images
+ * - Generates preview URLs for selected images
+ * - Handles errors gracefully with user-friendly messages
+ */
 export function AttachmentButton({
   onFileSelect,
   disabled = false,
@@ -135,63 +197,60 @@ export function AttachmentButton({
       const file = event.target.files?.[0]
       if (!file) return
 
-      // Reset the input so the same file can be selected again
+      // Reset input to allow selecting the same file again
       event.target.value = ''
 
-      const fileType = getFileType(file)
       const id = crypto.randomUUID()
 
-      if (!fileType) {
+      // Validate file type
+      if (!isAcceptedImage(file)) {
         onFileSelect({
           id,
           file,
           preview: null,
-          type: 'document',
+          type: 'image',
           base64: null,
-          error: 'Unsupported file type. Please use PNG, JPG, GIF, WebP, PDF, TXT, or MD.',
+          error: 'Unsupported file type. Please use PNG, JPG, GIF, or WebP images.',
         })
         return
       }
 
-      // Different size limits: images get compressed, documents don't
-      const maxSize = fileType === 'image' ? MAX_FILE_SIZE : MAX_DOC_SIZE
-      const maxSizeLabel = fileType === 'image' ? '10MB' : '350KB'
-      
-      if (file.size > maxSize) {
+      // Validate file size (before compression)
+      if (file.size > MAX_FILE_SIZE) {
         onFileSelect({
           id,
           file,
           preview: null,
-          type: fileType,
+          type: 'image',
           base64: null,
-          error: `File is too large. Maximum size for ${fileType}s is ${maxSizeLabel}.`,
+          error: 'Image is too large. Maximum size is 10MB.',
         })
         return
       }
 
       try {
-        // Compress images, read documents as-is
-        const base64 = fileType === 'image' 
-          ? await compressImage(file)
-          : await fileToBase64(file)
-          
-        const preview = fileType === 'image' ? URL.createObjectURL(file) : null
+        const base64 = await compressImage(file)
+        const preview = URL.createObjectURL(file)
 
         onFileSelect({
           id,
           file,
           preview,
-          type: fileType,
+          type: 'image',
           base64,
         })
-      } catch {
+      } catch (err) {
+        const errorMessage = err instanceof Error 
+          ? err.message 
+          : 'Failed to process image'
+        
         onFileSelect({
           id,
           file,
           preview: null,
-          type: fileType,
+          type: 'image',
           base64: null,
-          error: 'Failed to process file.',
+          error: errorMessage,
         })
       }
     },
@@ -214,7 +273,7 @@ export function AttachmentButton({
         onClick={handleClick}
         disabled={disabled}
         className={className}
-        aria-label="Attach file"
+        aria-label="Attach image"
         type="button"
       >
         <HugeiconsIcon icon={Attachment01Icon} size={18} strokeWidth={1.8} />

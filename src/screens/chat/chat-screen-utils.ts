@@ -1,12 +1,26 @@
 import type { GatewayMessage } from './types'
 import type { AttachmentFile } from '@/components/attachment-button'
 
+/**
+ * Payload returned when creating an optimistic message.
+ */
 type OptimisticMessagePayload = {
+  /** Unique client-side identifier for tracking the message */
   clientId: string
+  /** Optimistic ID prefixed for identification */
   optimisticId: string
+  /** The optimistic message object ready for display */
   optimisticMessage: GatewayMessage
 }
 
+/**
+ * Creates an optimistic user message for immediate UI display while
+ * the actual message is being sent to the server.
+ * 
+ * @param body - The text content of the message
+ * @param attachments - Optional array of file attachments (images)
+ * @returns Payload containing IDs and the optimistic message
+ */
 export function createOptimisticMessage(
   body: string,
   attachments?: AttachmentFile[],

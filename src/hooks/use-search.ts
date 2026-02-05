@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { SessionMeta, GatewayMessage, HistoryResponse } from '@/screens/chat/types'
 import { chatQueryKeys } from '@/screens/chat/chat-queries'
@@ -196,11 +196,13 @@ export function useSearch({ sessions, currentFriendlyId, currentSessionKey }: Us
   }
 }
 
-// Highlight matched text
+/**
+ * Highlights matched text in search results.
+ * Returns the matched portion with surrounding context, or null if no match.
+ */
 export function highlightMatch(
   text: string,
   query: string,
-  maxLength: number = 150
 ): { before: string; match: string; after: string } | null {
   if (!query.trim()) return null
 

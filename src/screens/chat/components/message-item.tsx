@@ -129,6 +129,9 @@ function thinkingFromMessage(msg: GatewayMessage): string | null {
   return null
 }
 
+/**
+ * Represents an image attachment in message content.
+ */
 type ImagePart = {
   type: 'image'
   source: {
@@ -138,13 +141,24 @@ type ImagePart = {
   }
 }
 
+/**
+ * Extracts image attachments from a gateway message.
+ * @param msg - The gateway message to extract images from
+ * @returns Array of image parts with base64 data
+ */
 function imagesFromMessage(msg: GatewayMessage): ImagePart[] {
   const parts = Array.isArray(msg.content) ? msg.content : []
-  return parts.filter((part): part is ImagePart => 
-    part.type === 'image' && 
-    'source' in part && 
-    typeof (part as any).source?.data === 'string'
-  ) as ImagePart[]
+  const images: ImagePart[] = []
+  for (const part of parts) {
+    if (
+      part.type === 'image' &&
+      'source' in part &&
+      typeof (part as ImagePart).source?.data === 'string'
+    ) {
+      images.push(part as ImagePart)
+    }
+  }
+  return images
 }
 
 function MessageItemComponent({

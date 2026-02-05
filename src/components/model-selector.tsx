@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { ArtificialIntelligence02Icon, Tick02Icon } from '@hugeicons/core-free-icons'
 import { MenuRoot, MenuTrigger, MenuContent, MenuItem } from '@/components/ui/menu'
-import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 type ModelInfo = {
@@ -47,7 +46,6 @@ type ModelSelectorProps = {
 export function ModelSelector({ className, onModelChange }: ModelSelectorProps) {
   const [models, setModels] = useState<ModelInfo[]>([])
   const [selectedModel, setSelectedModel] = useState<string>('')
-  const [defaultModel, setDefaultModel] = useState<string>('')
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -70,7 +68,6 @@ export function ModelSelector({ className, onModelChange }: ModelSelectorProps) 
 
         if (data.ok && data.models.length > 0) {
           setModels(data.models)
-          setDefaultModel(data.defaultModel)
 
           // Set initial selection: stored preference > default from server
           const storedModel = getStoredModel()
@@ -91,7 +88,6 @@ export function ModelSelector({ className, onModelChange }: ModelSelectorProps) 
         // Set a fallback
         setModels([{ id: 'default', name: 'Default Model' }])
         setSelectedModel('default')
-        setDefaultModel('default')
       } finally {
         if (mounted) {
           setIsLoading(false)
@@ -140,18 +136,14 @@ export function ModelSelector({ className, onModelChange }: ModelSelectorProps) 
 
   return (
     <MenuRoot>
-      <MenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className={cn(
-            'h-7 gap-2 px-2 text-xs font-[450] text-primary-600 hover:text-primary-900 hover:bg-primary-100',
-            className,
-          )}
-        >
-          <HugeiconsIcon icon={ArtificialIntelligence02Icon} size={14} />
-          <span>{displayName}</span>
-        </Button>
+      <MenuTrigger
+        className={cn(
+          'inline-flex h-7 items-center gap-2 rounded-md px-2 text-xs font-[450] text-primary-600 hover:text-primary-900 hover:bg-primary-100',
+          className,
+        )}
+      >
+        <HugeiconsIcon icon={ArtificialIntelligence02Icon} size={14} />
+        <span>{displayName}</span>
       </MenuTrigger>
       <MenuContent side="top" align="start">
         {models.map((model) => (
