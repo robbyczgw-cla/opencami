@@ -289,7 +289,7 @@ function ChatSidebarComponent({
         </motion.div>
       </div>
 
-      <div className="flex-1 min-h-0 relative overflow-hidden">
+      <div className="flex-1 min-h-0 overflow-hidden">
         <AnimatePresence initial={false}>
           {!isCollapsed && (
             <motion.div
@@ -298,7 +298,7 @@ function ChatSidebarComponent({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={transition}
-              className="absolute inset-0 pt-0 flex flex-col w-[300px] min-h-0"
+              className="pt-0 flex flex-col w-full min-h-0 h-full"
             >
               <div className="flex-1 min-h-0">
                 <SidebarSessions
