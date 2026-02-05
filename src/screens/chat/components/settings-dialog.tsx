@@ -96,7 +96,7 @@ export function SettingsDialog({
             <div>
               <DialogTitle className="mb-1">Settings</DialogTitle>
               <DialogDescription className="hidden">
-                Configure WebClaw
+                Configure OpenCami
               </DialogDescription>
             </div>
             <DialogClose
@@ -175,10 +175,10 @@ export function SettingsDialog({
           </SettingsSection>
 
           <SettingsSection title="About">
-            <div className="text-sm text-primary-800">WebClaw (beta)</div>
+            <div className="text-sm text-primary-800">OpenCami</div>
             <div className="flex gap-4 pt-2">
               <a
-                href="https://github.com/ibelick/webclaw"
+                href="https://github.com/robbyczgw-cla/opencami"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm text-primary-600 hover:text-primary-900 hover:underline"

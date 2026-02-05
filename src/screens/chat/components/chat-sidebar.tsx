@@ -3,6 +3,7 @@ import {
   PencilEdit02Icon,
   Settings01Icon,
   SidebarLeft01Icon,
+  Search01Icon,
 } from '@hugeicons/core-free-icons'
 import { AnimatePresence, motion } from 'motion/react'
 import { memo, useState } from 'react'
@@ -28,7 +29,7 @@ import { useDeleteSession } from '../hooks/use-delete-session'
 import { useRenameSession } from '../hooks/use-rename-session'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Link } from '@tanstack/react-router'
-import { WebClawIconBig } from '@/components/icons/webclaw-big'
+import { OpenCamiLogo, OpenCamiText } from '@/components/icons/opencami-logo'
 
 type ChatSidebarProps = {
   sessions: Array<SessionMeta>
@@ -39,6 +40,7 @@ type ChatSidebarProps = {
   onToggleCollapse: () => void
   onSelectSession?: () => void
   onActiveSessionDelete?: () => void
+  onOpenSearch?: () => void
 }
 
 function ChatSidebarComponent({
@@ -50,6 +52,7 @@ function ChatSidebarComponent({
   onToggleCollapse,
   onSelectSession,
   onActiveSessionDelete,
+  onOpenSearch,
 }: ChatSidebarProps) {
   const {
     settingsOpen,
@@ -190,8 +193,8 @@ function ChatSidebarComponent({
                   'w-full pl-1.5 justify-start',
                 )}
               >
-                <WebClawIconBig className="size-5 rounded-sm" />
-                WebClaw
+                <OpenCamiLogo className="size-5" />
+                <OpenCamiText />
               </Link>
             </motion.div>
           ) : null}
@@ -217,7 +220,7 @@ function ChatSidebarComponent({
         </TooltipProvider>
       </motion.div>
 
-      <div className="px-2 mb-4">
+      <div className="px-2 mb-4 flex flex-col gap-1">
         <motion.div
           layout
           transition={{ layout: transition }}
@@ -247,6 +250,38 @@ function ChatSidebarComponent({
                   className="overflow-hidden whitespace-nowrap"
                 >
                   New Session
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </Button>
+        </motion.div>
+        <motion.div
+          layout
+          transition={{ layout: transition }}
+          className="w-full"
+        >
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onOpenSearch}
+            className="w-full pl-1.5 justify-start"
+          >
+            <HugeiconsIcon
+              icon={Search01Icon}
+              size={20}
+              strokeWidth={1.5}
+              className="min-w-5"
+            />
+            <AnimatePresence initial={false} mode="wait">
+              {!isCollapsed && (
+                <motion.span
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={transition}
+                  className="overflow-hidden whitespace-nowrap"
+                >
+                  Search
                 </motion.span>
               )}
             </AnimatePresence>
