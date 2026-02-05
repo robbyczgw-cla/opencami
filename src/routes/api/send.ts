@@ -30,7 +30,18 @@ export const Route = createFileRoute('/api/send')({
               ? body.model.trim()
               : undefined
 
-          if (!message.trim()) {
+          // Parse attachments array
+          const attachments = Array.isArray(body.attachments)
+            ? body.attachments.filter(
+                (a: unknown): a is { mimeType: string; content: string } =>
+                  typeof a === 'object' &&
+                  a !== null &&
+                  typeof (a as Record<string, unknown>).mimeType === 'string' &&
+                  typeof (a as Record<string, unknown>).content === 'string',
+              )
+            : undefined
+
+          if (!message.trim() && (!attachments || attachments.length === 0)) {
             return json(
               { ok: false, error: 'message required' },
               { status: 400 },
@@ -67,7 +78,8 @@ export const Route = createFileRoute('/api/send')({
             sessionKey,
             message,
             thinking,
-            model,
+            // model, // Gateway doesn't support model override yet
+            attachments,
             deliver: false,
             timeoutMs: 120_000,
             idempotencyKey:

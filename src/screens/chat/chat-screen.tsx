@@ -382,11 +382,10 @@ export function ChatScreen({
     setWaitingForResponse(true)
     setPinToTop(true)
 
-    // Build attachments payload for API
+    // Build attachments payload for API (Gateway expects mimeType + content)
     const attachmentsPayload = attachments?.map((a) => ({
-      filename: a.file.name,
       mimeType: a.file.type,
-      base64: a.base64,
+      content: a.base64,
     }))
 
     fetch('/api/send', {
