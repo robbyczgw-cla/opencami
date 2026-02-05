@@ -47,7 +47,7 @@ const DEFAULT_TIMEOUT_MS = 10000
 export async function chatCompletion(
   messages: ChatMessage[],
   options: LlmClientOptions & {
-    maxTokens?: number
+    maxCompletionTokens?: number
     temperature?: number
   },
 ): Promise<string> {
@@ -56,7 +56,7 @@ export async function chatCompletion(
     baseUrl = DEFAULT_BASE_URL,
     model = DEFAULT_MODEL,
     timeoutMs = DEFAULT_TIMEOUT_MS,
-    maxTokens = 100,
+    maxCompletionTokens = 100,
     temperature = 0.7,
   } = options
 
@@ -73,7 +73,7 @@ export async function chatCompletion(
       body: JSON.stringify({
         model,
         messages,
-        max_tokens: maxTokens,
+        max_completion_tokens: maxCompletionTokens,
         temperature,
       }),
       signal: controller.signal,
@@ -121,7 +121,7 @@ export async function generateSessionTitle(
     ],
     {
       ...options,
-      maxTokens: 25,
+      maxCompletionTokens: 25,
       temperature: 0.7,
     },
   )
@@ -156,7 +156,7 @@ Rules:
     ],
     {
       ...options,
-      maxTokens: 150,
+      maxCompletionTokens: 150,
       temperature: 0.8,
     },
   )
@@ -198,7 +198,7 @@ export async function testApiKey(apiKey: string, baseUrl?: string): Promise<bool
       {
         apiKey,
         baseUrl,
-        maxTokens: 1,
+        maxCompletionTokens: 1,
         timeoutMs: 5000,
       },
     )
