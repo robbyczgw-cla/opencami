@@ -97,6 +97,8 @@ class PersistentGatewayConnection {
   private sessionListeners = new Map<string, Set<StreamListener>>()
   // Listeners that receive ALL events (for debugging or global subscriptions)
   private globalListeners = new Set<StreamListener>()
+  // Event buffer: store recent events per sessionKey so late subscribers don't miss them
+  private eventBuffer = new Map<string, { events: GatewayEvent[]; timer: ReturnType<typeof setTimeout> }>()
 
   get isConnected(): boolean {
     return this.connected && this.ws?.readyState === WebSocket.OPEN
@@ -188,10 +190,19 @@ class PersistentGatewayConnection {
         // Notify session-specific listeners
         if (sessionKey) {
           const listeners = this.sessionListeners.get(sessionKey)
-          if (listeners) {
+          if (listeners && listeners.size > 0) {
             for (const listener of listeners) {
               try { listener(event) } catch {}
             }
+          } else {
+            // No listeners yet — buffer the event so late subscribers can catch up
+            let buf = this.eventBuffer.get(sessionKey)
+            if (!buf) {
+              const timer = setTimeout(() => { this.eventBuffer.delete(sessionKey) }, 10_000)
+              buf = { events: [], timer }
+              this.eventBuffer.set(sessionKey, buf)
+            }
+            buf.events.push(event)
           }
         }
       }
@@ -279,6 +290,16 @@ class PersistentGatewayConnection {
       this.sessionListeners.set(sessionKey, listeners)
     }
     listeners.add(listener)
+
+    // Flush any buffered events to the new subscriber
+    const buf = this.eventBuffer.get(sessionKey)
+    if (buf) {
+      this.eventBuffer.delete(sessionKey)
+      clearTimeout(buf.timer)
+      for (const event of buf.events) {
+        try { listener(event) } catch {}
+      }
+    }
 
     return () => {
       listeners!.delete(listener)
