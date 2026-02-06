@@ -416,6 +416,7 @@ export function ChatScreen({
     body: string,
     skipOptimistic = false,
     attachments?: AttachmentFile[],
+    model?: string,
   ) {
     let optimisticClientId = ''
     if (!skipOptimistic) {
@@ -582,7 +583,7 @@ export function ChatScreen({
 
       const sessionKeyForSend =
         forcedSessionKey || resolvedSessionKey || activeSessionKey
-      sendMessage(sessionKeyForSend, activeFriendlyId, body, false, attachments)
+      sendMessage(sessionKeyForSend, activeFriendlyId, body, false, attachments, helpers.model)
     },
     [
       activeFriendlyId,
