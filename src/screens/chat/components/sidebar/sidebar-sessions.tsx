@@ -125,9 +125,17 @@ function writeFolderState(state: FolderState) {
   }
 }
 
+function isSessionActive(session: SessionMeta, activeFriendlyId: string, activeSessionKey?: string): boolean {
+  if (activeSessionKey && session.key) {
+    return session.key === activeSessionKey
+  }
+  return session.friendlyId === activeFriendlyId
+}
+
 type SidebarSessionsProps = {
   sessions: Array<SessionMeta>
   activeFriendlyId: string
+  activeSessionKey?: string
   defaultOpen?: boolean
   onSelect?: () => void
   onRename: (session: SessionMeta) => void
@@ -138,6 +146,7 @@ type SidebarSessionsProps = {
 export const SidebarSessions = memo(function SidebarSessions({
   sessions,
   activeFriendlyId,
+  activeSessionKey,
   defaultOpen = true,
   onSelect,
   onRename,
@@ -301,7 +310,7 @@ export const SidebarSessions = memo(function SidebarSessions({
             <SessionItem
               key={session.key}
               session={session}
-              active={session.friendlyId === activeFriendlyId}
+              active={isSessionActive(session, activeFriendlyId, activeSessionKey)}
               isPinned={false}
               selectionMode={selectionMode}
               selected={selectedSessionKeys.has(session.key)}
@@ -359,7 +368,7 @@ export const SidebarSessions = memo(function SidebarSessions({
                     <SessionItem
                       key={session.key}
                       session={session}
-                      active={session.friendlyId === activeFriendlyId}
+                      active={isSessionActive(session, activeFriendlyId, activeSessionKey)}
                       isPinned
                       selectionMode={selectionMode}
                       selected={selectedSessionKeys.has(session.key)}
@@ -390,7 +399,7 @@ export const SidebarSessions = memo(function SidebarSessions({
                       <SessionItem
                         key={session.key}
                         session={session}
-                        active={session.friendlyId === activeFriendlyId}
+                        active={isSessionActive(session, activeFriendlyId, activeSessionKey)}
                         isPinned={false}
                         selectionMode={selectionMode}
                         selected={selectedSessionKeys.has(session.key)}
@@ -471,6 +480,7 @@ function areSidebarSessionsEqual(
   next: SidebarSessionsProps,
 ) {
   if (prev.activeFriendlyId !== next.activeFriendlyId) return false
+  if (prev.activeSessionKey !== next.activeSessionKey) return false
   if (prev.defaultOpen !== next.defaultOpen) return false
   if (prev.onSelect !== next.onSelect) return false
   if (prev.onRename !== next.onRename) return false
