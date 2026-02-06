@@ -1,6 +1,8 @@
 # OpenCami 🦎
 
-A feature-rich web client for [OpenClaw](https://github.com/openclaw/openclaw), forked from [WebClaw](https://github.com/ibelick/webclaw).
+> **Web chat client for [OpenClaw](https://github.com/openclaw/openclaw)** — AI chat interface with PWA support, smart titles, follow-ups & more.
+
+Forked from [WebClaw](https://github.com/ibelick/webclaw).
 
 ![OpenCami](https://img.shields.io/badge/OpenCami-🦎-green)
 
