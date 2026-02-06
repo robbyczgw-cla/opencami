@@ -24,10 +24,11 @@ import { readError, isProtectedSession } from '../../utils'
 const PINNED_SESSIONS_KEY = 'opencami-pinned-sessions'
 const FOLDER_STATE_KEY = 'opencami-sidebar-folders'
 
-type FolderKey = 'subagent' | 'cron' | 'other'
+type FolderKey = 'webchat' | 'subagent' | 'cron' | 'other'
 type FolderState = Record<FolderKey, boolean>
 
 const defaultFolderState: FolderState = {
+  webchat: false,
   subagent: false,
   cron: false,
   other: false,
@@ -100,6 +101,10 @@ function readFolderState(): FolderState {
     const parsed = JSON.parse(stored)
     if (!parsed || typeof parsed !== 'object') return { ...defaultFolderState }
     return {
+      webchat:
+        typeof parsed.webchat === 'boolean'
+          ? parsed.webchat
+          : defaultFolderState.webchat,
       subagent:
         typeof parsed.subagent === 'boolean'
           ? parsed.subagent
@@ -181,6 +186,7 @@ export const SidebarSessions = memo(function SidebarSessions({
       Array<SessionMeta>
     > = {
       chat: [],
+      webchat: [],
       subagent: [],
       cron: [],
       other: [],
@@ -414,6 +420,11 @@ export const SidebarSessions = memo(function SidebarSessions({
                   </div>
                 </div>
               ) : null}
+              {renderFolderGroup(
+                'webchat',
+                '🦎 OpenCami',
+                groupedSessions.webchat,
+              )}
               {renderFolderGroup(
                 'subagent',
                 '🤖 Sub-agents',

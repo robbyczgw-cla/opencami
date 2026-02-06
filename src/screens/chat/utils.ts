@@ -85,6 +85,8 @@ export function isProtectedSession(key: string): boolean {
   return PROTECTED_KEYS.includes(key)
 }
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 function deriveSessionKind(key: string): SessionKind {
   // Sub-agents: codex, explicit subagent, openai-spawned sessions
   if (
@@ -103,8 +105,12 @@ function deriveSessionKind(key: string): SessionKind {
   ) {
     return 'other'
   }
-  // Main agent chats (webchat, telegram, discord channels)
-  if (key.startsWith('agent:main:')) return 'chat'
+  // OpenCami / webchat sessions: agent:main:<uuid> (no channel prefix)
+  if (key.startsWith('agent:main:')) {
+    const tail = key.slice('agent:main:'.length)
+    if (UUID_PATTERN.test(tail)) return 'webchat'
+    return 'chat'
+  }
   return 'other'
 }
 
