@@ -1,0 +1,49 @@
+{
+  "categories": {
+    "core": [
+      { "id": "cami", "name": "Cami", "emoji": "🦎", "description": "Adaptive AI chameleon companion" },
+      { "id": "chameleon-agent", "name": "Chameleon Agent", "emoji": "🌀", "description": "Meta-adaptive agent" },
+      { "id": "professor-stein", "name": "Professor Stein", "emoji": "🎓", "description": "Academic educator & researcher" },
+      { "id": "dev", "name": "Dev", "emoji": "💻", "description": "Senior programmer & code expert" },
+      { "id": "flash", "name": "Flash", "emoji": "⚡", "description": "Quick answers & fast problem solver" }
+    ],
+    "creative": [
+      { "id": "luna", "name": "Luna", "emoji": "🌙", "description": "Creative writer & storyteller" },
+      { "id": "mythos", "name": "Mythos", "emoji": "📜", "description": "Mythology & legends expert" }
+    ],
+    "curator": [
+      { "id": "vibe", "name": "Vibe", "emoji": "🎵", "description": "Music curator & playlist expert" }
+    ],
+    "learning": [
+      { "id": "herr-mueller", "name": "Herr Müller", "emoji": "🇩🇪", "description": "German language teacher" },
+      { "id": "scholar", "name": "Scholar", "emoji": "📚", "description": "Research assistant & academic guide" },
+      { "id": "lingua", "name": "Lingua", "emoji": "🌍", "description": "Multilingual language coach" }
+    ],
+    "lifestyle": [
+      { "id": "chef-marco", "name": "Chef Marco", "emoji": "👨‍🍳", "description": "Italian cooking expert" },
+      { "id": "fit", "name": "Fit", "emoji": "💪", "description": "Fitness trainer & health coach" },
+      { "id": "zen", "name": "Zen", "emoji": "🧘", "description": "Mindfulness & meditation guide" },
+      { "id": "globetrotter", "name": "Globetrotter", "emoji": "✈️", "description": "Travel planner & adventure guide" },
+      { "id": "wellbeing", "name": "Wellbeing", "emoji": "🌿", "description": "Wellness & self-care advisor" },
+      { "id": "diy-maker", "name": "DIY Maker", "emoji": "🔧", "description": "Crafts & DIY project expert" },
+      { "id": "family", "name": "Family", "emoji": "👨‍👩‍👧", "description": "Parenting & family advice" },
+      { "id": "lisa-knight", "name": "Lisa Knight", "emoji": "🏰", "description": "Historical fiction guide" },
+      { "id": "the-panel", "name": "The Panel", "emoji": "🎤", "description": "Discussion panel moderator" }
+    ],
+    "professional": [
+      { "id": "social-pro", "name": "Social Pro", "emoji": "📱", "description": "Social media strategist" },
+      { "id": "cyberguard", "name": "Cyberguard", "emoji": "🛡️", "description": "Cybersecurity expert" },
+      { "id": "dataviz", "name": "DataViz", "emoji": "📊", "description": "Data visualization specialist" },
+      { "id": "career-coach", "name": "Career Coach", "emoji": "🎯", "description": "Career guidance & interview prep" },
+      { "id": "legal-guide", "name": "Legal Guide", "emoji": "⚖️", "description": "Legal information assistant" },
+      { "id": "startup-sam", "name": "Startup Sam", "emoji": "🚀", "description": "Startup advisor & entrepreneur" },
+      { "id": "dr-med", "name": "Dr. Med", "emoji": "🩺", "description": "Medical information educator" },
+      { "id": "wordsmith", "name": "Wordsmith", "emoji": "✍️", "description": "Writing coach & editor" },
+      { "id": "canvas", "name": "Canvas", "emoji": "🎨", "description": "Design & visual arts guide" },
+      { "id": "finny", "name": "Finny", "emoji": "💰", "description": "Personal finance advisor" }
+    ],
+    "philosophy": [
+      { "id": "coach-thompson", "name": "Coach Thompson", "emoji": "🏈", "description": "Life coach with sports philosophy" }
+    ]
+  }
+}

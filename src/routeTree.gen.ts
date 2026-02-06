@@ -16,6 +16,7 @@ import { Route as ChatSessionKeyRouteImport } from './routes/chat/$sessionKey'
 import { Route as ApiSessionsRouteImport } from './routes/api/sessions'
 import { Route as ApiSendRouteImport } from './routes/api/send'
 import { Route as ApiPingRouteImport } from './routes/api/ping'
+import { Route as ApiPersonasRouteImport } from './routes/api/personas'
 import { Route as ApiPathsRouteImport } from './routes/api/paths'
 import { Route as ApiModelsRouteImport } from './routes/api/models'
 import { Route as ApiLlmFeaturesRouteImport } from './routes/api/llm-features'
@@ -57,6 +58,11 @@ const ApiPingRoute = ApiPingRouteImport.update({
   path: '/api/ping',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPersonasRoute = ApiPersonasRouteImport.update({
+  id: '/api/personas',
+  path: '/api/personas',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPathsRoute = ApiPathsRouteImport.update({
   id: '/api/paths',
   path: '/api/paths',
@@ -92,6 +98,7 @@ export interface FileRoutesByFullPath {
   '/api/llm-features': typeof ApiLlmFeaturesRoute
   '/api/models': typeof ApiModelsRoute
   '/api/paths': typeof ApiPathsRoute
+  '/api/personas': typeof ApiPersonasRoute
   '/api/ping': typeof ApiPingRoute
   '/api/send': typeof ApiSendRoute
   '/api/sessions': typeof ApiSessionsRoute
@@ -106,6 +113,7 @@ export interface FileRoutesByTo {
   '/api/llm-features': typeof ApiLlmFeaturesRoute
   '/api/models': typeof ApiModelsRoute
   '/api/paths': typeof ApiPathsRoute
+  '/api/personas': typeof ApiPersonasRoute
   '/api/ping': typeof ApiPingRoute
   '/api/send': typeof ApiSendRoute
   '/api/sessions': typeof ApiSessionsRoute
@@ -121,6 +129,7 @@ export interface FileRoutesById {
   '/api/llm-features': typeof ApiLlmFeaturesRoute
   '/api/models': typeof ApiModelsRoute
   '/api/paths': typeof ApiPathsRoute
+  '/api/personas': typeof ApiPersonasRoute
   '/api/ping': typeof ApiPingRoute
   '/api/send': typeof ApiSendRoute
   '/api/sessions': typeof ApiSessionsRoute
@@ -137,6 +146,7 @@ export interface FileRouteTypes {
     | '/api/llm-features'
     | '/api/models'
     | '/api/paths'
+    | '/api/personas'
     | '/api/ping'
     | '/api/send'
     | '/api/sessions'
@@ -151,6 +161,7 @@ export interface FileRouteTypes {
     | '/api/llm-features'
     | '/api/models'
     | '/api/paths'
+    | '/api/personas'
     | '/api/ping'
     | '/api/send'
     | '/api/sessions'
@@ -165,6 +176,7 @@ export interface FileRouteTypes {
     | '/api/llm-features'
     | '/api/models'
     | '/api/paths'
+    | '/api/personas'
     | '/api/ping'
     | '/api/send'
     | '/api/sessions'
@@ -180,6 +192,7 @@ export interface RootRouteChildren {
   ApiLlmFeaturesRoute: typeof ApiLlmFeaturesRoute
   ApiModelsRoute: typeof ApiModelsRoute
   ApiPathsRoute: typeof ApiPathsRoute
+  ApiPersonasRoute: typeof ApiPersonasRoute
   ApiPingRoute: typeof ApiPingRoute
   ApiSendRoute: typeof ApiSendRoute
   ApiSessionsRoute: typeof ApiSessionsRoute
@@ -237,6 +250,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/personas': {
+      id: '/api/personas'
+      path: '/api/personas'
+      fullPath: '/api/personas'
+      preLoaderRoute: typeof ApiPersonasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/paths': {
       id: '/api/paths'
       path: '/api/paths'
@@ -284,6 +304,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiLlmFeaturesRoute: ApiLlmFeaturesRoute,
   ApiModelsRoute: ApiModelsRoute,
   ApiPathsRoute: ApiPathsRoute,
+  ApiPersonasRoute: ApiPersonasRoute,
   ApiPingRoute: ApiPingRoute,
   ApiSendRoute: ApiSendRoute,
   ApiSessionsRoute: ApiSessionsRoute,

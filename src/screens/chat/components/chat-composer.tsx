@@ -11,6 +11,7 @@ import {
 } from '@/components/prompt-kit/prompt-input'
 import { Button } from '@/components/ui/button'
 import { ModelSelector } from '@/components/model-selector'
+import { PersonaPicker } from '@/components/persona-picker'
 import { CommandHelp } from '@/components/command-help'
 import { AttachmentButton, type AttachmentFile } from '@/components/attachment-button'
 import { AttachmentPreviewList } from '@/components/attachment-preview'
@@ -90,6 +91,13 @@ function ChatComposerComponent({
     onSubmit(body, { reset, setValue: setComposerValue, model: selectedModel, attachments: validAttachments })
     focusPrompt()
   }, [disabled, focusPrompt, onSubmit, reset, setComposerValue, value, selectedModel, attachments])
+  const handlePersonaSelect = useCallback(
+    (command: string) => {
+      onSubmit(command, { reset, setValue: setComposerValue, model: selectedModel, attachments: [] })
+      focusPrompt()
+    },
+    [focusPrompt, onSubmit, reset, setComposerValue, selectedModel],
+  )
   const validAttachments = attachments.filter((a) => !a.error && a.base64)
   const submitDisabled = disabled || (value.trim().length === 0 && validAttachments.length === 0)
 
@@ -116,6 +124,7 @@ function ChatComposerComponent({
         <PromptInputActions className="justify-between px-3">
           <div className="flex items-center gap-1">
             <ModelSelector onModelChange={setSelectedModel} />
+            <PersonaPicker onSelect={handlePersonaSelect} />
             <CommandHelp onCommandSelect={(cmd) => setValue(cmd + ' ')} />
           </div>
           <div className="flex items-center gap-1">
