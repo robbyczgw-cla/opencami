@@ -5,6 +5,8 @@ import type {
   ToolCallContent,
 } from './types'
 
+type SessionKind = NonNullable<SessionMeta['kind']>
+
 export function deriveFriendlyIdFromKey(key: string | undefined): string {
   if (!key) return 'main'
   const trimmed = key.trim()
@@ -70,6 +72,15 @@ export function getMessageTimestamp(message: GatewayMessage): number {
   return Date.now()
 }
 
+function deriveSessionKind(key: string): SessionKind {
+  if (key.includes(':subagent:') || key.startsWith('agent:codex:')) {
+    return 'subagent'
+  }
+  if (key.startsWith('isolated:')) return 'cron'
+  if (key.startsWith('agent:main:')) return 'chat'
+  return 'other'
+}
+
 export function normalizeSessions(
   rows: Array<SessionSummary> | undefined,
 ): Array<SessionMeta> {
@@ -84,6 +95,7 @@ export function normalizeSessions(
       session.friendlyId.trim().length > 0
         ? session.friendlyId.trim()
         : deriveFriendlyIdFromKey(key)
+    const kind = deriveSessionKind(key)
 
     return {
       key,
@@ -97,6 +109,7 @@ export function normalizeSessions(
       updatedAt:
         typeof session.updatedAt === 'number' ? session.updatedAt : undefined,
       lastMessage: session.lastMessage ?? null,
+      kind,
     }
   })
 }
