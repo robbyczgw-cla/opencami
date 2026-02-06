@@ -63,6 +63,17 @@ const themeScript = `
 })()
 `
 
+const textSizeScript = `
+(() => {
+  try {
+    const stored = localStorage.getItem('opencami-text-size')
+    const allowed = new Set(['14px', '16px', '18px', '20px'])
+    const value = allowed.has(stored) ? stored : '16px'
+    document.documentElement.style.setProperty('--opencami-text-size', value)
+  } catch {}
+})()
+`
+
 export const Route = createRootRoute({
   head: () => ({
     meta: [
@@ -162,6 +173,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: textSizeScript }} />
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <script dangerouslySetInnerHTML={{ __html: swRegisterScript }} />
         <HeadContent />

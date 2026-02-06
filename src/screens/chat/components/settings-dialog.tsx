@@ -70,6 +70,19 @@ type SettingsDialogProps = {
   onCopyStorePath: () => void
 }
 
+const textSizeOptions = [
+  { value: '14px', label: 'Small' },
+  { value: '16px', label: 'Medium' },
+  { value: '18px', label: 'Large' },
+  { value: '20px', label: 'Extra Large' },
+] as const
+
+type TextSizeValue = (typeof textSizeOptions)[number]['value']
+
+function isTextSizeValue(value: string): value is TextSizeValue {
+  return textSizeOptions.some((option) => option.value === value)
+}
+
 export function SettingsDialog({
   open,
   onOpenChange,
@@ -87,6 +100,17 @@ export function SettingsDialog({
   const [testingKey, setTestingKey] = useState(false)
   const [testResult, setTestResult] = useState<{ valid: boolean; error?: string } | null>(null)
 
+  const [textSize, setTextSize] = useState<TextSizeValue>(() => {
+    if (typeof window === 'undefined') return '16px'
+    try {
+      const stored = localStorage.getItem('opencami-text-size')
+      if (stored && isTextSizeValue(stored)) return stored
+    } catch {
+      // ignore storage errors
+    }
+    return '16px'
+  })
+
   // TTS state
   const [ttsEnabled, setTtsEnabled] = useState(() => {
     if (typeof window === 'undefined') return true
@@ -97,6 +121,22 @@ export function SettingsDialog({
       return true
     }
   })
+
+  function applyTextSize(value: TextSizeValue) {
+    if (typeof document === 'undefined') return
+    document.documentElement.style.setProperty('--opencami-text-size', value)
+  }
+
+  const handleTextSizeChange = (value: string) => {
+    if (!isTextSizeValue(value)) return
+    setTextSize(value)
+    applyTextSize(value)
+    try {
+      localStorage.setItem('opencami-text-size', value)
+    } catch {
+      // ignore storage errors
+    }
+  }
 
   const handleTtsToggle = (checked: boolean) => {
     setTtsEnabled(checked)
@@ -259,6 +299,25 @@ export function SettingsDialog({
                         strokeWidth={1.5}
                       />
                       <span>{option.label}</span>
+                    </TabsTab>
+                  ))}
+                </TabsList>
+              </Tabs>
+            </SettingsRow>
+            <SettingsRow
+              label="Text Size"
+              description="Adjust chat and composer text"
+            >
+              <Tabs value={textSize} onValueChange={handleTextSizeChange}>
+                <TabsList
+                  variant="default"
+                  className="gap-2 *:data-[slot=tab-indicator]:duration-0"
+                >
+                  {textSizeOptions.map((option) => (
+                    <TabsTab key={option.value} value={option.value}>
+                      <span className="tabular-nums">
+                        {option.label} ({option.value})
+                      </span>
                     </TabsTab>
                   ))}
                 </TabsList>

@@ -32,6 +32,14 @@
   --font-mono: "JetBrains Mono", monospace;
 }
 
+:root {
+  --opencami-text-size: 16px;
+}
+
+.opencami-text-size {
+  font-size: var(--opencami-text-size);
+}
+
 .dark {
   color-scheme: dark;
   --color-primary-50: oklch(0.1244 0 89.88);
