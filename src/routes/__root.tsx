@@ -10,6 +10,9 @@ import appCss from '../styles.css?url'
 
 const swRegisterScript = `
 (() => {
+  // Skip PWA service worker inside Capacitor native shell — they conflict
+  // with the native networking layer and caching.
+  if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) return;
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('/sw.js', { scope: '/' })
