@@ -53,27 +53,33 @@ export const Route = createFileRoute('/api/stream')({
 
                 if (agentStream === 'assistant') {
                   gotAgentStream = true
-                  // Assistant text delta
+                  // Assistant text delta — payload.data contains the actual delta
+                  const data = (payload.data ?? payload) as Record<string, unknown>
                   const text =
-                    typeof payload.text === 'string'
-                      ? payload.text
-                      : typeof payload.delta === 'string'
-                        ? payload.delta
-                        : ''
+                    typeof data.delta === 'string'
+                      ? data.delta
+                      : typeof data.text === 'string'
+                        ? data.text
+                        : typeof payload.text === 'string'
+                          ? payload.text
+                          : typeof payload.delta === 'string'
+                            ? payload.delta
+                            : ''
                   if (text) {
                     sendSSE('delta', { text, sessionKey })
                   }
                 } else if (agentStream === 'tool') {
                   gotAgentStream = true
-                  // Tool call event
+                  const tdata = (payload.data ?? payload) as Record<string, unknown>
                   sendSSE('tool', {
-                    name: payload.name ?? payload.toolName ?? '',
-                    status: payload.phase ?? payload.status ?? 'running',
-                    id: payload.id ?? payload.toolCallId ?? '',
+                    name: tdata.name ?? tdata.toolName ?? payload.name ?? '',
+                    status: tdata.phase ?? tdata.status ?? payload.phase ?? 'running',
+                    id: tdata.id ?? tdata.toolCallId ?? payload.id ?? '',
                     sessionKey,
                   })
                 } else if (agentStream === 'lifecycle') {
-                  const phase = payload.phase as string | undefined
+                  const ldata = (payload.data ?? payload) as Record<string, unknown>
+                  const phase = (ldata.phase ?? payload.phase) as string | undefined
                   if (phase === 'end' || phase === 'error') {
                     sendSSE('done', {
                       sessionKey,

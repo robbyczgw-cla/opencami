@@ -182,6 +182,11 @@ class PersistentGatewayConnection {
         // Determine which sessionKey this event belongs to
         const sessionKey = this._extractSessionKey(event)
 
+        // Debug event routing
+        const listenerCount = sessionKey ? (this.sessionListeners.get(sessionKey)?.size ?? 0) : 0
+        const bufCount = sessionKey ? (this.eventBuffer.get(sessionKey)?.events.length ?? 0) : 0
+        console.log(`[gw] ${event.event} sk=${sessionKey} listeners=${listenerCount} buf=${bufCount}`)
+
         // Notify global listeners
         for (const listener of this.globalListeners) {
           try { listener(event) } catch {}
@@ -284,6 +289,7 @@ class PersistentGatewayConnection {
 
   /** Subscribe to events for a specific sessionKey. Returns an unsubscribe function. */
   subscribe(sessionKey: string, listener: StreamListener): () => void {
+    console.log(`[gw] subscribe(${sessionKey}) bufferSize=${this.eventBuffer.get(sessionKey)?.events.length ?? 0}`)
     let listeners = this.sessionListeners.get(sessionKey)
     if (!listeners) {
       listeners = new Set()
