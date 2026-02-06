@@ -72,22 +72,21 @@ function SessionItemComponent({
     >
       <div className="flex items-center gap-2 flex-1 min-w-0">
         {selectionMode ? (
-          <input
-            type="checkbox"
-            checked={selected}
-            onChange={(event) => {
-              event.stopPropagation()
-              onToggleSelect?.(session)
-            }}
-            onClick={(event) => {
-              event.preventDefault()
-              event.stopPropagation()
-            }}
+          <span
+            aria-hidden="true"
             className={cn(
-              'size-4 rounded border border-primary-300 bg-surface text-primary-700',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500',
+              'inline-flex items-center justify-center size-4 shrink-0 rounded border transition-colors',
+              selected
+                ? 'bg-primary-700 border-primary-700 text-white'
+                : 'border-primary-300 bg-surface',
             )}
-          />
+          >
+            {selected ? (
+              <svg viewBox="0 0 12 12" className="size-3" fill="none" stroke="currentColor" strokeWidth={2}>
+                <path d="M2.5 6l2.5 2.5 4.5-5" />
+              </svg>
+            ) : null}
+          </span>
         ) : null}
         <div className="flex-1 min-w-0">
           <div className="text-sm font-[450] line-clamp-1">
