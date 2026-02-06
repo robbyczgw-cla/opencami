@@ -842,6 +842,7 @@ export function ChatScreen({
     <ChatSidebar
       sessions={sessions}
       activeFriendlyId={activeFriendlyId}
+      activeSessionKey={sessionKeyForHistory}
       creatingSession={creatingSession}
       onCreateSession={startNewChat}
       isCollapsed={isMobile ? false : isSidebarCollapsed}

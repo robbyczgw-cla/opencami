@@ -35,6 +35,7 @@ import { OpenCamiLogo, OpenCamiText } from '@/components/icons/opencami-logo'
 type ChatSidebarProps = {
   sessions: Array<SessionMeta>
   activeFriendlyId: string
+  activeSessionKey?: string
   creatingSession: boolean
   onCreateSession: () => void
   isCollapsed: boolean
@@ -47,6 +48,7 @@ type ChatSidebarProps = {
 function ChatSidebarComponent({
   sessions,
   activeFriendlyId,
+  activeSessionKey,
   creatingSession,
   onCreateSession,
   isCollapsed,
@@ -345,6 +347,7 @@ function ChatSidebarComponent({
                 <SidebarSessions
                   sessions={sessions}
                   activeFriendlyId={activeFriendlyId}
+                  activeSessionKey={activeSessionKey}
                   onSelect={onSelectSession}
                   onRename={handleOpenRename}
                   onDelete={handleOpenDelete}
@@ -454,6 +457,7 @@ function areSidebarPropsEqual(
   nextProps: ChatSidebarProps,
 ): boolean {
   if (prevProps.activeFriendlyId !== nextProps.activeFriendlyId) return false
+  if (prevProps.activeSessionKey !== nextProps.activeSessionKey) return false
   if (prevProps.creatingSession !== nextProps.creatingSession) return false
   if (prevProps.isCollapsed !== nextProps.isCollapsed) return false
   if (!areSessionsEqual(prevProps.sessions, nextProps.sessions)) return false
