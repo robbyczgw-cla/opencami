@@ -122,6 +122,36 @@ Browse and edit files directly in the browser:
 
 *Based on [balin-ar's PR](https://github.com/ibelick/webclaw/pull/2) — thank you! 🙏*
 
+#### 📁 Session Folders
+Organized sidebar with collapsible groups:
+- 💬 **Chats** — always expanded at the top
+- 🤖 **Sub-agents** — collapsed with count badge
+- ⏰ **Cron / Isolated** — collapsed
+- 📁 **Other** — collapsed
+- Session kind auto-detected from session key pattern
+- Folder open/close state persisted in localStorage
+
+#### 📌 Pin Sessions
+Keep important sessions at the top:
+- Pin/unpin from session context menu
+- 📌 icon on pinned sessions
+- Pinned sessions always appear above folders
+
+#### 🔤 Text Size
+Adjust chat text to your preference:
+- S / M / L / XL options in Settings
+- Applies to all messages instantly
+- Persisted in localStorage
+
+#### 🗑️ Bulk Session Delete
+Clean up old sessions fast:
+- **Select** button in sidebar header toggles selection mode
+- Click sessions to select/deselect (custom checkboxes)
+- **Select All** / **Delete Selected** / **Cancel** action bar
+- Concurrent deletion (max 10 parallel) for speed
+- Confirmation dialog before deleting
+- Sessions are archived (not permanently destroyed)
+
 #### 💬 Slash Commands
 Built-in `/help` shows available commands
 
