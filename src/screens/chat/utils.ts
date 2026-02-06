@@ -72,6 +72,16 @@ export function getMessageTimestamp(message: GatewayMessage): number {
   return Date.now()
 }
 
+const CHANNEL_PATTERNS = [':telegram:', ':discord:', ':signal:', ':whatsapp:', ':slack:', ':imessage:']
+
+/**
+ * Channel-bound sessions (Telegram DM, Discord channel, etc.) should not be
+ * deletable — they are long-running and tied to external chat surfaces.
+ */
+export function isProtectedSession(key: string): boolean {
+  return CHANNEL_PATTERNS.some((pattern) => key.includes(pattern))
+}
+
 function deriveSessionKind(key: string): SessionKind {
   // Sub-agents: codex, explicit subagent, openai-spawned sessions
   if (

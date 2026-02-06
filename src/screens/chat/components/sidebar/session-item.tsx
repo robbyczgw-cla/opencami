@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/menu'
 import { memo } from 'react'
 import type { SessionMeta } from '../../types'
+import { isProtectedSession } from '../../utils'
 
 type SessionItemProps = {
   session: SessionMeta
@@ -155,17 +156,19 @@ function SessionItemComponent({
               <HugeiconsIcon icon={Upload01Icon} size={20} strokeWidth={1.5} />{' '}
               Export
             </MenuItem>
-            <MenuItem
-              onClick={(event) => {
-                event.preventDefault()
-                event.stopPropagation()
-                onDelete(session)
-              }}
-              className="text-red-700 gap-2 hover:bg-red-50/80 data-highlighted:bg-red-50/80"
-            >
-              <HugeiconsIcon icon={Delete01Icon} size={20} strokeWidth={1.5} />{' '}
-              Delete
-            </MenuItem>
+            {isProtectedSession(session.key) ? null : (
+              <MenuItem
+                onClick={(event) => {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  onDelete(session)
+                }}
+                className="text-red-700 gap-2 hover:bg-red-50/80 data-highlighted:bg-red-50/80"
+              >
+                <HugeiconsIcon icon={Delete01Icon} size={20} strokeWidth={1.5} />{' '}
+                Delete
+              </MenuItem>
+            )}
           </MenuContent>
         </MenuRoot>
       )}

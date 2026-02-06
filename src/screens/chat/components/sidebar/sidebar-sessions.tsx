@@ -19,7 +19,7 @@ import type { SessionMeta } from '../../types'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { chatQueryKeys } from '../../chat-queries'
-import { readError } from '../../utils'
+import { readError, isProtectedSession } from '../../utils'
 
 const PINNED_SESSIONS_KEY = 'opencami-pinned-sessions'
 const FOLDER_STATE_KEY = 'opencami-sidebar-folders'
@@ -199,6 +199,7 @@ export const SidebarSessions = memo(function SidebarSessions({
   }, [])
 
   const handleToggleSelect = useCallback((session: SessionMeta) => {
+    if (isProtectedSession(session.key)) return
     setSelectedSessionKeys((prev) => {
       const next = new Set(prev)
       if (next.has(session.key)) {
@@ -211,7 +212,13 @@ export const SidebarSessions = memo(function SidebarSessions({
   }, [])
 
   const handleSelectAll = useCallback(() => {
-    setSelectedSessionKeys(new Set(sessions.map((session) => session.key)))
+    setSelectedSessionKeys(
+      new Set(
+        sessions
+          .filter((session) => !isProtectedSession(session.key))
+          .map((session) => session.key),
+      ),
+    )
   }, [sessions])
 
   const handleCancelSelection = useCallback(() => {
