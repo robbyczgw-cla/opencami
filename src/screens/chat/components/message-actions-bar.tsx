@@ -1,6 +1,12 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
-import { Copy01Icon, Tick02Icon } from '@hugeicons/core-free-icons'
+import {
+  Copy01Icon,
+  Tick02Icon,
+  VolumeHighIcon,
+  StopIcon,
+  Loading02Icon,
+} from '@hugeicons/core-free-icons'
 import { MessageTimestamp } from './message-timestamp'
 import {
   TooltipContent,
@@ -24,6 +30,47 @@ export function MessageActionsBar({
   forceVisible = false,
 }: MessageActionsBarProps) {
   const [copied, setCopied] = useState(false)
+  const [audioState, setAudioState] = useState<
+    'idle' | 'loading' | 'playing'
+  >('idle')
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const objectUrlRef = useRef<string | null>(null)
+
+  // Check TTS enabled from localStorage
+  const [ttsEnabled, setTtsEnabled] = useState(() => {
+    if (typeof window === 'undefined') return true
+    try {
+      const stored = localStorage.getItem('opencami-tts-enabled')
+      return stored === null ? true : stored === 'true'
+    } catch {
+      return true
+    }
+  })
+
+  // Listen for storage changes (from settings dialog)
+  useEffect(() => {
+    function handleStorage(e: StorageEvent) {
+      if (e.key === 'opencami-tts-enabled') {
+        setTtsEnabled(e.newValue === null ? true : e.newValue === 'true')
+      }
+    }
+    window.addEventListener('storage', handleStorage)
+    return () => window.removeEventListener('storage', handleStorage)
+  }, [])
+
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause()
+        audioRef.current = null
+      }
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current)
+        objectUrlRef.current = null
+      }
+    }
+  }, [])
 
   const handleCopy = async () => {
     try {
@@ -35,7 +82,68 @@ export function MessageActionsBar({
     }
   }
 
+  const handleTTS = async () => {
+    if (audioState === 'playing') {
+      if (audioRef.current) {
+        audioRef.current.pause()
+        audioRef.current = null
+      }
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current)
+        objectUrlRef.current = null
+      }
+      setAudioState('idle')
+      return
+    }
+
+    setAudioState('loading')
+    try {
+      const res = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      })
+
+      if (!res.ok) throw new Error('TTS failed')
+
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      objectUrlRef.current = url
+      const audio = new Audio(url)
+      audioRef.current = audio
+
+      audio.onended = () => {
+        setAudioState('idle')
+        if (objectUrlRef.current) {
+          URL.revokeObjectURL(objectUrlRef.current)
+          objectUrlRef.current = null
+        }
+        audioRef.current = null
+      }
+
+      audio.onerror = () => {
+        setAudioState('idle')
+        if (objectUrlRef.current) {
+          URL.revokeObjectURL(objectUrlRef.current)
+          objectUrlRef.current = null
+        }
+        audioRef.current = null
+      }
+
+      await audio.play()
+      setAudioState('playing')
+    } catch {
+      setAudioState('idle')
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current)
+        objectUrlRef.current = null
+      }
+      audioRef.current = null
+    }
+  }
+
   const positionClass = align === 'end' ? 'justify-end' : 'justify-start'
+  const showTTS = align === 'start' && ttsEnabled && text.trim().length > 0
 
   return (
     <div
@@ -63,6 +171,47 @@ export function MessageActionsBar({
           <TooltipContent side="top">Copy</TooltipContent>
         </TooltipRoot>
       </TooltipProvider>
+
+      {showTTS && (
+        <TooltipProvider>
+          <TooltipRoot>
+            <TooltipTrigger
+              type="button"
+              onClick={() => {
+                handleTTS().catch(() => {})
+              }}
+              disabled={audioState === 'loading'}
+              className={cn(
+                'inline-flex items-center justify-center rounded border border-transparent bg-transparent p-1 text-primary-700 hover:text-primary-900 hover:bg-primary-100',
+                audioState === 'loading' && 'opacity-60 cursor-wait',
+              )}
+            >
+              <HugeiconsIcon
+                icon={
+                  audioState === 'loading'
+                    ? Loading02Icon
+                    : audioState === 'playing'
+                      ? StopIcon
+                      : VolumeHighIcon
+                }
+                size={16}
+                strokeWidth={1.6}
+                className={cn(
+                  audioState === 'loading' && 'animate-spin',
+                )}
+              />
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              {audioState === 'loading'
+                ? 'Generating speech…'
+                : audioState === 'playing'
+                  ? 'Stop'
+                  : 'Listen'}
+            </TooltipContent>
+          </TooltipRoot>
+        </TooltipProvider>
+      )}
+
       <MessageTimestamp timestamp={timestamp} />
     </div>
   )

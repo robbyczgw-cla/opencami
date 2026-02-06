@@ -87,6 +87,31 @@ export function SettingsDialog({
   const [testingKey, setTestingKey] = useState(false)
   const [testResult, setTestResult] = useState<{ valid: boolean; error?: string } | null>(null)
 
+  // TTS state
+  const [ttsEnabled, setTtsEnabled] = useState(() => {
+    if (typeof window === 'undefined') return true
+    try {
+      const stored = localStorage.getItem('opencami-tts-enabled')
+      return stored === null ? true : stored === 'true'
+    } catch {
+      return true
+    }
+  })
+
+  const handleTtsToggle = (checked: boolean) => {
+    setTtsEnabled(checked)
+    try {
+      localStorage.setItem('opencami-tts-enabled', String(checked))
+    } catch {
+      // ignore storage errors
+    }
+    // Dispatch storage event so MessageActionsBar can react in real-time
+    window.dispatchEvent(new StorageEvent('storage', {
+      key: 'opencami-tts-enabled',
+      newValue: String(checked),
+    }))
+  }
+
   // Personas state
   const [personasAvailable, setPersonasAvailable] = useState(false)
   const [personasEnabled, setPersonasEnabled] = useState(() => {
@@ -291,6 +316,18 @@ export function SettingsDialog({
                 </a>
               </div>
             )}
+          </SettingsSection>
+
+          <SettingsSection title="Text-to-Speech">
+            <SettingsRow
+              label="Voice Playback"
+              description="Add a 🔊 button to AI messages for text-to-speech"
+            >
+              <Switch
+                checked={ttsEnabled}
+                onCheckedChange={handleTtsToggle}
+              />
+            </SettingsRow>
           </SettingsSection>
 
           <SettingsSection title="LLM Features">
