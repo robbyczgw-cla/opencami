@@ -18,7 +18,7 @@ Forked from [WebClaw](https://github.com/ibelick/webclaw).
 ⚡ Real-time streaming · 🔊 Voice playback (TTS)
 
 **Organization:**
-📁 Session folders · 📌 Pin sessions · 🗑️ Bulk delete · 🛡️ Protected sessions
+📁 Session folders · 🦎 OpenCami chat folder · 📌 Pin sessions · 🗑️ Bulk delete · 🛡️ Protected sessions
 
 **Search & Navigation:**
 🔍 Conversation search · ⌨️ Keyboard shortcuts · 📥 Export conversations
@@ -75,7 +75,10 @@ Open http://localhost:3001
 
 PRs submitted to [ibelick/webclaw](https://github.com/ibelick/webclaw):
 - ✅ [PR #1](https://github.com/ibelick/webclaw/pull/1) — Locale fix (MERGED)
-- ⏳ [PR #4](https://github.com/ibelick/webclaw/pull/4) — Image attachments (pending)
+- ⏳ [PR #4](https://github.com/ibelick/webclaw/pull/4) — Image attachments
+- ⏳ [PR #9](https://github.com/ibelick/webclaw/pull/9) — Conversation search
+- ⏳ [PR #10](https://github.com/ibelick/webclaw/pull/10) — Conversation export
+- ⏳ [PR #11](https://github.com/ibelick/webclaw/pull/11) — Text size setting
 
 ## 🗺️ Roadmap
 
