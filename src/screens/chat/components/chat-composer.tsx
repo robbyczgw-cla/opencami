@@ -88,12 +88,12 @@ function ChatComposerComponent({
     // Allow submit if there's text OR valid attachments
     const validAttachments = attachments.filter((a) => !a.error && a.base64)
     if (body.length === 0 && validAttachments.length === 0) return
-    onSubmit(body, { reset, setValue: setComposerValue, model: selectedModel, attachments: validAttachments })
+    onSubmit(body, { reset, setValue: setComposerValue, model: selectedModel || undefined, attachments: validAttachments })
     focusPrompt()
   }, [disabled, focusPrompt, onSubmit, reset, setComposerValue, value, selectedModel, attachments])
   const handlePersonaSelect = useCallback(
     (command: string) => {
-      onSubmit(command, { reset, setValue: setComposerValue, model: selectedModel, attachments: [] })
+      onSubmit(command, { reset, setValue: setComposerValue, model: selectedModel || undefined, attachments: [] })
       focusPrompt()
     },
     [focusPrompt, onSubmit, reset, setComposerValue, selectedModel],
