@@ -103,6 +103,14 @@ Export any conversation in the format you need:
 - 📋 JSON (.json)
 - 📄 Plain Text (.txt)
 
+#### ⚡ Real-Time Streaming
+Watch AI responses appear token by token:
+- Persistent WebSocket connection to Gateway
+- Server-Sent Events (SSE) forward deltas to browser
+- Smooth text appearance as the model generates
+- Tool call indicators during processing
+- Fast-polling fallback for resilience
+
 #### 💬 Slash Commands
 Built-in `/help` shows available commands
 
@@ -173,6 +181,7 @@ PRs submitted to [ibelick/webclaw](https://github.com/ibelick/webclaw):
 - [x] 🎭 Persona Picker
 - [x] 🎨 Model Selector
 - [x] 📱 PWA Support
+- [x] ⚡ Real-Time Streaming
 - [ ] 🔔 Push Notifications (PWA)
 - [ ] 🎤 Voice Input (Whisper transcription)
 - [ ] 📎 File Uploads (PDFs, docs, code)
