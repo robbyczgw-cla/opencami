@@ -848,6 +848,7 @@ export function ChatScreen({
       onToggleCollapse={handleToggleSidebarCollapse}
       onSelectSession={handleSelectSession}
       onActiveSessionDelete={handleActiveSessionDelete}
+      onOpenSearch={handleSearchGlobal}
     />
   )
 
