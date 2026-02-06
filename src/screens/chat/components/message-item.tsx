@@ -220,7 +220,7 @@ function MessageItemComponent({
         <MessageContent
           markdown={!isUser}
           className={cn(
-            'text-primary-900',
+            'text-primary-900 opencami-text-size',
             !isUser
               ? 'bg-transparent w-full'
               : 'bg-primary-100 px-4 py-2.5 max-w-[85%]',
