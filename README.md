@@ -1,6 +1,6 @@
 # OpenCami 🦎
 
-> **Web chat client for [OpenClaw](https://github.com/openclaw/openclaw)** — AI chat interface with PWA support, smart titles, follow-ups & more.
+> **Web chat client for [OpenClaw](https://github.com/openclaw/openclaw)** — AI chat interface with PWA support, smart titles, voice playback & more.
 
 Forked from [WebClaw](https://github.com/ibelick/webclaw).
 
@@ -25,6 +25,33 @@ Full Progressive Web App support for Android & iOS:
 - **Auto-Update** — service worker updates seamlessly in background
 - **Smart Caching** — cache-first for assets, network-first for API calls
 - Works on Android (Chrome) and iOS (Safari)
+
+#### 🔊 Voice Playback (TTS)
+Listen to AI responses with text-to-speech:
+- 🔊 Speaker button on every AI message
+- **Multi-provider with auto-fallback:**
+  - 🥇 ElevenLabs (best quality, if configured)
+  - 🥈 OpenAI TTS (if API key available)
+  - 🥉 Edge TTS (free, always works, no API key needed)
+- Play/stop controls with loading indicator
+- Toggle on/off in Settings
+- Reads TTS config directly from your OpenClaw Gateway
+
+#### 🎭 Persona Picker
+Switch between AI personalities on the fly:
+- Integrates with the [Personas skill](https://www.clawhub.ai/robbyczgw-cla/personas)
+- 20 expert personas across 7 categories (Dev, Chef Marco, Dr. Med...)
+- One click to activate — sends `/persona` commands through chat
+- Active persona indicator on the picker button
+- Auto-detects if skill is installed
+- Toggle on/off in Settings (with ClawHub install link when skill missing)
+
+#### 🎨 Model Selector
+Switch AI models on the fly:
+- Dropdown in chat composer showing all configured models
+- Reads available models from Gateway config
+- Per-message model override sent to Gateway
+- Remembers your selection
 
 #### 🖼️ Image Attachments
 Upload and send images directly in chat:
@@ -74,9 +101,6 @@ Export any conversation in the format you need:
 - 📋 JSON (.json)
 - 📄 Plain Text (.txt)
 
-#### 🎨 Model Selector
-Switch models on the fly (UI ready, Gateway integration pending)
-
 #### 💬 Slash Commands
 Built-in `/help` shows available commands
 
@@ -123,19 +147,33 @@ CLAWDBOT_GATEWAY_TOKEN=YOUR_TOKEN_HERE
 
 Model fallback chain: `gpt-4.1-nano → gpt-4o-mini → gpt-3.5-turbo`
 
+### Voice Playback (Optional)
+TTS works out of the box with Edge TTS (free, no setup). For higher quality:
+- **ElevenLabs:** Configure `messages.tts.elevenlabs.apiKey` in your OpenClaw config
+- **OpenAI:** Set `OPENAI_API_KEY` environment variable
+
+### Persona Picker (Optional)
+Install the [Personas skill](https://www.clawhub.ai/robbyczgw-cla/personas) on your OpenClaw instance:
+```bash
+clawhub install personas
+```
+The picker will automatically appear in the chat composer.
+
 ## 🔄 Upstream Contributions
 
 PRs submitted to [ibelick/webclaw](https://github.com/ibelick/webclaw):
 - ✅ [PR #1](https://github.com/ibelick/webclaw/pull/1) — Locale fix (MERGED)
-- ⏳ [PR #4](https://github.com/ibelick/webclaw/pull/4) — Image attachments (pending)
+- ⏳ [PR #4](https://github.com/ibelip/webclaw/pull/4) — Image attachments (pending)
 
 ## 🗺️ Roadmap
 
+- [x] 🔊 Voice Playback (multi-provider TTS)
+- [x] 🎭 Persona Picker
+- [x] 🎨 Model Selector
+- [x] 📱 PWA Support
 - [ ] 🔔 Push Notifications (PWA)
-- [ ] 🎤 Voice Messages (Whisper transcription)
+- [ ] 🎤 Voice Input (Whisper transcription)
 - [ ] 📎 File Uploads (PDFs, docs, code)
-- [ ] 🤖 Model Switcher (Gateway integration)
-- [ ] 🔊 TTS Playback (ElevenLabs)
 - [ ] 📊 Usage Dashboard
 
 ## 🙏 Credits
