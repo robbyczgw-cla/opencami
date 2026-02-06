@@ -28,6 +28,8 @@ const config = defineConfig({
     tailwindcss(),
     tanstackStart(),
     viteReact(),
+    // PWA service worker is registered via custom script in __root.tsx
+    // Service worker file is in public/sw.js
   ],
 })
 
