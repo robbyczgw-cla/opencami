@@ -457,7 +457,7 @@ export function ChatScreen({
         thinking: 'low',
         idempotencyKey: crypto.randomUUID(),
         attachments: attachmentsPayload,
-        // model: model || undefined, // TODO: Gateway doesnt support this yet
+        model: model || undefined,
       }),
     })
       .then(async (res) => {
