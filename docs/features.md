@@ -180,6 +180,34 @@ Context-aware suggestions for what to ask next:
 ### 💬 Slash Commands
 Built-in `/help` shows available commands
 
+## Mobile
+
+### 👉 Gesture Navigation
+Native-feeling touch gestures for mobile:
+- **Swipe right from left edge** — opens sidebar (40px edge zone)
+- **Swipe left on sidebar/backdrop** — closes sidebar
+- **Dark backdrop overlay** — tap to dismiss sidebar
+- **Direction lock** — no interference with vertical scrolling
+- Desktop unaffected (touch events only)
+
+### ⚡ Performance Optimizations
+Lazy loading and render optimizations for snappy mobile UX:
+- **Lazy-loaded dialogs** — Search, Shortcuts, Settings, Export load on demand
+- **Lazy-loaded routes** — File Explorer loaded only when visited
+- **content-visibility: auto** — browser skips rendering off-screen messages
+- **Stable refs** — fewer re-renders in message list and sidebar
+- **Bundle reduction** — main chunk reduced ~16% (242KB → 204KB)
+
+### 📱 Native Android App (Capacitor)
+Full native Android APK built with Capacitor:
+- **Native shell** — loads OpenCami web app in a native WebView
+- **Status bar integration** — transparent overlay with safe-area insets
+- **Splash screen** — branded launch screen with OpenCami theme
+- **App icons** — full icon set (hdpi to xxxhdpi) with adaptive icons
+- **Keyboard handling** — body resize mode for chat UX
+- **GitHub Actions** — automated APK build workflow
+- Package: `com.opencami.app`
+
 ## Progressive Web App
 
 ### 📱 PWA — Install as App

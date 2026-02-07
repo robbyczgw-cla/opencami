@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-02-07
+
+### Added
+- **Sidebar Swipe Gestures** — Swipe right from left edge to open, swipe left to close, dark backdrop overlay
+- **Native Android APK** — Capacitor-based native shell with app icons, splash screen, status bar integration
+- **Performance Optimizations** — Lazy-loaded dialogs/routes, content-visibility for off-screen messages, ~16% bundle reduction
+
+### Fixed
+- Android status bar overlapping header/sidebar (safe-area insets)
+
 ## [1.0.0] - 2026-02-06
 
 ### Added

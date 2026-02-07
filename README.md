@@ -32,6 +32,9 @@ Forked from [WebClaw](https://github.com/ibelick/webclaw).
 **Smart Features:**
 🏷️ Smart titles · 💡 Smart follow-ups · 💬 Slash commands
 
+**Mobile:**
+👉 Swipe gestures · ⚡ Lazy loading · 📱 Native Android APK (Capacitor)
+
 **PWA:**
 📱 Install as app · 🔄 Offline support · 🚀 Auto-update
 
