@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">OpenCami</string>
+    <string name="title_activity_main">OpenCami</string>
+    <string name="package_name">com.opencami.app</string>
+    <string name="custom_url_scheme">com.opencami.app</string>
+</resources>

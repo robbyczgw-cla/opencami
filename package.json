@@ -13,6 +13,10 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.1.0",
+    "@capacitor/android": "^8.0.2",
+    "@capacitor/cli": "^8.0.2",
+    "@capacitor/core": "^8.0.2",
+    "@capacitor/ios": "^8.0.2",
     "@hugeicons/core-free-icons": "^3.1.1",
     "@hugeicons/react": "^1.1.4",
     "@tailwindcss/vite": "^4.1.18",
