@@ -116,6 +116,7 @@ export function ChatScreen({
     activeExists,
     activeSessionKey,
     activeTitle,
+    activeTokens,
     sessionsError,
   } = useChatSessions({ activeFriendlyId, isNewChat, forcedSessionKey })
   const {
@@ -940,6 +941,8 @@ export function ChatScreen({
             wrapperRef={headerRef}
             showSidebarButton={isMobile}
             onOpenSidebar={handleOpenSidebar}
+            totalTokens={activeTokens.totalTokens}
+            contextTokens={activeTokens.contextTokens}
           />
 
           {hideUi ? null : (

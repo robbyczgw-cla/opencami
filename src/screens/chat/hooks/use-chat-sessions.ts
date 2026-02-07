@@ -52,6 +52,13 @@ export function useChatSessions({
   const sessionsError =
     sessionsQuery.error instanceof Error ? sessionsQuery.error.message : null
 
+  const activeTokens = useMemo(() => {
+    return {
+      totalTokens: activeSession?.totalTokens,
+      contextTokens: activeSession?.contextTokens,
+    }
+  }, [activeSession?.totalTokens, activeSession?.contextTokens])
+
   return {
     sessionsQuery,
     sessions,
@@ -59,6 +66,7 @@ export function useChatSessions({
     activeExists,
     activeSessionKey,
     activeTitle,
+    activeTokens,
     sessionsError,
   }
 }

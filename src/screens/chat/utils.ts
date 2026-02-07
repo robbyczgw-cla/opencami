@@ -130,6 +130,13 @@ export function normalizeSessions(
         : deriveFriendlyIdFromKey(key)
     const kind = deriveSessionKind(key)
 
+    // Extract token counts from the gateway response (may be on the raw session object)
+    const rawSession = session as Record<string, unknown>
+    const totalTokens =
+      typeof rawSession.totalTokens === 'number' ? rawSession.totalTokens : undefined
+    const contextTokens =
+      typeof rawSession.contextTokens === 'number' ? rawSession.contextTokens : undefined
+
     return {
       key,
       friendlyId: friendlyIdCandidate,
@@ -143,6 +150,8 @@ export function normalizeSessions(
         typeof session.updatedAt === 'number' ? session.updatedAt : undefined,
       lastMessage: session.lastMessage ?? null,
       kind,
+      totalTokens,
+      contextTokens,
     }
   })
 }

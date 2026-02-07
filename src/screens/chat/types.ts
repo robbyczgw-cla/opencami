@@ -79,6 +79,8 @@ export type SessionMeta = {
   updatedAt?: number
   lastMessage?: GatewayMessage | null
   kind?: 'chat' | 'webchat' | 'subagent' | 'cron' | 'other'
+  totalTokens?: number
+  contextTokens?: number
 }
 
 export type PathsPayload = {
