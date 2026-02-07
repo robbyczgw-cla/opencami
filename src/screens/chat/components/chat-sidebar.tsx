@@ -32,6 +32,7 @@ import { SessionRenameDialog } from './sidebar/session-rename-dialog'
 import { SessionDeleteDialog } from './sidebar/session-delete-dialog'
 import { SidebarSessions } from './sidebar/sidebar-sessions'
 import { cn } from '@/lib/utils'
+import { useSimpleMode } from '../hooks/use-simple-mode'
 import { useChatSettings } from '../hooks/use-chat-settings'
 import { useDeleteSession } from '../hooks/use-delete-session'
 import { useRenameSession } from '../hooks/use-rename-session'
@@ -64,6 +65,7 @@ function ChatSidebarComponent({
   onActiveSessionDelete,
   onOpenSearch,
 }: ChatSidebarProps) {
+  const { isSimple } = useSimpleMode()
   const {
     settingsOpen,
     setSettingsOpen,
@@ -265,78 +267,82 @@ function ChatSidebarComponent({
             </AnimatePresence>
           </Button>
           
-          <TooltipProvider>
-            <TooltipRoot>
-              <TooltipTrigger asChild>
-                <Link
-                  to="/files"
-                  className={cn(
-                    buttonVariants({ variant: 'ghost', size: 'sm' }),
-                    'w-full pl-1.5 justify-start',
-                  )}
-                  onClick={onSelectSession}
-                >
-                  <HugeiconsIcon
-                    icon={Folder01Icon}
-                    size={20}
-                    strokeWidth={1.5}
-                    className="min-w-5"
-                  />
-                  <AnimatePresence initial={false} mode="wait">
-                    {!isCollapsed && (
-                      <motion.span
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={transition}
-                        className="overflow-hidden whitespace-nowrap"
-                      >
-                        Files
-                      </motion.span>
+          {!isSimple && (
+            <TooltipProvider>
+              <TooltipRoot>
+                <TooltipTrigger asChild>
+                  <Link
+                    to="/files"
+                    className={cn(
+                      buttonVariants({ variant: 'ghost', size: 'sm' }),
+                      'w-full pl-1.5 justify-start',
                     )}
-                  </AnimatePresence>
-                </Link>
-              </TooltipTrigger>
-              {isCollapsed && (
-                <TooltipContent side="right">
-                  Files
-                </TooltipContent>
-              )}
-            </TooltipRoot>
-          </TooltipProvider>
+                    onClick={onSelectSession}
+                  >
+                    <HugeiconsIcon
+                      icon={Folder01Icon}
+                      size={20}
+                      strokeWidth={1.5}
+                      className="min-w-5"
+                    />
+                    <AnimatePresence initial={false} mode="wait">
+                      {!isCollapsed && (
+                        <motion.span
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          transition={transition}
+                          className="overflow-hidden whitespace-nowrap"
+                        >
+                          Files
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
+                  </Link>
+                </TooltipTrigger>
+                {isCollapsed && (
+                  <TooltipContent side="right">
+                    Files
+                  </TooltipContent>
+                )}
+              </TooltipRoot>
+            </TooltipProvider>
+          )}
         </motion.div>
-        <motion.div
-          layout
-          transition={{ layout: transition }}
-          className="w-full"
-        >
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onOpenSearch}
-            className="w-full pl-1.5 justify-start"
+        {!isSimple && (
+          <motion.div
+            layout
+            transition={{ layout: transition }}
+            className="w-full"
           >
-            <HugeiconsIcon
-              icon={Search01Icon}
-              size={20}
-              strokeWidth={1.5}
-              className="min-w-5"
-            />
-            <AnimatePresence initial={false} mode="wait">
-              {!isCollapsed && (
-                <motion.span
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={transition}
-                  className="overflow-hidden whitespace-nowrap"
-                >
-                  Search
-                </motion.span>
-              )}
-            </AnimatePresence>
-          </Button>
-        </motion.div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onOpenSearch}
+              className="w-full pl-1.5 justify-start"
+            >
+              <HugeiconsIcon
+                icon={Search01Icon}
+                size={20}
+                strokeWidth={1.5}
+                className="min-w-5"
+              />
+              <AnimatePresence initial={false} mode="wait">
+                {!isCollapsed && (
+                  <motion.span
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={transition}
+                    className="overflow-hidden whitespace-nowrap"
+                  >
+                    Search
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </Button>
+          </motion.div>
+        )}
       </div>
 
       <div className="flex-1 min-h-0 overflow-hidden">
@@ -366,41 +372,43 @@ function ChatSidebarComponent({
         </AnimatePresence>
       </div>
 
-      <div className="px-2 py-3 border-t border-primary-200 bg-primary-100">
-        <motion.div
-          layout
-          transition={{ layout: transition }}
-          className="w-full"
-        >
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleOpenSettings}
-            title={isCollapsed ? 'Settings' : undefined}
-            className="w-full justify-start pl-1.5"
+      {!isSimple && (
+        <div className="px-2 py-3 border-t border-primary-200 bg-primary-100">
+          <motion.div
+            layout
+            transition={{ layout: transition }}
+            className="w-full"
           >
-            <HugeiconsIcon
-              icon={Settings01Icon}
-              size={20}
-              strokeWidth={1.5}
-              className="min-w-5"
-            />
-            <AnimatePresence initial={false} mode="wait">
-              {!isCollapsed && (
-                <motion.span
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={transition}
-                  className="overflow-hidden whitespace-nowrap"
-                >
-                  Settings
-                </motion.span>
-              )}
-            </AnimatePresence>
-          </Button>
-        </motion.div>
-      </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleOpenSettings}
+              title={isCollapsed ? 'Settings' : undefined}
+              className="w-full justify-start pl-1.5"
+            >
+              <HugeiconsIcon
+                icon={Settings01Icon}
+                size={20}
+                strokeWidth={1.5}
+                className="min-w-5"
+              />
+              <AnimatePresence initial={false} mode="wait">
+                {!isCollapsed && (
+                  <motion.span
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={transition}
+                    className="overflow-hidden whitespace-nowrap"
+                  >
+                    Settings
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </Button>
+          </motion.div>
+        </div>
+      )}
 
       {settingsOpen && (
         <Suspense fallback={null}>
