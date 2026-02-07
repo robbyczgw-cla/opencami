@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils'
 import { SessionItem } from './session-item'
 import type { SessionMeta } from '../../types'
 import { memo, useCallback, useDeferredValue, useMemo, useState } from 'react'
+import { useSimpleMode } from '../../hooks/use-simple-mode'
 import { useQueryClient } from '@tanstack/react-query'
 import { chatQueryKeys } from '../../chat-queries'
 import { readError, isProtectedSession } from '../../utils'
@@ -160,6 +161,25 @@ export const SidebarSessions = memo(function SidebarSessions({
 }: SidebarSessionsProps) {
   // Defer session list updates to prevent jank while typing/streaming
   const deferredSessions = useDeferredValue(sessions)
+  const { isSimple, agentFilter } = useSimpleMode()
+
+  // Filter sessions based on URL parameters
+  const filteredSessions = useMemo(() => {
+    let result = deferredSessions
+    // Agent filter: only show sessions matching `agent:<name>:*`
+    if (agentFilter) {
+      const prefix = `agent:${agentFilter}:`
+      result = result.filter((s) => s.key.startsWith(prefix))
+    }
+    // Simple mode: only show webchat / chat / untyped sessions
+    if (isSimple) {
+      result = result.filter(
+        (s) => !s.kind || s.kind === 'webchat' || s.kind === 'chat',
+      )
+    }
+    return result
+  }, [deferredSessions, agentFilter, isSimple])
+
   const queryClient = useQueryClient()
   const [pinnedSessionKeys, setPinnedSessionKeys] = useState<Array<string>>(() =>
     readPinnedSessionKeys(),
@@ -175,10 +195,10 @@ export const SidebarSessions = memo(function SidebarSessions({
     () => new Set(pinnedSessionKeys),
     [pinnedSessionKeys],
   )
-  const pinnedSessions = deferredSessions.filter((session) =>
+  const pinnedSessions = filteredSessions.filter((session) =>
     pinnedSessionKeySet.has(session.key),
   )
-  const unpinnedSessions = deferredSessions.filter(
+  const unpinnedSessions = filteredSessions.filter(
     (session) => !pinnedSessionKeySet.has(session.key),
   )
   const showDivider = pinnedSessions.length > 0 && unpinnedSessions.length > 0
@@ -201,8 +221,8 @@ export const SidebarSessions = memo(function SidebarSessions({
   }, [unpinnedSessions])
 
   const selectedSessions = useMemo(
-    () => deferredSessions.filter((session) => selectedSessionKeys.has(session.key)),
-    [selectedSessionKeys, deferredSessions],
+    () => filteredSessions.filter((session) => selectedSessionKeys.has(session.key)),
+    [selectedSessionKeys, filteredSessions],
   )
   const selectedCount = selectedSessions.length
 
@@ -231,12 +251,12 @@ export const SidebarSessions = memo(function SidebarSessions({
   const handleSelectAll = useCallback(() => {
     setSelectedSessionKeys(
       new Set(
-        deferredSessions
+        filteredSessions
           .filter((session) => !isProtectedSession(session.key))
           .map((session) => session.key),
       ),
     )
-  }, [deferredSessions])
+  }, [filteredSessions])
 
   const handleCancelSelection = useCallback(() => {
     setSelectionMode(false)
@@ -393,51 +413,76 @@ export const SidebarSessions = memo(function SidebarSessions({
               {showDivider ? (
                 <div className="my-1 border-t border-primary-200/80" />
               ) : null}
-              {groupedSessions.chat.length > 0 ? (
+              {isSimple ? (
+                /* Simple mode: flat list, no folder grouping */
                 <div className="flex flex-col gap-px">
-                  <div
-                    className={cn(
-                      'border-l-2 border-primary-200/70 px-2 py-1 text-[11px] font-medium text-primary-500/80 text-balance',
-                    )}
-                  >
-                    💬 Chats
-                  </div>
-                  <div className="flex flex-col gap-px">
-                    {groupedSessions.chat.map((session) => (
-                      <SessionItem
-                        key={session.key}
-                        session={session}
-                        active={isSessionActive(session, activeFriendlyId, activeSessionKey)}
-                        isPinned={false}
-                        selectionMode={selectionMode}
-                        selected={selectedSessionKeys.has(session.key)}
-                        onToggleSelect={handleToggleSelect}
-                        onSelect={onSelect}
-                        onTogglePin={handleTogglePin}
-                        onRename={onRename}
-                        onDelete={onDelete}
-                        onExport={onExport}
-                      />
-                    ))}
-                  </div>
+                  {unpinnedSessions.map((session) => (
+                    <SessionItem
+                      key={session.key}
+                      session={session}
+                      active={isSessionActive(session, activeFriendlyId, activeSessionKey)}
+                      isPinned={false}
+                      selectionMode={selectionMode}
+                      selected={selectedSessionKeys.has(session.key)}
+                      onToggleSelect={handleToggleSelect}
+                      onSelect={onSelect}
+                      onTogglePin={handleTogglePin}
+                      onRename={onRename}
+                      onDelete={onDelete}
+                      onExport={onExport}
+                    />
+                  ))}
                 </div>
-              ) : null}
-              {renderFolderGroup(
-                'webchat',
-                '🦎 OpenCami',
-                groupedSessions.webchat,
+              ) : (
+                /* Normal mode: folder-grouped sessions */
+                <>
+                  {groupedSessions.chat.length > 0 ? (
+                    <div className="flex flex-col gap-px">
+                      <div
+                        className={cn(
+                          'border-l-2 border-primary-200/70 px-2 py-1 text-[11px] font-medium text-primary-500/80 text-balance',
+                        )}
+                      >
+                        💬 Chats
+                      </div>
+                      <div className="flex flex-col gap-px">
+                        {groupedSessions.chat.map((session) => (
+                          <SessionItem
+                            key={session.key}
+                            session={session}
+                            active={isSessionActive(session, activeFriendlyId, activeSessionKey)}
+                            isPinned={false}
+                            selectionMode={selectionMode}
+                            selected={selectedSessionKeys.has(session.key)}
+                            onToggleSelect={handleToggleSelect}
+                            onSelect={onSelect}
+                            onTogglePin={handleTogglePin}
+                            onRename={onRename}
+                            onDelete={onDelete}
+                            onExport={onExport}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                  {renderFolderGroup(
+                    'webchat',
+                    '🦎 OpenCami',
+                    groupedSessions.webchat,
+                  )}
+                  {renderFolderGroup(
+                    'subagent',
+                    '🤖 Sub-agents',
+                    groupedSessions.subagent,
+                  )}
+                  {renderFolderGroup(
+                    'cron',
+                    '⏰ Cron / Isolated',
+                    groupedSessions.cron,
+                  )}
+                  {renderFolderGroup('other', '📁 Other', groupedSessions.other)}
+                </>
               )}
-              {renderFolderGroup(
-                'subagent',
-                '🤖 Sub-agents',
-                groupedSessions.subagent,
-              )}
-              {renderFolderGroup(
-                'cron',
-                '⏰ Cron / Isolated',
-                groupedSessions.cron,
-              )}
-              {renderFolderGroup('other', '📁 Other', groupedSessions.other)}
             </div>
           </ScrollAreaViewport>
           <ScrollAreaScrollbar orientation="vertical">
