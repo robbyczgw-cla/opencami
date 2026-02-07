@@ -53,6 +53,7 @@ import type { ChatComposerHelpers } from './components/chat-composer'
 import type { HistoryResponse, GatewayMessage } from './types'
 import { cn } from '@/lib/utils'
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
+import { useSwipeGesture } from './hooks/use-swipe-gesture'
 import { KeyboardShortcutsDialog } from '@/components/keyboard-shortcuts-dialog'
 import { SearchDialog } from '@/components/search-dialog'
 import type { SearchResult } from '@/hooks/use-search'
@@ -155,6 +156,34 @@ export function ChatScreen({
     void gatewayStatusQuery.refetch()
   }, [gatewayStatusQuery])
   const isSidebarCollapsed = uiQuery.data?.isSidebarCollapsed ?? false
+
+  // Sidebar edge-swipe gesture (mobile only)
+  const sidebarSwipeHandlers = useSwipeGesture({
+    enabled: isMobile && isSidebarCollapsed,
+    edgeWidth: 40,
+    threshold: 50,
+    direction: 'right',
+    onSwipe: () => {
+      setChatUiState(queryClient, (state) => ({
+        ...state,
+        isSidebarCollapsed: false,
+      }))
+    },
+  })
+
+  // Swipe-left to close sidebar (mobile only, when sidebar is open)
+  const sidebarCloseSwipeHandlers = useSwipeGesture({
+    enabled: isMobile && !isSidebarCollapsed,
+    threshold: 50,
+    direction: 'left',
+    onSwipe: () => {
+      setChatUiState(queryClient, (state) => ({
+        ...state,
+        isSidebarCollapsed: true,
+      }))
+    },
+  })
+
   const handleActiveSessionDelete = useCallback(() => {
     setError(null)
     setIsRedirecting(true)
@@ -863,11 +892,25 @@ export function ChatScreen({
       >
         {hideUi ? null : isMobile ? (
           <>
+            {/* Backdrop overlay when sidebar is open */}
+            {!isSidebarCollapsed && (
+              <div
+                className="fixed inset-0 z-40 bg-black/40 transition-opacity duration-200"
+                onClick={() =>
+                  setChatUiState(queryClient, (state) => ({
+                    ...state,
+                    isSidebarCollapsed: true,
+                  }))
+                }
+                {...sidebarCloseSwipeHandlers}
+              />
+            )}
             <div
               className={cn(
                 'fixed inset-y-0 left-0 z-50 w-[300px] transition-transform duration-200',
                 isSidebarCollapsed ? '-translate-x-full' : 'translate-x-0',
               )}
+              {...sidebarCloseSwipeHandlers}
             >
               {sidebar}
             </div>
@@ -876,7 +919,11 @@ export function ChatScreen({
           sidebar
         )}
 
-        <main className="flex flex-col h-full min-h-0" ref={mainRef}>
+        <main
+          className="flex flex-col h-full min-h-0"
+          ref={mainRef}
+          {...sidebarSwipeHandlers}
+        >
           <ChatHeader
             activeTitle={activeTitle}
             wrapperRef={headerRef}
