@@ -9,10 +9,14 @@ function IndexRoute() {
   const navigate = Route.useNavigate()
 
   useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search)
+    const agentFilter = searchParams.get('agent')
+    // In simple mode with agent filter, start with new chat instead of main session
+    const target = agentFilter ? 'new' : 'main'
     navigate({
       to: '/chat/$sessionKey',
-      params: { sessionKey: 'main' },
-      search: Object.fromEntries(new URLSearchParams(window.location.search)),
+      params: { sessionKey: target },
+      search: Object.fromEntries(searchParams),
       replace: true,
     })
   }, [navigate])
