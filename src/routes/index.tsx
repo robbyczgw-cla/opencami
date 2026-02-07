@@ -1,4 +1,3 @@
-import { useEffect } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/')({
@@ -6,19 +5,25 @@ export const Route = createFileRoute('/')({
 })
 
 function IndexRoute() {
-  const navigate = Route.useNavigate()
+  // Read URL params BEFORE any React routing strips them
+  const search = window.location.search
+  const params = new URLSearchParams(search)
+  const agentFilter = params.get('agent')
+  const mode = params.get('mode')
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const agentFilter = params.get('agent')
-    // With agent filter, start on /new (not another agent's main session)
-    const target = agentFilter ? 'new' : 'main'
-    navigate({
-      to: '/chat/$sessionKey',
-      params: { sessionKey: target },
-      replace: true,
-    })
-  }, [navigate])
+  // Save simple mode to localStorage on first visit
+  if (mode === 'simple' || agentFilter) {
+    localStorage.setItem('opencami-simple-mode', JSON.stringify({
+      isSimple: mode === 'simple',
+      agentFilter: agentFilter || null,
+    }))
+  } else if (mode === 'normal') {
+    localStorage.removeItem('opencami-simple-mode')
+  }
+
+  // Raw redirect — bypasses TanStack Router completely
+  const target = agentFilter ? 'new' : 'main'
+  window.location.replace(`/chat/${target}`)
 
   return (
     <div className="h-screen flex items-center justify-center text-primary-600">
