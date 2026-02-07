@@ -12,7 +12,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Native Android APK** — Capacitor-based native shell with app icons, splash screen, status bar integration
 - **Performance Optimizations** — Lazy-loaded dialogs/routes, content-visibility for off-screen messages, ~16% bundle reduction
 - **Context Window Meter** — Visual token usage bar in chat header (green/yellow/red, pulse at 95%+)
-- **Simple Mode (Beta)** — `?mode=simple&agent=NAME` for a clean, ChatGPT-like interface filtered to one agent. Persists in localStorage.
 
 ### Fixed
 - Android status bar overlapping header/sidebar (safe-area insets)

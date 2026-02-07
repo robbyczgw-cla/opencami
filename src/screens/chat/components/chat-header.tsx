@@ -3,7 +3,6 @@ import { HugeiconsIcon } from '@hugeicons/react'
 import { Menu01Icon } from '@hugeicons/core-free-icons'
 import { Button } from '@/components/ui/button'
 import { ContextMeter } from './context-meter'
-import { useSimpleMode } from '../hooks/use-simple-mode'
 
 type ChatHeaderProps = {
   activeTitle: string
@@ -22,7 +21,6 @@ function ChatHeaderComponent({
   totalTokens,
   contextTokens,
 }: ChatHeaderProps) {
-  const { isSimple } = useSimpleMode()
   return (
     <div
       ref={wrapperRef}
@@ -40,13 +38,11 @@ function ChatHeaderComponent({
         </Button>
       ) : null}
       <div className="text-sm font-medium truncate flex-1 min-w-0">{activeTitle}</div>
-      {!isSimple && (
-        <ContextMeter
-          totalTokens={totalTokens}
-          contextTokens={contextTokens}
-          className="ml-3 hidden sm:flex"
-        />
-      )}
+      <ContextMeter
+        totalTokens={totalTokens}
+        contextTokens={contextTokens}
+        className="ml-3 hidden sm:flex"
+      />
     </div>
   )
 }

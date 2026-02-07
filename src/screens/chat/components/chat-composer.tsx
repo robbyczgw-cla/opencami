@@ -15,7 +15,6 @@ import { PersonaPicker } from '@/components/persona-picker'
 import { CommandHelp } from '@/components/command-help'
 import { AttachmentButton, type AttachmentFile } from '@/components/attachment-button'
 import { AttachmentPreviewList } from '@/components/attachment-preview'
-import { useSimpleMode } from '../hooks/use-simple-mode'
 
 type ChatComposerProps = {
   onSubmit: (value: string, helpers: ChatComposerHelpers) => void
@@ -99,7 +98,6 @@ function ChatComposerComponent({
     },
     [focusPrompt, onSubmit, reset, setComposerValue, selectedModel],
   )
-  const { isSimple } = useSimpleMode()
   const validAttachments = attachments.filter((a) => !a.error && a.base64)
   const submitDisabled = disabled || (value.trim().length === 0 && validAttachments.length === 0)
 
@@ -115,33 +113,27 @@ function ChatComposerComponent({
         isLoading={isLoading}
         disabled={disabled}
       >
-        {!isSimple && (
-          <AttachmentPreviewList
-            attachments={attachments}
-            onRemove={handleRemoveAttachment}
-          />
-        )}
+        <AttachmentPreviewList
+          attachments={attachments}
+          onRemove={handleRemoveAttachment}
+        />
         <PromptInputTextarea
           placeholder="Type a message…"
           inputRef={setPromptRef}
         />
-        <PromptInputActions className={isSimple ? "justify-end px-3" : "justify-between px-3"}>
-          {!isSimple && (
-            <div className="flex items-center gap-1">
-              <ModelSelector onModelChange={setSelectedModel} />
-              <PersonaPicker onSelect={handlePersonaSelect} />
-              <CommandHelp onCommandSelect={(cmd) => setValue(cmd + ' ')} />
-            </div>
-          )}
+        <PromptInputActions className="justify-between px-3">
           <div className="flex items-center gap-1">
-            {!isSimple && (
-              <PromptInputAction tooltip="Attach file">
-                <AttachmentButton
-                  onFileSelect={handleFileSelect}
-                  disabled={disabled}
-                />
-              </PromptInputAction>
-            )}
+            <ModelSelector onModelChange={setSelectedModel} />
+            <PersonaPicker onSelect={handlePersonaSelect} />
+            <CommandHelp onCommandSelect={(cmd) => setValue(cmd + ' ')} />
+          </div>
+          <div className="flex items-center gap-1">
+            <PromptInputAction tooltip="Attach file">
+              <AttachmentButton
+                onFileSelect={handleFileSelect}
+                disabled={disabled}
+              />
+            </PromptInputAction>
             <PromptInputAction tooltip="Send message">
               <Button
                 onClick={handleSubmit}
