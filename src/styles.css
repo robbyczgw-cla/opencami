@@ -13,6 +13,11 @@ html {
   padding-right: env(safe-area-inset-right);
 }
 
+/* Fixed elements need their own safe-area handling */
+.safe-area-top {
+  padding-top: env(safe-area-inset-top);
+}
+
 @custom-variant dark (&:where(.dark, .dark *));
 @custom-variant chameleon (&:where(.chameleon, .chameleon *));
 
