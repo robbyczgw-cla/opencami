@@ -42,7 +42,6 @@ function ChatRoute() {
       navigate({
         to: '/chat/$sessionKey',
         params: { sessionKey: payload.friendlyId },
-        search: Object.fromEntries(new URLSearchParams(window.location.search)),
         replace: true,
       })
     },

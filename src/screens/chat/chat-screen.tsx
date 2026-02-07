@@ -199,7 +199,7 @@ export function ChatScreen({
   const handleActiveSessionDelete = useCallback(() => {
     setError(null)
     setIsRedirecting(true)
-    navigate({ to: '/new', search: Object.fromEntries(new URLSearchParams(window.location.search)), replace: true })
+    navigate({ to: '/new', replace: true })
   }, [navigate])
   const streamStop = useCallback(() => {
     if (streamTimer.current) {
@@ -377,7 +377,7 @@ export function ChatScreen({
     if (!shouldRedirectToNew) return
     resetPendingSend()
     clearHistoryMessages(queryClient, activeFriendlyId, sessionKeyForHistory)
-    navigate({ to: '/new', search: Object.fromEntries(new URLSearchParams(window.location.search)), replace: true })
+    navigate({ to: '/new', replace: true })
   }, [
     activeFriendlyId,
     historyQuery.isFetching,
@@ -754,7 +754,7 @@ export function ChatScreen({
     setWaitingForResponse(false)
     setPinToTop(false)
     clearHistoryMessages(queryClient, 'new', 'new')
-    navigate({ to: '/new', search: Object.fromEntries(new URLSearchParams(window.location.search)) })
+    navigate({ to: '/new' })
     if (isMobile) {
       setChatUiState(queryClient, function collapse(state) {
         return { ...state, isSidebarCollapsed: true }
@@ -996,7 +996,7 @@ export function ChatScreen({
             onJumpToMessage={(result: SearchResult) => {
               setShowSearchDialog(false)
               if (result.friendlyId) {
-                navigate({ to: '/chat/$sessionKey', params: { sessionKey: result.friendlyId }, search: Object.fromEntries(new URLSearchParams(window.location.search)) })
+                navigate({ to: '/chat/$sessionKey', params: { sessionKey: result.friendlyId } })
               }
             }}
           />
