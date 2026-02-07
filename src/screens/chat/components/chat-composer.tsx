@@ -1,7 +1,7 @@
-import { memo, useCallback, useRef, useState } from 'react'
+import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { ArrowUp02Icon } from '@hugeicons/core-free-icons'
-import type { Ref } from 'react'
+import type { KeyboardEvent, MutableRefObject, Ref } from 'react'
 
 import {
   PromptInput,
@@ -15,6 +15,7 @@ import { PersonaPicker } from '@/components/persona-picker'
 import { CommandHelp } from '@/components/command-help'
 import { AttachmentButton, type AttachmentFile } from '@/components/attachment-button'
 import { AttachmentPreviewList } from '@/components/attachment-preview'
+import { SlashCommandMenu, type SlashCommand } from './slash-command-menu'
 
 type ChatComposerProps = {
   onSubmit: (value: string, helpers: ChatComposerHelpers) => void
@@ -28,8 +29,25 @@ type ChatComposerHelpers = {
   reset: () => void
   setValue: (value: string) => void
   model?: string
-  attachments?: AttachmentFile[]
+  attachments?: Array<AttachmentFile>
 }
+
+const FALLBACK_SLASH_COMMANDS: Array<SlashCommand> = [
+  { command: '/haiku', description: 'Switch to Claude Haiku 4.5' },
+  { command: '/sonnet', description: 'Switch to Claude Sonnet 4.5' },
+  { command: '/opus', description: 'Switch to Claude Opus 4.5' },
+  { command: '/opus46', description: 'Switch to Claude Opus 4.6' },
+  { command: '/codex', description: 'Switch to GPT 5.3 Codex' },
+  { command: '/glm', description: 'Switch to GLM 4.7' },
+  { command: '/kimi', description: 'Switch to Kimi K2.5' },
+  { command: '/minimax', description: 'Switch to MiniMax M2.1' },
+  { command: '/grok', description: 'Switch to Grok 4.1 Fast' },
+  { command: '/new', description: 'New chat' },
+  { command: '/reset', description: 'Reset session' },
+  { command: '/status', description: 'Show status' },
+  { command: '/reasoning', description: 'Toggle reasoning mode' },
+  { command: '/followups', description: 'Show follow-up suggestions' },
+]
 
 function ChatComposerComponent({
   onSubmit,
@@ -40,8 +58,18 @@ function ChatComposerComponent({
 }: ChatComposerProps) {
   const [value, setValue] = useState('')
   const [selectedModel, setSelectedModel] = useState<string>('')
-  const [attachments, setAttachments] = useState<AttachmentFile[]>([])
+  const [attachments, setAttachments] = useState<Array<AttachmentFile>>([])
+  const [selectedCommandIndex, setSelectedCommandIndex] = useState(0)
+  const [slashMenuDismissed, setSlashMenuDismissed] = useState(false)
   const promptRef = useRef<HTMLTextAreaElement | null>(null)
+
+  const showSlashCommands = useMemo(() => /^\/\S*$/.test(value) && !slashMenuDismissed, [value, slashMenuDismissed])
+  const slashQuery = useMemo(() => (showSlashCommands ? value.slice(1).toLowerCase() : ''), [showSlashCommands, value])
+  const filteredSlashCommands = useMemo(() => {
+    if (!showSlashCommands) return []
+    if (!slashQuery) return FALLBACK_SLASH_COMMANDS
+    return FALLBACK_SLASH_COMMANDS.filter((item) => item.command.slice(1).toLowerCase().startsWith(slashQuery))
+  }, [showSlashCommands, slashQuery])
   
   // Sync internal ref with external ref if provided
   const setPromptRef = useCallback(
@@ -51,7 +79,7 @@ function ChatComposerComponent({
         if (typeof externalInputRef === 'function') {
           externalInputRef(element)
         } else {
-          ;(externalInputRef as React.MutableRefObject<HTMLTextAreaElement | null>).current = element
+          ;(externalInputRef as MutableRefObject<HTMLTextAreaElement | null>).current = element
         }
       }
     },
@@ -67,6 +95,8 @@ function ChatComposerComponent({
   const reset = useCallback(() => {
     setValue('')
     setAttachments([])
+    setSelectedCommandIndex(0)
+    setSlashMenuDismissed(false)
     focusPrompt()
   }, [focusPrompt])
   const handleFileSelect = useCallback((file: AttachmentFile) => {
@@ -78,25 +108,94 @@ function ChatComposerComponent({
   const setComposerValue = useCallback(
     (nextValue: string) => {
       setValue(nextValue)
+      setSelectedCommandIndex(0)
+      setSlashMenuDismissed(false)
+      focusPrompt()
+    },
+    [focusPrompt],
+  )
+  const handleValueChange = useCallback((nextValue: string) => {
+    setValue(nextValue)
+    setSelectedCommandIndex(0)
+    setSlashMenuDismissed(false)
+  }, [])
+  const selectSlashCommand = useCallback(
+    (command: SlashCommand) => {
+      setValue(`${command.command} `)
+      setSelectedCommandIndex(0)
+      setSlashMenuDismissed(false)
       focusPrompt()
     },
     [focusPrompt],
   )
   const handleSubmit = useCallback(() => {
     if (disabled) return
+
+    if (showSlashCommands && filteredSlashCommands.length > 0) {
+      const nextIndex = Math.min(selectedCommandIndex, filteredSlashCommands.length - 1)
+      selectSlashCommand(filteredSlashCommands[nextIndex])
+      return
+    }
+
     const body = value.trim()
     // Allow submit if there's text OR valid attachments
     const validAttachments = attachments.filter((a) => !a.error && a.base64)
     if (body.length === 0 && validAttachments.length === 0) return
     onSubmit(body, { reset, setValue: setComposerValue, model: selectedModel || undefined, attachments: validAttachments })
     focusPrompt()
-  }, [disabled, focusPrompt, onSubmit, reset, setComposerValue, value, selectedModel, attachments])
+  }, [
+    disabled,
+    showSlashCommands,
+    filteredSlashCommands,
+    selectedCommandIndex,
+    selectSlashCommand,
+    value,
+    attachments,
+    onSubmit,
+    reset,
+    setComposerValue,
+    selectedModel,
+    focusPrompt,
+  ])
   const handlePersonaSelect = useCallback(
     (command: string) => {
       onSubmit(command, { reset, setValue: setComposerValue, model: selectedModel || undefined, attachments: [] })
       focusPrompt()
     },
     [focusPrompt, onSubmit, reset, setComposerValue, selectedModel],
+  )
+  const handleComposerKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLTextAreaElement>) => {
+      if (!showSlashCommands) return
+
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        setSlashMenuDismissed(true)
+        setSelectedCommandIndex(0)
+        return
+      }
+
+      if (filteredSlashCommands.length === 0) return
+
+      if (event.key === 'ArrowDown') {
+        event.preventDefault()
+        setSelectedCommandIndex((prev) => (prev + 1) % filteredSlashCommands.length)
+        return
+      }
+
+      if (event.key === 'ArrowUp') {
+        event.preventDefault()
+        setSelectedCommandIndex((prev) => (prev - 1 + filteredSlashCommands.length) % filteredSlashCommands.length)
+        return
+      }
+
+      if (event.key === 'Tab') {
+        event.preventDefault()
+        const nextIndex = Math.min(selectedCommandIndex, filteredSlashCommands.length - 1)
+        selectSlashCommand(filteredSlashCommands[nextIndex])
+      }
+    },
+    [showSlashCommands, filteredSlashCommands, selectedCommandIndex, selectSlashCommand],
   )
   const validAttachments = attachments.filter((a) => !a.error && a.base64)
   const submitDisabled = disabled || (value.trim().length === 0 && validAttachments.length === 0)
@@ -108,7 +207,7 @@ function ChatComposerComponent({
     >
       <PromptInput
         value={value}
-        onValueChange={setValue}
+        onValueChange={handleValueChange}
         onSubmit={handleSubmit}
         isLoading={isLoading}
         disabled={disabled}
@@ -117,15 +216,23 @@ function ChatComposerComponent({
           attachments={attachments}
           onRemove={handleRemoveAttachment}
         />
+        {showSlashCommands && filteredSlashCommands.length > 0 && (
+          <SlashCommandMenu
+            commands={filteredSlashCommands}
+            selectedIndex={Math.min(selectedCommandIndex, filteredSlashCommands.length - 1)}
+            onSelect={selectSlashCommand}
+          />
+        )}
         <PromptInputTextarea
           placeholder="Type a message…"
           inputRef={setPromptRef}
+          onKeyDown={handleComposerKeyDown}
         />
         <PromptInputActions className="justify-between px-3">
           <div className="flex items-center gap-1">
             <ModelSelector onModelChange={setSelectedModel} />
             <PersonaPicker onSelect={handlePersonaSelect} />
-            <CommandHelp onCommandSelect={(cmd) => setValue(cmd + ' ')} />
+            <CommandHelp onCommandSelect={(cmd) => handleValueChange(cmd + ' ')} />
           </div>
           <div className="flex items-center gap-1">
             <PromptInputAction tooltip="Attach file">
