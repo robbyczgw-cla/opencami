@@ -53,7 +53,6 @@ function SessionItemComponent({
     <Link
       to="/chat/$sessionKey"
       params={{ sessionKey: session.friendlyId }}
-      search={Object.fromEntries(new URLSearchParams(window.location.search))}
       onClick={(event) => {
         if (selectionMode) {
           event.preventDefault()
