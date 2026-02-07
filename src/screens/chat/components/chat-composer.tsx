@@ -70,6 +70,19 @@ const FALLBACK_SLASH_COMMANDS: Array<SlashCommand> = [
   // Skills
   { command: '/followups', description: 'Show follow-up suggestions' },
   { command: '/skill', description: 'Run a skill by name' },
+  // Admin
+  { command: '/allowlist', description: 'List/add/remove allowlist entries' },
+  { command: '/approve', description: 'Resolve exec approval (allow/deny)' },
+  { command: '/config', description: 'Show/get/set config (owner-only)' },
+  { command: '/debug', description: 'Runtime overrides (owner-only)' },
+  { command: '/send', description: 'Toggle message sending (on/off)' },
+  { command: '/restart', description: 'Restart gateway' },
+  { command: '/activation', description: 'Set activation mode (mention/always)' },
+  // Channels
+  { command: '/dock-telegram', description: 'Switch replies to Telegram' },
+  { command: '/dock-discord', description: 'Switch replies to Discord' },
+  // Other
+  { command: '/bash', description: 'Run host shell command' },
 ]
 
 function ChatComposerComponent({
