@@ -299,6 +299,14 @@ export function ChatScreen({
   if (streamingMessage) wasStreamingRef.current = true
 
   const messagesWithStreaming = useMemo(() => {
+    // Helper: force React key to __streaming__ by clearing __optimisticId
+    // (key logic: __optimisticId || id || index)
+    const withStreamKey = (msg: any) => ({
+      ...msg,
+      id: '__streaming__',
+      __optimisticId: undefined,
+    })
+
     const lastMsg = displayMessages[displayMessages.length - 1]
     const historyHasIt =
       lastMsg?.role === 'assistant' &&
@@ -311,7 +319,7 @@ export function ChatScreen({
       if (wasStreamingRef.current && lastMsg?.role === 'assistant') {
         wasStreamingRef.current = false
         const msgs = [...displayMessages]
-        msgs[msgs.length - 1] = { ...lastMsg, id: '__streaming__' } as any
+        msgs[msgs.length - 1] = withStreamKey(lastMsg)
         return msgs
       }
       return displayMessages
@@ -320,12 +328,12 @@ export function ChatScreen({
     // History already caught up — show history content but keep streaming key
     if (historyHasIt) {
       const msgs = [...displayMessages]
-      msgs[msgs.length - 1] = { ...lastMsg, id: '__streaming__' } as any
+      msgs[msgs.length - 1] = withStreamKey(lastMsg)
       return msgs
     }
 
     // Active streaming — use streaming message with stable key
-    const synth = { ...streamingMessage, id: '__streaming__' } as any
+    const synth = withStreamKey(streamingMessage)
     if (lastMsg?.role === 'assistant') {
       const msgs = [...displayMessages]
       msgs[msgs.length - 1] = synth
