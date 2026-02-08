@@ -51,7 +51,7 @@ function mapToolCallToToolPart(
     .join('')
     .trim()
 
-  const output = resultMessage?.details ?? (outputText.length > 0 ? outputText : undefined)
+  const output = resultMessage?.details ?? (outputText && outputText.length > 0 ? outputText : undefined)
 
   return {
     type: toolCall.name || 'unknown',
