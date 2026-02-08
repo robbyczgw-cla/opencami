@@ -241,10 +241,10 @@ export function ChatScreen({
   // ── Real-time streaming via SSE ──────────────────────────────────────
   const handleStreamDone = useCallback(
     async (_sk: string) => {
-      // Keep the streamed message visible until we have the persisted final
-      // assistant message in history.
+      // Wait for the persisted message to arrive before clearing streaming
+      // state — this eliminates the ~1s flicker where neither the streaming
+      // message nor the final history message is visible.
       await historyQuery.refetch()
-      // Refetch sessions to update token counts in the context meter
       void queryClient.invalidateQueries({ queryKey: chatQueryKeys.sessions })
       stopStream()
       streamFinish()
@@ -265,8 +265,8 @@ export function ChatScreen({
 
   // Build a synthetic "streaming" assistant message from SSE deltas
   const streamingMessage = useMemo<GatewayMessage | null>(() => {
-    // Keep showing the last streamed text after SSE "done" until the
-    // persisted message has been refetched from history.
+    // Keep showing streamed text after SSE "done" until history refetch
+    // completes (waitingForResponse is still true until streamFinish runs)
     if (!streaming.text || (!streaming.active && !waitingForResponse)) return null
     const content: GatewayMessage['content'] = []
     // Add tool call indicators
@@ -890,7 +890,6 @@ export function ChatScreen({
       sessions={sessions}
       activeFriendlyId={activeFriendlyId}
       activeSessionKey={sessionKeyForHistory}
-      isStreaming={isStreaming}
       creatingSession={creatingSession}
       onCreateSession={startNewChat}
       isCollapsed={isMobile ? false : isSidebarCollapsed}

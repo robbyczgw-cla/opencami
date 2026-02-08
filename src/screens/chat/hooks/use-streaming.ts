@@ -95,8 +95,8 @@ export function useStreaming(options: {
           const data = JSON.parse(e.data) as { sessionKey: string; status: string }
           es.close()
           eventSourceRef.current = null
-          // Keep the final streamed text/tools visible until the history
-          // refetch completes and the stable message replaces it.
+          // Mark stream as inactive but keep text/tools so the UI can
+          // continue displaying them until history refetch completes.
           setState((prev) => ({ ...prev, active: false }))
           onDoneRef.current(data.sessionKey)
         } catch {}
