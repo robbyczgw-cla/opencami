@@ -58,6 +58,7 @@ export type SessionSummary = {
   updatedAt?: number
   lastMessage?: GatewayMessage | null
   friendlyId?: string
+  status?: string
 }
 
 export type SessionListResponse = {
@@ -79,6 +80,7 @@ export type SessionMeta = {
   updatedAt?: number
   lastMessage?: GatewayMessage | null
   kind?: 'chat' | 'webchat' | 'subagent' | 'cron' | 'other'
+  status?: string
   totalTokens?: number
   contextTokens?: number
 }

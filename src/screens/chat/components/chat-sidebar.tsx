@@ -43,6 +43,7 @@ type ChatSidebarProps = {
   sessions: Array<SessionMeta>
   activeFriendlyId: string
   activeSessionKey?: string
+  isStreaming?: boolean
   creatingSession: boolean
   onCreateSession: () => void
   isCollapsed: boolean
@@ -56,6 +57,7 @@ function ChatSidebarComponent({
   sessions,
   activeFriendlyId,
   activeSessionKey,
+  isStreaming = false,
   creatingSession,
   onCreateSession,
   isCollapsed,
@@ -355,6 +357,7 @@ function ChatSidebarComponent({
                   sessions={sessions}
                   activeFriendlyId={activeFriendlyId}
                   activeSessionKey={activeSessionKey}
+                  isStreaming={isStreaming}
                   onSelect={onSelectSession}
                   onRename={handleOpenRename}
                   onDelete={handleOpenDelete}
@@ -463,6 +466,9 @@ function areSessionsEqual(
     if (prev.title !== next.title) return false
     if (prev.derivedTitle !== next.derivedTitle) return false
     if (prev.updatedAt !== next.updatedAt) return false
+    if (prev.kind !== next.kind) return false
+    if (prev.status !== next.status) return false
+    if (prev.lastMessage !== next.lastMessage) return false
   }
   return true
 }
@@ -473,6 +479,7 @@ function areSidebarPropsEqual(
 ): boolean {
   if (prevProps.activeFriendlyId !== nextProps.activeFriendlyId) return false
   if (prevProps.activeSessionKey !== nextProps.activeSessionKey) return false
+  if (prevProps.isStreaming !== nextProps.isStreaming) return false
   if (prevProps.creatingSession !== nextProps.creatingSession) return false
   if (prevProps.isCollapsed !== nextProps.isCollapsed) return false
   if (!areSessionsEqual(prevProps.sessions, nextProps.sessions)) return false

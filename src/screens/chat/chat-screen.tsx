@@ -886,6 +886,7 @@ export function ChatScreen({
       sessions={sessions}
       activeFriendlyId={activeFriendlyId}
       activeSessionKey={sessionKeyForHistory}
+      isStreaming={isStreaming}
       creatingSession={creatingSession}
       onCreateSession={startNewChat}
       isCollapsed={isMobile ? false : isSidebarCollapsed}

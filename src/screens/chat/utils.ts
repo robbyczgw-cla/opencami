@@ -136,6 +136,8 @@ export function normalizeSessions(
       typeof rawSession.totalTokens === 'number' ? rawSession.totalTokens : undefined
     const contextTokens =
       typeof rawSession.contextTokens === 'number' ? rawSession.contextTokens : undefined
+    const status =
+      typeof rawSession.status === 'string' ? rawSession.status : undefined
 
     return {
       key,
@@ -150,6 +152,7 @@ export function normalizeSessions(
         typeof session.updatedAt === 'number' ? session.updatedAt : undefined,
       lastMessage: session.lastMessage ?? null,
       kind,
+      status,
       totalTokens,
       contextTokens,
     }

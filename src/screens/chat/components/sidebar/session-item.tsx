@@ -7,6 +7,9 @@ import {
   Pen01Icon,
   Delete01Icon,
   Upload01Icon,
+  BotIcon,
+  Clock01Icon,
+  Chat01Icon,
 } from '@hugeicons/core-free-icons'
 import { cn } from '@/lib/utils'
 import {
@@ -16,12 +19,29 @@ import {
   MenuTrigger,
 } from '@/components/ui/menu'
 import { memo } from 'react'
-import type { SessionMeta } from '../../types'
+import type { SessionMeta, GatewayMessage } from '../../types'
 import { isProtectedSession } from '../../utils'
+
+function getKindIcon(kind: SessionMeta['kind']) {
+  if (kind === 'subagent') return BotIcon
+  if (kind === 'cron') return Clock01Icon
+  return Chat01Icon
+}
+
+function previewFromMessage(message: GatewayMessage | null | undefined): string {
+  if (!message || !Array.isArray(message.content)) return ''
+  const text = message.content
+    .map((part) => (part.type === 'text' ? String(part.text ?? '') : ''))
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return text
+}
 
 type SessionItemProps = {
   session: SessionMeta
   active: boolean
+  isGenerating?: boolean
   isPinned: boolean
   selectionMode?: boolean
   selected?: boolean
@@ -36,6 +56,7 @@ type SessionItemProps = {
 function SessionItemComponent({
   session,
   active,
+  isGenerating = false,
   isPinned,
   selectionMode = false,
   selected = false,
@@ -48,6 +69,16 @@ function SessionItemComponent({
 }: SessionItemProps) {
   const label =
     session.label || session.title || session.derivedTitle || session.friendlyId
+  const KindIcon = getKindIcon(session.kind)
+  const subagentPreviewRaw =
+    session.kind === 'subagent' &&
+    (session.lastMessage?.role === 'assistant' || session.lastMessage?.role === 'toolResult')
+      ? previewFromMessage(session.lastMessage)
+      : ''
+  const subagentPreview =
+    subagentPreviewRaw.length > 50
+      ? `${subagentPreviewRaw.slice(0, 50).trimEnd()}…`
+      : subagentPreviewRaw
 
   return (
     <Link
@@ -64,7 +95,7 @@ function SessionItemComponent({
       }}
       className={cn(
         'group inline-flex items-center justify-between',
-        'w-full text-left pl-1.5 pr-0.5 h-8 rounded-lg transition-colors duration-0',
+        'w-full text-left pl-1.5 pr-0.5 min-h-8 py-1 rounded-lg transition-colors duration-0',
         'select-none',
         active
           ? 'bg-primary-200 text-primary-950'
@@ -90,14 +121,33 @@ function SessionItemComponent({
           </span>
         ) : null}
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-[450] line-clamp-1">
-            {isPinned ? (
-              <span className="mr-1 text-xs text-primary-700" aria-hidden="true">
-                📌
-              </span>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <HugeiconsIcon
+              icon={KindIcon}
+              size={12}
+              strokeWidth={1.75}
+              className="text-primary-500/70 shrink-0"
+            />
+            <div className="text-sm font-[450] line-clamp-1 min-w-0">
+              {isPinned ? (
+                <span className="mr-1 text-xs text-primary-700" aria-hidden="true">
+                  📌
+                </span>
+              ) : null}
+              {label}
+            </div>
+            {isGenerating ? (
+              <span
+                aria-label="Session active"
+                className="size-1.5 rounded-full bg-green-500 shrink-0"
+              />
             ) : null}
-            {label}
           </div>
+          {subagentPreview ? (
+            <div className="text-[11px] text-primary-600/80 line-clamp-1 mt-0.5 pl-[18px]">
+              {subagentPreview}
+            </div>
+          ) : null}
         </div>
       </div>
       {selectionMode ? null : (
@@ -178,6 +228,7 @@ function SessionItemComponent({
 
 function areSessionItemsEqual(prev: SessionItemProps, next: SessionItemProps) {
   if (prev.active !== next.active) return false
+  if (prev.isGenerating !== next.isGenerating) return false
   if (prev.isPinned !== next.isPinned) return false
   if (prev.selectionMode !== next.selectionMode) return false
   if (prev.selected !== next.selected) return false
@@ -194,7 +245,10 @@ function areSessionItemsEqual(prev: SessionItemProps, next: SessionItemProps) {
     prev.session.label === next.session.label &&
     prev.session.title === next.session.title &&
     prev.session.derivedTitle === next.session.derivedTitle &&
-    prev.session.updatedAt === next.session.updatedAt
+    prev.session.updatedAt === next.session.updatedAt &&
+    prev.session.kind === next.session.kind &&
+    prev.session.status === next.session.status &&
+    prev.session.lastMessage === next.session.lastMessage
   )
 }
 
