@@ -46,11 +46,18 @@ function mapToolCallToToolPart(
     errorText = resultMessage.content[0].text || 'Unknown error'
   }
 
+  const outputText = resultMessage?.content
+    ?.map((part) => (part.type === 'text' ? String(part.text ?? '') : ''))
+    .join('')
+    .trim()
+
+  const output = resultMessage?.details ?? (outputText.length > 0 ? outputText : undefined)
+
   return {
     type: toolCall.name || 'unknown',
     state,
     input: toolCall.arguments,
-    output: resultMessage?.details,
+    output,
     toolCallId: toolCall.id,
     errorText,
   }

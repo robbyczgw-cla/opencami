@@ -10,6 +10,8 @@ import {
   BotIcon,
   Clock01Icon,
   Chat01Icon,
+  Tick01Icon,
+  Cancel01Icon,
 } from '@hugeicons/core-free-icons'
 import { cn } from '@/lib/utils'
 import {
@@ -36,6 +38,68 @@ function previewFromMessage(message: GatewayMessage | null | undefined): string 
     .replace(/\s+/g, ' ')
     .trim()
   return text
+}
+
+function normalizeTimestamp(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    if (value < 1_000_000_000_000) return value * 1000
+    return value
+  }
+  if (typeof value === 'string') {
+    const parsed = Date.parse(value)
+    if (!Number.isNaN(parsed)) return parsed
+  }
+  return null
+}
+
+function getLastMessageTimestamp(message: GatewayMessage | null | undefined): number | null {
+  if (!message) return null
+  const candidates = [
+    (message as any).createdAt,
+    (message as any).created_at,
+    (message as any).timestamp,
+    (message as any).time,
+    (message as any).ts,
+  ]
+  for (const candidate of candidates) {
+    const normalized = normalizeTimestamp(candidate)
+    if (normalized) return normalized
+  }
+  return null
+}
+
+function formatRelativeTime(timestamp: number): string {
+  const diffMs = timestamp - Date.now()
+  const absMs = Math.abs(diffMs)
+
+  const units: Array<[Intl.RelativeTimeFormatUnit, number]> = [
+    ['minute', 60_000],
+    ['hour', 3_600_000],
+    ['day', 86_400_000],
+  ]
+
+  let unit: Intl.RelativeTimeFormatUnit = 'minute'
+  let divisor = 60_000
+
+  if (absMs >= units[2][1]) {
+    ;[unit, divisor] = units[2]
+  } else if (absMs >= units[1][1]) {
+    ;[unit, divisor] = units[1]
+  }
+
+  const value = Math.round(diffMs / divisor)
+  const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' })
+  return rtf.format(value, unit)
+}
+
+function subagentStatusTone(status: string | undefined): 'success' | 'error' | null {
+  const normalized = String(status ?? '').toLowerCase().trim()
+  if (!normalized) return null
+  if (normalized === 'error' || normalized === 'failed') return 'error'
+  if (normalized === 'completed' || normalized === 'ended' || normalized === 'done') {
+    return 'success'
+  }
+  return null
 }
 
 type SessionItemProps = {
@@ -79,6 +143,12 @@ function SessionItemComponent({
     subagentPreviewRaw.length > 50
       ? `${subagentPreviewRaw.slice(0, 50).trimEnd()}…`
       : subagentPreviewRaw
+  const subagentStatus =
+    session.kind === 'subagent' ? subagentStatusTone(session.status) : null
+  const cronLastRun =
+    session.kind === 'cron'
+      ? getLastMessageTimestamp(session.lastMessage)
+      : null
 
   return (
     <Link
@@ -136,16 +206,37 @@ function SessionItemComponent({
               ) : null}
               {label}
             </div>
-            {isGenerating ? (
-              <span
-                aria-label="Session active"
-                className="size-1.5 rounded-full bg-green-500 shrink-0"
-              />
+            {session.kind === 'subagent' ? (
+              isGenerating ? (
+                <span
+                  aria-label="Session active"
+                  className="size-1.5 rounded-full bg-green-500 shrink-0"
+                />
+              ) : subagentStatus === 'success' ? (
+                <HugeiconsIcon
+                  icon={Tick01Icon}
+                  size={12}
+                  strokeWidth={1.8}
+                  className="text-green-600/80 shrink-0"
+                />
+              ) : subagentStatus === 'error' ? (
+                <HugeiconsIcon
+                  icon={Cancel01Icon}
+                  size={12}
+                  strokeWidth={1.8}
+                  className="text-red-600/80 shrink-0"
+                />
+              ) : null
             ) : null}
           </div>
           {subagentPreview ? (
             <div className="text-[11px] text-primary-600/80 line-clamp-1 mt-0.5 pl-[18px]">
               {subagentPreview}
+            </div>
+          ) : null}
+          {session.kind === 'cron' && cronLastRun ? (
+            <div className="text-[10px] text-primary-500/75 line-clamp-1 mt-0.5 pl-[18px] font-mono">
+              {formatRelativeTime(cronLastRun)}
             </div>
           ) : null}
         </div>
