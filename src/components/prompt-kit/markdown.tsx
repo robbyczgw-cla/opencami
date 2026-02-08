@@ -231,7 +231,7 @@ const MemoizedMarkdownBlock = memo(
     )
   },
   function propsAreEqual(prevProps, nextProps) {
-    return prevProps.content === nextProps.content && prevProps.components === nextProps.components
+    return prevProps.content === nextProps.content
   },
 )
 

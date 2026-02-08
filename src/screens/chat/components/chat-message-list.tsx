@@ -101,6 +101,7 @@ function ChatMessageListComponent({
   // - The last message in conversation is from assistant (not user waiting for response)
   const showFollowUps =
     !waitingForResponse &&
+    !isStreaming &&
     lastAssistantText.length > 0 &&
     onFollowUpClick !== undefined &&
     (typeof lastUserIndex !== 'number' ||
