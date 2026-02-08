@@ -342,7 +342,22 @@ function MarkdownComponent({
             <div className="flex items-center gap-2">
               {filePreview.status !== 'idle' && (
                 <Button variant="ghost" size="sm" asChild>
-                  <Link to="/files">Open in File Explorer</Link>
+                  <Link
+                    to="/files"
+                    onClick={() => {
+                      // Navigate file explorer to the file's directory
+                      let p = filePreview.status !== 'idle' ? filePreview.path : ''
+                      if (p) {
+                        // The API auto-strips FILES_ROOT, so just use the path as-is
+                        // The file explorer uses virtual paths relative to FILES_ROOT
+                        const dir = p.includes('/') ? p.slice(0, p.lastIndexOf('/')) || '/' : '/'
+                        // Dynamic import to avoid circular deps
+                        import('../../screens/files/hooks/use-file-explorer-state').then(m => {
+                          m.useFileExplorerState.getState().navigateTo(dir)
+                        })
+                      }
+                    }}
+                  >Open in File Explorer</Link>
                 </Button>
               )}
               <DialogClose>Close</DialogClose>
