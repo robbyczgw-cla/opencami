@@ -8,6 +8,7 @@ export type FilePathSegment = {
 const FILE_PATH_REGEX = /(^|[\s"'(,;:])(\~\/[A-Za-z0-9._\-\/]+[A-Za-z0-9._\-]|\/(?:[\w.\-]+\/)+[\w.\-]+)(?=$|[\s"'),;:!?])/g
 
 function trimTrailingPunctuation(path: string): { path: string; trailing: string } {
+  if (!path) return { path: path ?? '', trailing: '' }
   const match = path.match(/^(.*?)([),.;:!?]+)?$/)
   if (!match) return { path, trailing: '' }
   return { path: match[1] || path, trailing: match[2] || '' }
@@ -23,7 +24,7 @@ export function splitTextByFilePaths(text: string): FilePathSegment[] {
   let match: RegExpExecArray | null
   while ((match = FILE_PATH_REGEX.exec(text)) !== null) {
     const prefix = match[1] || ''
-    const rawPath = match[2]
+    const rawPath = match[2] || ''
     const fullMatch = match[0]
     const start = match.index
     const prefixStart = start
@@ -150,6 +151,7 @@ const EXTENSION_LANGUAGE_MAP: Record<string, string> = {
 }
 
 export function languageFromFilePath(path: string): string {
+  if (!path) return 'text'
   const filename = path.split('/').pop() || ''
   const lower = filename.toLowerCase()
 
