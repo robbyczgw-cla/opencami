@@ -240,14 +240,16 @@ export function ChatScreen({
 
   // ── Real-time streaming via SSE ──────────────────────────────────────
   const handleStreamDone = useCallback(
-    (_sk: string) => {
-      // Refetch history to pick up the final message from the Gateway
-      void historyQuery.refetch()
+    async (_sk: string) => {
+      // Keep the streamed message visible until we have the persisted final
+      // assistant message in history.
+      await historyQuery.refetch()
       // Refetch sessions to update token counts in the context meter
       void queryClient.invalidateQueries({ queryKey: chatQueryKeys.sessions })
+      stopStream()
       streamFinish()
     },
-    [historyQuery, queryClient, streamFinish],
+    [historyQuery, queryClient, stopStream, streamFinish],
   )
   const handleStreamError = useCallback(
     (_err: string) => {
@@ -263,7 +265,9 @@ export function ChatScreen({
 
   // Build a synthetic "streaming" assistant message from SSE deltas
   const streamingMessage = useMemo<GatewayMessage | null>(() => {
-    if (!streaming.active || !streaming.text) return null
+    // Keep showing the last streamed text after SSE "done" until the
+    // persisted message has been refetched from history.
+    if (!streaming.text || (!streaming.active && !waitingForResponse)) return null
     const content: GatewayMessage['content'] = []
     // Add tool call indicators
     for (const tool of streaming.tools) {
@@ -281,7 +285,7 @@ export function ChatScreen({
       __streaming: true,
       timestamp: Date.now(),
     } as GatewayMessage
-  }, [streaming.active, streaming.text, streaming.tools])
+  }, [streaming.active, streaming.text, streaming.tools, waitingForResponse])
 
   // Merge streaming message into display messages
   const messagesWithStreaming = useMemo(() => {
