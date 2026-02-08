@@ -296,24 +296,26 @@ export function ChatScreen({
   const messagesWithStreaming = useMemo(() => {
     if (!streamingMessage) return displayMessages
     const lastMsg = displayMessages[displayMessages.length - 1]
-    // If the last history message is already an assistant message, compare
-    // content length to decide which to show. Keep the history message key
-    // stable so stream → persisted handoff does not remount/flicker.
+    // If history already has the final assistant message with equal or more
+    // content, just show history (stream is done).
     if (lastMsg?.role === 'assistant') {
       const lastText = textFromMessage(lastMsg)
-      if (streaming.text.length > lastText.length) {
-        const msgs = [...displayMessages]
-        msgs[msgs.length - 1] = {
-          ...streamingMessage,
-          id: (lastMsg as any).id ?? '__streaming__',
-          __optimisticId: (lastMsg as any).__optimisticId,
-        } as any
-        return msgs
+      if (lastText.length >= streaming.text.length) {
+        return displayMessages
       }
-      return displayMessages
     }
-    // No assistant message in history yet — append streaming message
-    return [...displayMessages, streamingMessage]
+    // Otherwise show streaming message. Always use __streaming__ key for
+    // the entire streaming lifecycle to avoid DOM remount flicker at both
+    // start (append → replace transition) and end (replace → history).
+    const synth = { ...streamingMessage, id: '__streaming__' } as any
+    if (lastMsg?.role === 'assistant') {
+      // Replace the history assistant message with streaming content
+      const msgs = [...displayMessages]
+      msgs[msgs.length - 1] = synth
+      return msgs
+    }
+    // No assistant message in history yet — append
+    return [...displayMessages, synth]
   }, [displayMessages, streamingMessage, streaming.text])
 
   const stableContentStyle = useMemo<React.CSSProperties>(() => ({}), [])
