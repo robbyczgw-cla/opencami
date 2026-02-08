@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from 'react'
+import ReactDOM from 'react-dom'
 import { useNavigate } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
@@ -242,12 +243,17 @@ export function ChatScreen({
   const handleStreamDone = useCallback(
     async (_sk: string) => {
       // Wait for the persisted message to arrive before clearing streaming
-      // state — this eliminates the ~1s flicker where neither the streaming
+      // state — this eliminates the flicker where neither the streaming
       // message nor the final history message is visible.
       await historyQuery.refetch()
+      // Batch both state updates together so React renders them in a single
+      // commit — no intermediate frame where streaming is gone but
+      // waitingForResponse is still true.
+      ReactDOM.flushSync(() => {
+        stopStream()
+        streamFinish()
+      })
       void queryClient.invalidateQueries({ queryKey: chatQueryKeys.sessions })
-      stopStream()
-      streamFinish()
     },
     [historyQuery, queryClient, stopStream, streamFinish],
   )
