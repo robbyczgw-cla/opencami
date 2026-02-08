@@ -77,7 +77,15 @@ const textSizeScript = `
 })()
 `
 
+function NotFoundRedirect() {
+  if (typeof window !== 'undefined') {
+    window.location.href = '/chat/main'
+  }
+  return null
+}
+
 export const Route = createRootRoute({
+  notFoundComponent: NotFoundRedirect,
   head: () => ({
     meta: [
       {
