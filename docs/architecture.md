@@ -113,9 +113,10 @@ Persisted preferences:
 
 ### Required
 - `CLAWDBOT_GATEWAY_URL` — OpenClaw Gateway WebSocket URL
-- `CLAWDBOT_GATEWAY_TOKEN` — Authentication token
+- Auth: `CLAWDBOT_GATEWAY_TOKEN` (recommended) or `CLAWDBOT_GATEWAY_PASSWORD`
 
 ### Optional
+- `OPENCLAW_GATEWAY` — CLI compatibility alias set by `opencami --gateway` (not the primary server key)
 - `FILES_ROOT` — Root directory for file explorer (enables file browsing)
 - `OPENAI_API_KEY` — For LLM features (smart titles, smart follow-ups)
 

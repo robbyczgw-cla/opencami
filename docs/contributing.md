@@ -33,7 +33,7 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Open http://localhost:3001 — Vite will hot-reload as you edit.
+Open the URL shown in your terminal (`npm run dev` currently serves on `http://localhost:3002`). Vite will hot-reload as you edit.
 
 ## Code Style
 
@@ -45,11 +45,11 @@ Open http://localhost:3001 — Vite will hot-reload as you edit.
 
 ### File Structure
 ```
-app/
-├── components/
-│   ├── ui/           # Reusable UI components
-│   └── chat/         # Chat-specific components
-├── routes/           # TanStack Router pages
+src/
+├── components/       # Reusable UI components
+├── routes/           # TanStack Router pages + API routes
+├── screens/          # Feature-level UI (chat, settings, etc.)
+├── server/           # Server-side gateway/filesystem modules
 ├── lib/              # Utilities and helpers
 └── styles/           # Global CSS (minimal, mostly Tailwind)
 ```
@@ -158,7 +158,7 @@ git push origin main
 - **New features** → `docs/features.md` + README.md (one-liner only)
 - **Architecture changes** → `docs/architecture.md`
 - **Deployment notes** → `docs/deployment.md`
-- **Breaking changes** → `docs/changelog.md`
+- **Breaking changes** → `CHANGELOG.md`
 
 ### Style
 - **Concise and practical** — users want to get things done

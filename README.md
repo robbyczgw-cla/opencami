@@ -27,7 +27,7 @@ That's it. Opens your browser to the chat interface.
 
 | Flag | Description | Default |
 |------|-------------|---------|
-| `--port` | Port to serve on | `3001` |
+| `--port` | Port to serve on | `3000` |
 | `--gateway` | OpenClaw gateway URL | `ws://127.0.0.1:18789` |
 | `--host` | Bind address | `localhost` |
 | `--no-open` | Don't open browser | — |
@@ -69,13 +69,17 @@ cp .env.example .env.local
 npm run dev
 ```
 
+Then open the URL printed by Vite in your terminal.
+
+> Dev port notes: this repo's `npm run dev` script uses port `3002`. If you run Vite directly with the config default, it targets `3003` and auto-falls back to the next free port.
+
 ## Documentation
 
 - [Features](docs/features.md)
 - [Architecture](docs/architecture.md)
 - [Deployment](docs/deployment.md)
 - [Contributing](docs/contributing.md)
-- [Changelog](docs/changelog.md)
+- [Changelog](CHANGELOG.md)
 
 ## Credits
 

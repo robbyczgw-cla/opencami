@@ -4,33 +4,32 @@
 
 ### Prerequisites
 - Node.js 18+ and npm
-- OpenClaw Gateway running and accessible
+- OpenClaw Gateway running and reachable
 - (Optional) Reverse proxy (nginx, Caddy, Tailscale Serve)
 
 ### Production Build
 
 ```bash
-# Clone repository
 git clone https://github.com/robbyczgw-cla/opencami.git
 cd opencami
-
-# Install dependencies
 npm install
-
-# Build for production
 npm run build
 ```
 
-The build output will be in `.output/` directory.
+Build output is generated in `dist/`:
+- `dist/client` — static client assets
+- `dist/server/server.js` — server handler used by the CLI runtime
 
 ### Environment Variables
 
-Create a `.env` file (or set in systemd service):
+Create a `.env` file (or set variables in your service manager):
 
-#### Required
+#### Required (server runtime)
 ```bash
 CLAWDBOT_GATEWAY_URL=ws://127.0.0.1:18789
 CLAWDBOT_GATEWAY_TOKEN=your_gateway_token_here
+# Alternative auth:
+# CLAWDBOT_GATEWAY_PASSWORD=your_gateway_password
 ```
 
 #### Optional
@@ -42,22 +41,32 @@ FILES_ROOT=/path/to/workspace
 OPENAI_API_KEY=sk-...
 ```
 
-### Running in Production
+### Important env alias note
+- OpenCami server code reads `CLAWDBOT_GATEWAY_URL`.
+- The `opencami --gateway ...` CLI currently exports `OPENCLAW_GATEWAY`.
+- For reliable deployments, set `CLAWDBOT_GATEWAY_URL` explicitly.
 
-#### Option 1: Direct Node.js
+## Running in Production
+
+### Option 1: OpenCami CLI (recommended)
+
 ```bash
-node .output/server/index.mjs
+npm install -g opencami
+CLAWDBOT_GATEWAY_URL=ws://127.0.0.1:18789 \
+CLAWDBOT_GATEWAY_TOKEN=your_token \
+opencami --host 0.0.0.0 --port 3000 --no-open
 ```
 
-#### Option 2: PM2 (Process Manager)
+### Option 2: Run from repository checkout
+
 ```bash
-npm install -g pm2
-pm2 start .output/server/index.mjs --name opencami
-pm2 save
-pm2 startup  # Enable auto-start on boot
+npm run build
+CLAWDBOT_GATEWAY_URL=ws://127.0.0.1:18789 \
+CLAWDBOT_GATEWAY_TOKEN=your_token \
+node bin/opencami.js --host 0.0.0.0 --port 3000 --no-open
 ```
 
-#### Option 3: systemd Service
+### Option 3: systemd service
 
 Create `/etc/systemd/system/opencami.service`:
 
@@ -74,7 +83,7 @@ Environment="CLAWDBOT_GATEWAY_URL=ws://127.0.0.1:18789"
 Environment="CLAWDBOT_GATEWAY_TOKEN=your_token_here"
 Environment="FILES_ROOT=/home/user/workspace"
 Environment="NODE_ENV=production"
-ExecStart=/usr/bin/node .output/server/index.mjs
+ExecStart=/usr/bin/node /opt/opencami/bin/opencami.js --host 0.0.0.0 --port 3000 --no-open
 Restart=on-failure
 RestartSec=5s
 
@@ -82,7 +91,8 @@ RestartSec=5s
 WantedBy=multi-user.target
 ```
 
-Enable and start:
+Then:
+
 ```bash
 sudo systemctl daemon-reload
 sudo systemctl enable opencami
@@ -90,7 +100,8 @@ sudo systemctl start opencami
 sudo systemctl status opencami
 ```
 
-View logs:
+Logs:
+
 ```bash
 sudo journalctl -u opencami -f
 ```
@@ -105,144 +116,83 @@ server {
     server_name opencami.example.com;
 
     location / {
-        proxy_pass http://localhost:3001;
+        proxy_pass http://localhost:3000;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
         proxy_cache_bypass $http_upgrade;
-        
-        # WebSocket support
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        
-        # Timeout for SSE
         proxy_read_timeout 300s;
         proxy_connect_timeout 75s;
     }
 }
 ```
 
-For HTTPS with Let's Encrypt:
-```bash
-sudo certbot --nginx -d opencami.example.com
-```
-
 ### Caddy
 
 ```caddy
 opencami.example.com {
-    reverse_proxy localhost:3001
+    reverse_proxy localhost:3000
 }
 ```
 
-Caddy handles HTTPS automatically.
-
 ### Tailscale Serve
 
-Expose OpenCami on your Tailnet:
-
 ```bash
-tailscale serve --bg --https=443 --set-path=/ http://localhost:3001
+tailscale serve --bg --https=443 --set-path=/ http://localhost:3000
 ```
 
-Or with a custom hostname:
-```bash
-tailscale serve --bg --https=443 --hostname=opencami http://localhost:3001
-```
+## Docker
 
-Access via: `https://opencami.your-tailnet.ts.net`
+A Dockerfile is included in the repository.
+
+```bash
+docker build -t opencami .
+docker run -d \
+  -p 3000:3000 \
+  -e CLAWDBOT_GATEWAY_URL=ws://host.docker.internal:18789 \
+  -e CLAWDBOT_GATEWAY_TOKEN=your_token \
+  opencami
+```
 
 ## Environment Variable Reference
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `CLAWDBOT_GATEWAY_URL` | ✅ | — | OpenClaw Gateway WebSocket URL (e.g., `ws://127.0.0.1:18789`) |
-| `CLAWDBOT_GATEWAY_TOKEN` | ✅ | — | Authentication token for Gateway |
-| `FILES_ROOT` | ❌ | — | Root directory for file explorer. If not set, file explorer is disabled. |
-| `OPENAI_API_KEY` | ❌ | — | OpenAI API key for LLM features (smart titles, smart follow-ups). Falls back to manual entry in Settings. |
-| `NODE_ENV` | ❌ | `development` | Set to `production` for optimized builds |
-| `PORT` | ❌ | `3001` | HTTP server port |
+| `CLAWDBOT_GATEWAY_URL` | ✅ | `ws://127.0.0.1:18789` | OpenClaw Gateway WebSocket URL used by server code |
+| `CLAWDBOT_GATEWAY_TOKEN` | ✅* | — | Recommended gateway auth token |
+| `CLAWDBOT_GATEWAY_PASSWORD` | ✅* | — | Alternative auth if token is not used |
+| `OPENCLAW_GATEWAY` | ❌ | — | CLI-set variable from `--gateway`; not the primary server env key |
+| `FILES_ROOT` | ❌ | — | Root directory for file explorer. If unset, defaults to user home |
+| `OPENAI_API_KEY` | ❌ | — | API key for LLM features |
+| `PORT` | ❌ | `3000` | HTTP server port when running `bin/opencami.js` |
 
-## Docker (Experimental)
-
-Dockerfile is not yet provided. Contributions welcome!
-
-Recommended approach until official image:
-```bash
-# Build
-docker run --rm -v $(pwd):/app -w /app node:18 npm install && npm run build
-
-# Run
-docker run -d \
-  -p 3001:3001 \
-  -e CLAWDBOT_GATEWAY_URL=ws://host.docker.internal:18789 \
-  -e CLAWDBOT_GATEWAY_TOKEN=your_token \
-  -v $(pwd)/.output:/app/.output \
-  node:18 \
-  node /app/.output/server/index.mjs
-```
-
-## Monitoring
-
-### Health Check Endpoint
-
-OpenCami doesn't expose a dedicated `/health` endpoint yet. Monitor the main page:
-
-```bash
-curl -f http://localhost:3001 || exit 1
-```
-
-### Process Monitoring
-
-With systemd:
-```bash
-systemctl is-active opencami
-```
-
-With PM2:
-```bash
-pm2 status opencami
-```
+\* One of `CLAWDBOT_GATEWAY_TOKEN` or `CLAWDBOT_GATEWAY_PASSWORD` is required.
 
 ## Troubleshooting
 
-### WebSocket Connection Failed
-- Check `CLAWDBOT_GATEWAY_URL` is correct
+### Gateway connection failed
+- Verify `CLAWDBOT_GATEWAY_URL`
 - Ensure Gateway is running: `openclaw gateway status`
-- Test Gateway directly: `wscat -c ws://127.0.0.1:18789`
+- Ensure auth is set (`CLAWDBOT_GATEWAY_TOKEN` or `CLAWDBOT_GATEWAY_PASSWORD`)
 
-### File Explorer Not Showing
-- Set `FILES_ROOT` environment variable
-- Ensure the path exists and is readable
-- Check server logs for permission errors
+### File explorer not showing
+- Set `FILES_ROOT`
+- Ensure the directory exists and is readable
 
-### LLM Features Not Working
-- Set `OPENAI_API_KEY` or enter manually in Settings
-- Check API key is valid: `curl https://api.openai.com/v1/models -H "Authorization: Bearer $OPENAI_API_KEY"`
-- Model fallback: gpt-4.1-nano → gpt-4o-mini → gpt-3.5-turbo
-
-### Service Worker Update Loop
-- Clear browser cache and service worker
-- Hard refresh: Ctrl+Shift+R (Windows/Linux) or Cmd+Shift+R (Mac)
-- In DevTools → Application → Service Workers → Unregister
+### LLM features not working
+- Set `OPENAI_API_KEY` or enter key in Settings
+- Verify key: `curl https://api.openai.com/v1/models -H "Authorization: Bearer $OPENAI_API_KEY"`
 
 ## Updates
 
-### Pull Latest Changes
 ```bash
 cd /opt/opencami
 git pull origin main
 npm install
 npm run build
 sudo systemctl restart opencami
-```
-
-### Upstream Sync
-If you forked OpenCami and want to pull upstream changes:
-```bash
-git remote add upstream https://github.com/robbyczgw-cla/opencami.git
-git fetch upstream
-git merge upstream/main
 ```
