@@ -8,7 +8,6 @@ import {
   useRef,
   useState,
 } from 'react'
-import ReactDOM from 'react-dom'
 import { useNavigate } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
@@ -250,17 +249,13 @@ export function ChatScreen({
 
   handleStreamDoneRef.current = useCallback(
     async (_sk: string) => {
-      // Wait for the persisted message to arrive before clearing streaming
-      // state — this eliminates the flicker where neither the streaming
-      // message nor the final history message is visible.
+      // 1. Refetch history so the final persisted message is available
       await historyQuery.refetch()
-      // Batch both state updates together so React renders them in a single
-      // commit — no intermediate frame where streaming is gone but
-      // waitingForResponse is still true.
-      ReactDOM.flushSync(() => {
-        stopStream()
-        streamFinish()
-      })
+      // 2. Now clear streaming + finish in one go. The streaming message
+      //    is no longer needed because displayMessages already has the
+      //    final assistant message from the refetch above.
+      stopStream()
+      streamFinish()
       void queryClient.invalidateQueries({ queryKey: chatQueryKeys.sessions })
     },
     [historyQuery, queryClient, stopStream, streamFinish],
@@ -299,22 +294,23 @@ export function ChatScreen({
   // Merge streaming message into display messages
   const messagesWithStreaming = useMemo(() => {
     if (!streamingMessage) return displayMessages
-    // If the last display message is an assistant message from fast-polling,
-    // and we have a streaming message with more text, prefer the streaming one.
-    const msgs = [...displayMessages]
-    const lastMsg = msgs[msgs.length - 1]
-    if (lastMsg?.role === 'assistant' && streamingMessage) {
+    const lastMsg = displayMessages[displayMessages.length - 1]
+    // If the last history message is already an assistant message, compare
+    // content length to decide which to show. This avoids flicker at
+    // stream-end: the history message smoothly takes over.
+    if (lastMsg?.role === 'assistant') {
       const lastText = textFromMessage(lastMsg)
       if (streaming.text.length > lastText.length) {
-        // Replace the last message with the streaming version
+        // Streaming has more text — show streaming version
+        const msgs = [...displayMessages]
         msgs[msgs.length - 1] = streamingMessage
         return msgs
       }
-      // Otherwise keep the polled version (it may have more content)
-      return msgs
+      // History has caught up — just use history messages (no flicker)
+      return displayMessages
     }
-    // No assistant message yet — append the streaming one
-    return [...msgs, streamingMessage]
+    // No assistant message in history yet — append streaming message
+    return [...displayMessages, streamingMessage]
   }, [displayMessages, streamingMessage, streaming.text])
 
   const stableContentStyle = useMemo<React.CSSProperties>(() => ({}), [])
