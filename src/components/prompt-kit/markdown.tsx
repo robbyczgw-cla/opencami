@@ -4,11 +4,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkBreaks from 'remark-breaks'
 import remarkGfm from 'remark-gfm'
 import { CodeBlock } from './code-block'
-import {
-  languageFromFilePath,
-  markdownHrefToFilePath,
-  splitTextByFilePaths,
-} from './file-paths'
+import { languageFromFilePath, markdownHrefToFilePath } from './file-paths'
 import {
   DialogClose,
   DialogContent,
@@ -19,6 +15,7 @@ import { Button } from '@/components/ui/button'
 import type { Components } from 'react-markdown'
 import { cn } from '@/lib/utils'
 import { Link } from '@tanstack/react-router'
+import { useChatSettingsStore } from '@/hooks/use-chat-settings'
 
 export type MarkdownProps = {
   children: string
@@ -151,14 +148,17 @@ const BASE_COMPONENTS: Partial<Components> = {
   },
 }
 
-function createDefaultComponents(onOpenFilePreview: (path: string) => void): Partial<Components> {
+function createDefaultComponents(
+  onOpenFilePreview: (path: string) => void,
+  inlineFilePreviewEnabled: boolean,
+): Partial<Components> {
   const FILE_PATH_RE = /^(?:~\/[\w.\-\/]+|\/(?:[\w.\-]+\/)+[\w.\-]+)$/
 
   return {
     ...BASE_COMPONENTS,
     a: function AComponent({ children, href }) {
       const filePath = markdownHrefToFilePath(href)
-      if (filePath) {
+      if (inlineFilePreviewEnabled && filePath) {
         return (
           <button
             type="button"
@@ -191,7 +191,7 @@ function createDefaultComponents(onOpenFilePreview: (path: string) => void): Par
         : Array.isArray(children)
           ? children.filter((c: unknown) => typeof c === 'string').join('')
           : String(children ?? '')
-      if (text && FILE_PATH_RE.test(text)) {
+      if (inlineFilePreviewEnabled && text && FILE_PATH_RE.test(text)) {
         return (
           <button
             type="button"
@@ -253,10 +253,17 @@ function MarkdownComponent({
   const blockId = id ?? generatedId
   const blocks = useMemo(() => parseMarkdownIntoBlocks(children), [children])
   const [filePreview, setFilePreview] = useState<FilePreviewState>({ status: 'idle' })
+  const inlineFilePreviewEnabled = useChatSettingsStore(
+    (state) => state.settings.inlineFilePreview,
+  )
 
   const defaultComponents = useMemo(
-    () => createDefaultComponents((path) => setFilePreview({ status: 'loading', path })),
-    [],
+    () =>
+      createDefaultComponents(
+        (path) => setFilePreview({ status: 'loading', path }),
+        inlineFilePreviewEnabled,
+      ),
+    [inlineFilePreviewEnabled],
   )
 
   const mergedComponents = useMemo(

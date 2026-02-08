@@ -43,8 +43,14 @@ async function resolveSafePath(virtualPath: string): Promise<string> {
     throw createError('Invalid path', 400, 'INVALID_PATH')
   }
 
+  // If the virtual path starts with the root directory, strip it so it resolves correctly
+  let normalized = virtualPath
+  if (normalized.startsWith(root + '/')) {
+    normalized = normalized.slice(root.length)
+  }
+
   // Strip leading slashes and normalize
-  const cleaned = virtualPath.replace(/^\/+/, '')
+  const cleaned = normalized.replace(/^\/+/, '')
   const resolved = resolve(root, cleaned)
 
   // Check logical path stays within root

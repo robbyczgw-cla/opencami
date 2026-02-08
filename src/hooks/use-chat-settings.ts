@@ -7,6 +7,7 @@ export type ThemeMode = 'system' | 'light' | 'dark' | 'chameleon'
 export type ChatSettings = {
   showToolMessages: boolean
   showReasoningBlocks: boolean
+  inlineFilePreview: boolean
   theme: ThemeMode
 }
 
@@ -21,6 +22,7 @@ export const useChatSettingsStore = create<ChatSettingsState>()(
       settings: {
         showToolMessages: true,
         showReasoningBlocks: true,
+        inlineFilePreview: false,
         theme: 'system',
       },
       updateSettings: (updates) =>
