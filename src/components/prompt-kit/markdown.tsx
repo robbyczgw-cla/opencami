@@ -1,11 +1,24 @@
 import { marked } from 'marked'
-import { memo, useId, useMemo } from 'react'
+import { memo, useEffect, useId, useMemo, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkBreaks from 'remark-breaks'
 import remarkGfm from 'remark-gfm'
 import { CodeBlock } from './code-block'
+import {
+  languageFromFilePath,
+  markdownHrefToFilePath,
+  remarkFilePathLinks,
+} from './file-paths'
+import {
+  DialogClose,
+  DialogContent,
+  DialogRoot,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
 import type { Components } from 'react-markdown'
 import { cn } from '@/lib/utils'
+import { Link } from '@tanstack/react-router'
 
 export type MarkdownProps = {
   children: string
@@ -13,6 +26,14 @@ export type MarkdownProps = {
   className?: string
   components?: Partial<Components>
 }
+
+type FilePreviewState =
+  | { status: 'idle' }
+  | { status: 'loading'; path: string }
+  | { status: 'success'; path: string; content: string; language: string }
+  | { status: 'error'; path: string; message: string }
+
+const INLINE_PREVIEW_MAX_BYTES = 100 * 1024
 
 function parseMarkdownIntoBlocks(markdown: string): Array<string> {
   const tokens = marked.lexer(markdown)
@@ -25,7 +46,7 @@ function extractLanguage(className?: string): string {
   return match ? match[1] : 'text'
 }
 
-const INITIAL_COMPONENTS: Partial<Components> = {
+const BASE_COMPONENTS: Partial<Components> = {
   code: function CodeComponent({ className, children }) {
     const isInline = !className?.includes('language-')
 
@@ -80,18 +101,6 @@ const INITIAL_COMPONENTS: Partial<Components> = {
   li: function LiComponent({ children }) {
     return <li className="leading-relaxed">{children}</li>
   },
-  a: function AComponent({ children, href }) {
-    return (
-      <a
-        href={href}
-        className="text-primary-950 underline decoration-primary-300 underline-offset-4 transition-colors hover:text-primary-950 hover:decoration-primary-500"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        {children}
-      </a>
-    )
-  },
   blockquote: function BlockquoteComponent({ children }) {
     return (
       <blockquote className="border-l-2 border-primary-300 pl-4 text-primary-900 italic">
@@ -142,17 +151,48 @@ const INITIAL_COMPONENTS: Partial<Components> = {
   },
 }
 
+function createDefaultComponents(onOpenFilePreview: (path: string) => void): Partial<Components> {
+  return {
+    ...BASE_COMPONENTS,
+    a: function AComponent({ children, href }) {
+      const filePath = markdownHrefToFilePath(href)
+      if (filePath) {
+        return (
+          <button
+            type="button"
+            onClick={() => onOpenFilePreview(filePath)}
+            className="font-mono text-primary-900 underline decoration-primary-300 underline-offset-4 hover:decoration-primary-600 cursor-pointer"
+          >
+            {children}
+          </button>
+        )
+      }
+
+      return (
+        <a
+          href={href}
+          className="text-primary-950 underline decoration-primary-300 underline-offset-4 transition-colors hover:text-primary-950 hover:decoration-primary-500"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {children}
+        </a>
+      )
+    },
+  }
+}
+
 const MemoizedMarkdownBlock = memo(
   function MarkdownBlock({
     content,
-    components = INITIAL_COMPONENTS,
+    components,
   }: {
     content: string
     components?: Partial<Components>
   }) {
     return (
       <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkBreaks]}
+        remarkPlugins={[remarkGfm, remarkBreaks, remarkFilePathLinks]}
         components={components}
       >
         {content}
@@ -166,26 +206,132 @@ const MemoizedMarkdownBlock = memo(
 
 MemoizedMarkdownBlock.displayName = 'MemoizedMarkdownBlock'
 
+function fileErrorMessageFromResponse(status: number, code?: string): string {
+  if (code === 'NOT_FOUND' || status === 404) return 'File not found'
+  if (code === 'UNSUPPORTED_TYPE') return 'Binary file'
+  if (code === 'FILE_TOO_LARGE' || status === 413) return 'File too large'
+  return 'Failed to load file preview'
+}
+
 function MarkdownComponent({
   children,
   id,
   className,
-  components = INITIAL_COMPONENTS,
+  components,
 }: MarkdownProps) {
   const generatedId = useId()
   const blockId = id ?? generatedId
   const blocks = useMemo(() => parseMarkdownIntoBlocks(children), [children])
+  const [filePreview, setFilePreview] = useState<FilePreviewState>({ status: 'idle' })
+
+  const defaultComponents = useMemo(
+    () => createDefaultComponents((path) => setFilePreview({ status: 'loading', path })),
+    [],
+  )
+
+  const mergedComponents = useMemo(
+    () => ({ ...defaultComponents, ...(components || {}) }),
+    [defaultComponents, components],
+  )
+
+  useEffect(() => {
+    if (filePreview.status !== 'loading') return
+
+    const path = filePreview.path
+    const controller = new AbortController()
+
+    fetch(`/api/files/read?path=${encodeURIComponent(path)}`, {
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        const payload = await response.json().catch(() => ({}))
+
+        if (!response.ok) {
+          const error = fileErrorMessageFromResponse(response.status, payload.code)
+          setFilePreview({ status: 'error', path, message: error })
+          return
+        }
+
+        const size = Number(payload.size ?? 0)
+        if (size > INLINE_PREVIEW_MAX_BYTES) {
+          setFilePreview({ status: 'error', path, message: 'File too large' })
+          return
+        }
+
+        const content = String(payload.content ?? '')
+        setFilePreview({
+          status: 'success',
+          path,
+          content,
+          language: languageFromFilePath(path),
+        })
+      })
+      .catch(() => {
+        if (controller.signal.aborted) return
+        setFilePreview({ status: 'error', path, message: 'Failed to load file preview' })
+      })
+
+    return () => controller.abort()
+  }, [filePreview])
+
+  const previewOpen = filePreview.status !== 'idle'
 
   return (
-    <div className={cn('flex flex-col gap-2', className)}>
-      {blocks.map((block, index) => (
-        <MemoizedMarkdownBlock
-          key={`${blockId}-block-${index}`}
-          content={block}
-          components={components}
-        />
-      ))}
-    </div>
+    <>
+      <div className={cn('flex flex-col gap-2', className)}>
+        {blocks.map((block, index) => (
+          <MemoizedMarkdownBlock
+            key={`${blockId}-block-${index}`}
+            content={block}
+            components={mergedComponents}
+          />
+        ))}
+      </div>
+
+      <DialogRoot
+        open={previewOpen}
+        onOpenChange={(open) => {
+          if (!open) setFilePreview({ status: 'idle' })
+        }}
+      >
+        <DialogContent className="w-[min(1000px,95vw)] max-h-[88vh] overflow-hidden p-0">
+          <div className="border-b border-primary-200 px-4 py-3 flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <DialogTitle className="text-base">File Preview</DialogTitle>
+              {filePreview.status !== 'idle' && (
+                <p className="text-xs text-primary-600 font-mono truncate">{filePreview.path}</p>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {filePreview.status !== 'idle' && (
+                <Button variant="ghost" size="sm" asChild>
+                  <Link to="/files">Open in File Explorer</Link>
+                </Button>
+              )}
+              <DialogClose>Close</DialogClose>
+            </div>
+          </div>
+
+          <div className="p-4 overflow-auto max-h-[calc(88vh-72px)]">
+            {filePreview.status === 'loading' && (
+              <p className="text-sm text-primary-600">Loading preview…</p>
+            )}
+
+            {filePreview.status === 'error' && (
+              <p className="text-sm text-red-600">{filePreview.message}</p>
+            )}
+
+            {filePreview.status === 'success' && (
+              <CodeBlock
+                content={filePreview.content}
+                language={filePreview.language}
+                className="w-full"
+              />
+            )}
+          </div>
+        </DialogContent>
+      </DialogRoot>
+    </>
   )
 }
 
