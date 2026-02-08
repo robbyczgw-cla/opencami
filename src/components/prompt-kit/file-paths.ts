@@ -5,7 +5,7 @@ export type FilePathSegment = {
   value: string
 }
 
-const FILE_PATH_REGEX = /(?:^|(?<=[^A-Za-z0-9_~.\/-]))((?:~\/[A-Za-z0-9._~\w\/-]+|\/(?!\/)(?:[A-Za-z0-9._~\w\/-]*[A-Za-z0-9._~\w\/-])))(?=$|[^A-Za-z0-9_~.\/-])/g
+const FILE_PATH_REGEX = /(^|[\s"'(,;:])(\~\/[A-Za-z0-9._\-\/]+[A-Za-z0-9._\-]|\/(?:[\w.\-]+\/)+[\w.\-]+)(?=$|[\s"'),;:!?])/g
 
 function trimTrailingPunctuation(path: string): { path: string; trailing: string } {
   const match = path.match(/^(.*?)([),.;:!?]+)?$/)
