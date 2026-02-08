@@ -293,28 +293,44 @@ export function ChatScreen({
   }, [streaming.active, streaming.text, streaming.tools, waitingForResponse])
 
   // Merge streaming message into display messages
+  // Track whether we were just streaming so we can keep the key stable
+  // for one more render after history catches up (prevents end-flicker).
+  const wasStreamingRef = useRef(false)
+  if (streamingMessage) wasStreamingRef.current = true
+
   const messagesWithStreaming = useMemo(() => {
-    if (!streamingMessage) return displayMessages
     const lastMsg = displayMessages[displayMessages.length - 1]
-    // If history already has the final assistant message with equal or more
-    // content, just show history (stream is done).
-    if (lastMsg?.role === 'assistant') {
-      const lastText = textFromMessage(lastMsg)
-      if (lastText.length >= streaming.text.length) {
-        return displayMessages
+    const historyHasIt =
+      lastMsg?.role === 'assistant' &&
+      textFromMessage(lastMsg).length >= streaming.text.length
+
+    // Not streaming and history has the message — show history.
+    // But if we JUST stopped streaming, keep __streaming__ key on the
+    // history message for one render so React doesn't remount.
+    if (!streamingMessage) {
+      if (wasStreamingRef.current && lastMsg?.role === 'assistant') {
+        wasStreamingRef.current = false
+        const msgs = [...displayMessages]
+        msgs[msgs.length - 1] = { ...lastMsg, id: '__streaming__' } as any
+        return msgs
       }
+      return displayMessages
     }
-    // Otherwise show streaming message. Always use __streaming__ key for
-    // the entire streaming lifecycle to avoid DOM remount flicker at both
-    // start (append → replace transition) and end (replace → history).
+
+    // History already caught up — show history content but keep streaming key
+    if (historyHasIt) {
+      const msgs = [...displayMessages]
+      msgs[msgs.length - 1] = { ...lastMsg, id: '__streaming__' } as any
+      return msgs
+    }
+
+    // Active streaming — use streaming message with stable key
     const synth = { ...streamingMessage, id: '__streaming__' } as any
     if (lastMsg?.role === 'assistant') {
-      // Replace the history assistant message with streaming content
       const msgs = [...displayMessages]
       msgs[msgs.length - 1] = synth
       return msgs
     }
-    // No assistant message in history yet — append
     return [...displayMessages, synth]
   }, [displayMessages, streamingMessage, streaming.text])
 
