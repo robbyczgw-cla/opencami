@@ -264,7 +264,8 @@ export function ChatScreen({
 
   // Build a synthetic "streaming" assistant message from SSE deltas
   const streamingMessage = useMemo<GatewayMessage | null>(() => {
-    if (!streaming.active || !streaming.text) return null
+    // Show streaming message while active OR while text lingers after stream end
+    if (!streaming.text) return null
     const content: GatewayMessage['content'] = []
     // Add tool call indicators
     for (const tool of streaming.tools) {
