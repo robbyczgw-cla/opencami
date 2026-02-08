@@ -33,10 +33,14 @@ export function useStreaming(options: {
   onDoneRef.current = options.onDone
   onErrorRef.current = options.onError
 
-  const stop = useCallback(() => {
+  const stop = useCallback((options?: { preserveState?: boolean }) => {
     if (eventSourceRef.current) {
       eventSourceRef.current.close()
       eventSourceRef.current = null
+    }
+    if (options?.preserveState) {
+      setState((prev) => ({ ...prev, active: false }))
+      return
     }
     setState(INITIAL_STATE)
   }, [])
