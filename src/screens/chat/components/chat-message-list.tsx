@@ -149,7 +149,7 @@ function ChatMessageListComponent({
               .slice(0, groupStartIndex)
               .map((chatMessage, index) => {
                 const messageKey =
-                  chatMessage.__optimisticId || (chatMessage as any).id || index
+                  index
                 const forceActionsVisible =
                   typeof lastAssistantIndex === 'number' &&
                   index === lastAssistantIndex
@@ -181,10 +181,7 @@ function ChatMessageListComponent({
                 .slice(groupStartIndex)
                 .map((chatMessage, index) => {
                   const realIndex = groupStartIndex + index
-                  const messageKey =
-                    chatMessage.__optimisticId ||
-                    (chatMessage as any).id ||
-                    realIndex
+                  const messageKey = realIndex
                   const forceActionsVisible =
                     typeof lastAssistantIndex === 'number' &&
                     realIndex === lastAssistantIndex
@@ -233,7 +230,7 @@ function ChatMessageListComponent({
           <>
             {displayMessages.map((chatMessage, index) => {
               const messageKey =
-                chatMessage.__optimisticId || (chatMessage as any).id || index
+                index
               const forceActionsVisible =
                 typeof lastAssistantIndex === 'number' &&
                 index === lastAssistantIndex

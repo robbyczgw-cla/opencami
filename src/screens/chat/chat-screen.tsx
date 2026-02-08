@@ -293,53 +293,20 @@ export function ChatScreen({
   }, [streaming.active, streaming.text, streaming.tools, waitingForResponse])
 
   // Merge streaming message into display messages
-  // Track whether we were just streaming so we can keep the key stable
-  // for one more render after history catches up (prevents end-flicker).
-  const wasStreamingRef = useRef(false)
-  if (streamingMessage) wasStreamingRef.current = true
-
   const messagesWithStreaming = useMemo(() => {
-    // Helper: force React key to __streaming__ by clearing __optimisticId
-    // (key logic: __optimisticId || id || index)
-    const withStreamKey = (msg: any) => ({
-      ...msg,
-      id: '__streaming__',
-      __optimisticId: undefined,
-    })
-
+    if (!streamingMessage) return displayMessages
     const lastMsg = displayMessages[displayMessages.length - 1]
-    const historyHasIt =
-      lastMsg?.role === 'assistant' &&
-      textFromMessage(lastMsg).length >= streaming.text.length
-
-    // Not streaming and history has the message — show history.
-    // But if we JUST stopped streaming, keep __streaming__ key on the
-    // history message for one render so React doesn't remount.
-    if (!streamingMessage) {
-      if (wasStreamingRef.current && lastMsg?.role === 'assistant') {
-        wasStreamingRef.current = false
-        const msgs = [...displayMessages]
-        msgs[msgs.length - 1] = withStreamKey(lastMsg)
-        return msgs
-      }
-      return displayMessages
-    }
-
-    // History already caught up — show history content but keep streaming key
-    if (historyHasIt) {
-      const msgs = [...displayMessages]
-      msgs[msgs.length - 1] = withStreamKey(lastMsg)
-      return msgs
-    }
-
-    // Active streaming — use streaming message with stable key
-    const synth = withStreamKey(streamingMessage)
+    // If history already has the complete assistant message, use it
     if (lastMsg?.role === 'assistant') {
+      const lastText = textFromMessage(lastMsg)
+      if (lastText.length >= streaming.text.length) return displayMessages
+      // History has assistant msg but streaming is ahead — replace with streaming
       const msgs = [...displayMessages]
-      msgs[msgs.length - 1] = synth
+      msgs[msgs.length - 1] = streamingMessage
       return msgs
     }
-    return [...displayMessages, synth]
+    // No assistant message in history yet — append streaming
+    return [...displayMessages, streamingMessage]
   }, [displayMessages, streamingMessage, streaming.text])
 
   const stableContentStyle = useMemo<React.CSSProperties>(() => ({}), [])
