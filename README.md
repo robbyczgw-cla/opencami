@@ -32,6 +32,13 @@ That's it. Opens your browser to the chat interface.
 | `--host` | Bind address | `localhost` |
 | `--no-open` | Don't open browser | — |
 
+### Docker
+
+```bash
+docker build -t opencami .
+docker run -p 3000:3000 opencami
+```
+
 ## Features
 
 ⚡ **Real-time streaming** — persistent WebSocket + SSE, token-by-token\
@@ -75,6 +82,8 @@ npm run dev
 Built on top of [WebClaw](https://github.com/ibelick/webclaw) by [@ibelick](https://github.com/ibelick).
 
 File Explorer by [@balin-ar](https://github.com/balin-ar) ([PR #2](https://github.com/ibelick/webclaw/pull/2)).
+
+Dockerfile by [@deblanco](https://github.com/deblanco) ([PR #7](https://github.com/ibelick/webclaw/pull/7)).
 
 Powered by [OpenClaw](https://github.com/openclaw/openclaw).
 
