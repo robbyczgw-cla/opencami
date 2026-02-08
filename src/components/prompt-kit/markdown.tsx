@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { useFileExplorerState } from '../../screens/files/hooks/use-file-explorer-state'
 import type { Components } from 'react-markdown'
 import { cn } from '@/lib/utils'
 import { Link } from '@tanstack/react-router'
@@ -347,7 +348,6 @@ function MarkdownComponent({
                     onClick={() => {
                       let p = filePreview.status !== 'idle' ? filePreview.path : ''
                       if (p) {
-                        // Strip common absolute prefixes to get relative path
                         const prefixes = ['/root/clawd/', '/root/']
                         for (const prefix of prefixes) {
                           if (p.startsWith(prefix)) {
@@ -356,11 +356,8 @@ function MarkdownComponent({
                           }
                         }
                         const dir = p.includes('/') ? p.slice(0, p.lastIndexOf('/')) || '/' : '/'
-                        import('../../screens/files/hooks/use-file-explorer-state').then(m => {
-                          m.useFileExplorerState.getState().navigateTo(dir)
-                        })
+                        useFileExplorerState.getState().navigateTo(dir)
                       }
-                      // Close the preview dialog
                       setFilePreview({ status: 'idle' })
                     }}
                   >Open in File Explorer</Link>
