@@ -240,12 +240,13 @@ export function ChatScreen({
 
   // ── Real-time streaming via SSE ──────────────────────────────────────
   const handleStreamDone = useCallback(
-    (_sk: string) => {
-      // Refetch history to pick up the final message from the Gateway
-      void historyQuery.refetch()
+    async (_sk: string) => {
+      // Refetch history FIRST to pick up the final message from the Gateway
+      await historyQuery.refetch()
+      // Then clear streaming state (prevents flicker between stream end and final message)
+      streamFinish()
       // Refetch sessions to update token counts in the context meter
       void queryClient.invalidateQueries({ queryKey: chatQueryKeys.sessions })
-      streamFinish()
     },
     [historyQuery, queryClient, streamFinish],
   )
