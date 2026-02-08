@@ -240,7 +240,15 @@ export function ChatScreen({
   }, [activeFriendlyId, isNewChat])
 
   // ── Real-time streaming via SSE ──────────────────────────────────────
-  const handleStreamDone = useCallback(
+  const handleStreamDoneRef = useRef<(sk: string) => void>(() => {})
+  const handleStreamErrorRef = useRef<(err: string) => void>(() => {})
+
+  const { streaming, startStream, stopStream } = useStreaming({
+    onDone: (sk: string) => handleStreamDoneRef.current(sk),
+    onError: (err: string) => handleStreamErrorRef.current(err),
+  })
+
+  handleStreamDoneRef.current = useCallback(
     async (_sk: string) => {
       // Wait for the persisted message to arrive before clearing streaming
       // state — this eliminates the flicker where neither the streaming
@@ -257,17 +265,12 @@ export function ChatScreen({
     },
     [historyQuery, queryClient, stopStream, streamFinish],
   )
-  const handleStreamError = useCallback(
+  handleStreamErrorRef.current = useCallback(
     (_err: string) => {
-      // Stream failed — fall back to fast-polling which is already running
       console.warn('[stream] SSE error, falling back to polling')
     },
     [],
   )
-  const { streaming, startStream, stopStream } = useStreaming({
-    onDone: handleStreamDone,
-    onError: handleStreamError,
-  })
 
   // Build a synthetic "streaming" assistant message from SSE deltas
   const streamingMessage = useMemo<GatewayMessage | null>(() => {
