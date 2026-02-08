@@ -186,7 +186,11 @@ function createDefaultComponents(onOpenFilePreview: (path: string) => void): Par
       if (className) return <code className={className}>{children}</code>
 
       // Check if the inline code content looks like a file path
-      const text = typeof children === 'string' ? children : ''
+      const text = typeof children === 'string'
+        ? children
+        : Array.isArray(children)
+          ? children.filter((c: unknown) => typeof c === 'string').join('')
+          : String(children ?? '')
       if (text && FILE_PATH_RE.test(text)) {
         return (
           <button
