@@ -297,21 +297,17 @@ export function ChatScreen({
     if (!streamingMessage) return displayMessages
     const lastMsg = displayMessages[displayMessages.length - 1]
     // If the last history message is already an assistant message, compare
-    // content length to decide which to show. This avoids flicker at
-    // stream-end: the history message smoothly takes over.
+    // content length to decide which to show. Keep the history message key
+    // stable so stream → persisted handoff does not remount/flicker.
     if (lastMsg?.role === 'assistant') {
       const lastText = textFromMessage(lastMsg)
       if (streaming.text.length > lastText.length) {
-        // Streaming has more text — show streaming version
         const msgs = [...displayMessages]
-        msgs[msgs.length - 1] = streamingMessage
-        return msgs
-      }
-      // History has caught up — give the final message the same id as
-      // the streaming message so React reuses the DOM node (no remount).
-      if ((lastMsg as any).id !== '__streaming__') {
-        const msgs = [...displayMessages]
-        msgs[msgs.length - 1] = { ...lastMsg, id: '__streaming__' } as any
+        msgs[msgs.length - 1] = {
+          ...streamingMessage,
+          id: (lastMsg as any).id ?? '__streaming__',
+          __optimisticId: (lastMsg as any).__optimisticId,
+        } as any
         return msgs
       }
       return displayMessages
