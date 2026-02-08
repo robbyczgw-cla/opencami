@@ -7,7 +7,7 @@ import { CodeBlock } from './code-block'
 import {
   languageFromFilePath,
   markdownHrefToFilePath,
-  remarkFilePathLinks,
+  splitTextByFilePaths,
 } from './file-paths'
 import {
   DialogClose,
@@ -152,6 +152,8 @@ const BASE_COMPONENTS: Partial<Components> = {
 }
 
 function createDefaultComponents(onOpenFilePreview: (path: string) => void): Partial<Components> {
+  const FILE_PATH_RE = /^(?:~\/[\w.\-\/]+|\/(?:[\w.\-]+\/)+[\w.\-]+)$/
+
   return {
     ...BASE_COMPONENTS,
     a: function AComponent({ children, href }) {
@@ -179,6 +181,30 @@ function createDefaultComponents(onOpenFilePreview: (path: string) => void): Par
         </a>
       )
     },
+    code: function InlineCodeComponent({ children, className }) {
+      // If it has a language class, it's a code block (handled by CodeBlock)
+      if (className) return <code className={className}>{children}</code>
+
+      // Check if the inline code content looks like a file path
+      const text = typeof children === 'string' ? children : ''
+      if (text && FILE_PATH_RE.test(text)) {
+        return (
+          <button
+            type="button"
+            onClick={() => onOpenFilePreview(text)}
+            className="font-mono text-sm bg-primary-100 rounded px-1.5 py-0.5 text-primary-900 underline decoration-primary-300 underline-offset-4 hover:decoration-primary-600 cursor-pointer"
+          >
+            {children}
+          </button>
+        )
+      }
+
+      return (
+        <code className="font-mono text-sm bg-primary-100 rounded px-1.5 py-0.5 text-primary-900">
+          {children}
+        </code>
+      )
+    },
   }
 }
 
@@ -192,7 +218,7 @@ const MemoizedMarkdownBlock = memo(
   }) {
     return (
       <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkBreaks, remarkFilePathLinks]}
+        remarkPlugins={[remarkGfm, remarkBreaks]}
         components={components}
       >
         {content}
