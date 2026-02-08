@@ -286,6 +286,7 @@ export function ChatScreen({
     return {
       role: 'assistant',
       content,
+      id: '__streaming__',
       __streaming: true,
       timestamp: Date.now(),
     } as GatewayMessage
@@ -306,7 +307,13 @@ export function ChatScreen({
         msgs[msgs.length - 1] = streamingMessage
         return msgs
       }
-      // History has caught up — just use history messages (no flicker)
+      // History has caught up — give the final message the same id as
+      // the streaming message so React reuses the DOM node (no remount).
+      if ((lastMsg as any).id !== '__streaming__') {
+        const msgs = [...displayMessages]
+        msgs[msgs.length - 1] = { ...lastMsg, id: '__streaming__' } as any
+        return msgs
+      }
       return displayMessages
     }
     // No assistant message in history yet — append streaming message
