@@ -342,6 +342,17 @@ export function SettingsDialog({
                 }
               />
             </SettingsRow>
+            <SettingsRow
+              label="Inline File Preview"
+              description="Make file paths in messages clickable to preview file contents"
+            >
+              <Switch
+                checked={settings.inlineFilePreview}
+                onCheckedChange={(checked) =>
+                  updateSettings({ inlineFilePreview: checked })
+                }
+              />
+            </SettingsRow>
           </SettingsSection>
 
           <SettingsSection title="Personas">
