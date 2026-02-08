@@ -1,7 +1,7 @@
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { ArrowUp02Icon } from '@hugeicons/core-free-icons'
-import type { KeyboardEvent, MutableRefObject, Ref } from 'react'
+import type { DragEvent, KeyboardEvent, MutableRefObject, Ref } from 'react'
 
 import {
   PromptInput,
@@ -13,7 +13,12 @@ import { Button } from '@/components/ui/button'
 import { ModelSelector } from '@/components/model-selector'
 import { PersonaPicker } from '@/components/persona-picker'
 import { CommandHelp } from '@/components/command-help'
-import { AttachmentButton, type AttachmentFile } from '@/components/attachment-button'
+import {
+  AttachmentButton,
+  createAttachmentFromFile,
+  isAcceptedImage,
+  type AttachmentFile,
+} from '@/components/attachment-button'
 import { AttachmentPreviewList } from '@/components/attachment-preview'
 import { SlashCommandMenu, type SlashCommand } from './slash-command-menu'
 
@@ -97,6 +102,7 @@ function ChatComposerComponent({
   const [attachments, setAttachments] = useState<Array<AttachmentFile>>([])
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0)
   const [slashMenuDismissed, setSlashMenuDismissed] = useState(false)
+  const [isDragActive, setIsDragActive] = useState(false)
   const promptRef = useRef<HTMLTextAreaElement | null>(null)
 
   const showSlashCommands = useMemo(() => /^\/\S*$/.test(value) && !slashMenuDismissed, [value, slashMenuDismissed])
@@ -141,6 +147,33 @@ function ChatComposerComponent({
   const handleRemoveAttachment = useCallback((id: string) => {
     setAttachments((prev) => prev.filter((a) => a.id !== id))
   }, [])
+  const handleDragOver = useCallback((event: DragEvent<HTMLDivElement>) => {
+    const hasFiles = Array.from(event.dataTransfer.types).includes('Files')
+    if (!hasFiles) return
+    event.preventDefault()
+    event.dataTransfer.dropEffect = 'copy'
+    setIsDragActive(true)
+  }, [])
+  const handleDragLeave = useCallback((event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    const nextTarget = event.relatedTarget as Node | null
+    if (nextTarget && event.currentTarget.contains(nextTarget)) return
+    setIsDragActive(false)
+  }, [])
+  const handleDrop = useCallback(async (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    setIsDragActive(false)
+
+    const files = Array.from(event.dataTransfer.files ?? [])
+    if (files.length === 0) return
+
+    const imageFiles = files.filter((file) => isAcceptedImage(file))
+    if (imageFiles.length === 0) return
+
+    const newAttachments = await Promise.all(imageFiles.map((file) => createAttachmentFromFile(file)))
+    setAttachments((prev) => [...prev, ...newAttachments])
+    focusPrompt()
+  }, [focusPrompt])
   const setComposerValue = useCallback(
     (nextValue: string) => {
       setValue(nextValue)
@@ -240,7 +273,15 @@ function ChatComposerComponent({
     <div
       className="mx-auto w-full max-w-full px-2 md:px-5 sm:max-w-[768px] sm:min-w-[400px] relative pb-1 md:pb-3"
       ref={wrapperRef}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
     >
+      {isDragActive && (
+        <div className="pointer-events-none absolute inset-2 z-20 flex items-center justify-center rounded-2xl border-2 border-dashed border-primary-400 bg-primary-50/90 text-sm font-medium text-primary-700">
+          Drop image here
+        </div>
+      )}
       <PromptInput
         value={value}
         onValueChange={handleValueChange}

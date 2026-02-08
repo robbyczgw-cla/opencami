@@ -22,7 +22,7 @@ const IMAGE_QUALITY = 0.75
 const TARGET_IMAGE_SIZE = 300 * 1024
 
 /** Supported image MIME types */
-const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
+export const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
 
 /** File extensions accepted by the file input */
 const ACCEPTED_EXTENSIONS = '.png,.jpg,.jpeg,.gif,.webp'
@@ -78,7 +78,7 @@ function isCanvasSupported(): boolean {
  * @returns Base64-encoded compressed image (without data URL prefix)
  * @throws Error if canvas is unavailable or image fails to load
  */
-async function compressImage(file: File): Promise<string> {
+export async function compressImage(file: File): Promise<string> {
   if (!isCanvasSupported()) {
     throw new Error('Image compression not available in this browser')
   }
@@ -164,8 +164,56 @@ async function compressImage(file: File): Promise<string> {
 /**
  * Checks if a file is a supported image type.
  */
-function isAcceptedImage(file: File): boolean {
+export function isAcceptedImage(file: File): boolean {
   return ACCEPTED_IMAGE_TYPES.includes(file.type)
+}
+
+export async function createAttachmentFromFile(file: File): Promise<AttachmentFile> {
+  const id = crypto.randomUUID()
+
+  if (!isAcceptedImage(file)) {
+    return {
+      id,
+      file,
+      preview: null,
+      type: 'image',
+      base64: null,
+      error: 'Unsupported file type. Please use PNG, JPG, GIF, or WebP images.',
+    }
+  }
+
+  if (file.size > MAX_FILE_SIZE) {
+    return {
+      id,
+      file,
+      preview: null,
+      type: 'image',
+      base64: null,
+      error: 'Image is too large. Maximum size is 10MB.',
+    }
+  }
+
+  try {
+    const base64 = await compressImage(file)
+    const preview = URL.createObjectURL(file)
+
+    return {
+      id,
+      file,
+      preview,
+      type: 'image',
+      base64,
+    }
+  } catch (err) {
+    return {
+      id,
+      file,
+      preview: null,
+      type: 'image',
+      base64: null,
+      error: err instanceof Error ? err.message : 'Failed to process image',
+    }
+  }
 }
 
 /**
@@ -196,55 +244,8 @@ export function AttachmentButton({
       // Reset input to allow selecting the same file again
       event.target.value = ''
 
-      const id = crypto.randomUUID()
-
-      // Validate file type
-      if (!isAcceptedImage(file)) {
-        onFileSelect({
-          id,
-          file,
-          preview: null,
-          type: 'image',
-          base64: null,
-          error: 'Unsupported file type. Please use PNG, JPG, GIF, or WebP images.',
-        })
-        return
-      }
-
-      // Validate file size
-      if (file.size > MAX_FILE_SIZE) {
-        onFileSelect({
-          id,
-          file,
-          preview: null,
-          type: 'image',
-          base64: null,
-          error: 'Image is too large. Maximum size is 10MB.',
-        })
-        return
-      }
-
-      try {
-        const base64 = await compressImage(file)
-        const preview = URL.createObjectURL(file)
-
-        onFileSelect({
-          id,
-          file,
-          preview,
-          type: 'image',
-          base64,
-        })
-      } catch (err) {
-        onFileSelect({
-          id,
-          file,
-          preview: null,
-          type: 'image',
-          base64: null,
-          error: err instanceof Error ? err.message : 'Failed to process image',
-        })
-      }
+      const attachment = await createAttachmentFromFile(file)
+      onFileSelect(attachment)
     },
     [onFileSelect],
   )
