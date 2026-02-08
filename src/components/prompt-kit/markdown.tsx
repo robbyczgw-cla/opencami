@@ -345,17 +345,23 @@ function MarkdownComponent({
                   <Link
                     to="/files"
                     onClick={() => {
-                      // Navigate file explorer to the file's directory
                       let p = filePreview.status !== 'idle' ? filePreview.path : ''
                       if (p) {
-                        // The API auto-strips FILES_ROOT, so just use the path as-is
-                        // The file explorer uses virtual paths relative to FILES_ROOT
+                        // Strip common absolute prefixes to get relative path
+                        const prefixes = ['/root/clawd/', '/root/']
+                        for (const prefix of prefixes) {
+                          if (p.startsWith(prefix)) {
+                            p = '/' + p.slice(prefix.length)
+                            break
+                          }
+                        }
                         const dir = p.includes('/') ? p.slice(0, p.lastIndexOf('/')) || '/' : '/'
-                        // Dynamic import to avoid circular deps
                         import('../../screens/files/hooks/use-file-explorer-state').then(m => {
                           m.useFileExplorerState.getState().navigateTo(dir)
                         })
                       }
+                      // Close the preview dialog
+                      setFilePreview({ status: 'idle' })
                     }}
                   >Open in File Explorer</Link>
                 </Button>
