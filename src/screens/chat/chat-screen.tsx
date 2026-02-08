@@ -240,13 +240,12 @@ export function ChatScreen({
 
   // ── Real-time streaming via SSE ──────────────────────────────────────
   const handleStreamDone = useCallback(
-    async (_sk: string) => {
-      // Refetch history FIRST to pick up the final message from the Gateway
-      await historyQuery.refetch()
-      // Then clear streaming state (prevents flicker between stream end and final message)
-      streamFinish()
+    (_sk: string) => {
+      // Refetch history to pick up the final message from the Gateway
+      void historyQuery.refetch()
       // Refetch sessions to update token counts in the context meter
       void queryClient.invalidateQueries({ queryKey: chatQueryKeys.sessions })
+      streamFinish()
     },
     [historyQuery, queryClient, streamFinish],
   )
@@ -264,8 +263,7 @@ export function ChatScreen({
 
   // Build a synthetic "streaming" assistant message from SSE deltas
   const streamingMessage = useMemo<GatewayMessage | null>(() => {
-    // Show streaming message while active OR while text lingers after stream end
-    if (!streaming.text) return null
+    if (!streaming.active || !streaming.text) return null
     const content: GatewayMessage['content'] = []
     // Add tool call indicators
     for (const tool of streaming.tools) {

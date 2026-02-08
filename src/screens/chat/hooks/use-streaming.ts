@@ -95,8 +95,7 @@ export function useStreaming(options: {
           const data = JSON.parse(e.data) as { sessionKey: string; status: string }
           es.close()
           eventSourceRef.current = null
-          // Mark as inactive but KEEP the text — prevents flicker while history refetches
-          setState((prev) => ({ ...prev, active: false }))
+          setState(INITIAL_STATE)
           onDoneRef.current(data.sessionKey)
         } catch {}
       })
