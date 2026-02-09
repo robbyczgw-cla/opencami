@@ -1,5 +1,6 @@
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
+  AiBrain01Icon,
   Folder01Icon,
   PencilEdit02Icon,
   Settings01Icon,
@@ -302,6 +303,46 @@ function ChatSidebarComponent({
               {isCollapsed && (
                 <TooltipContent side="right">
                   Files
+                </TooltipContent>
+              )}
+            </TooltipRoot>
+          </TooltipProvider>
+
+          <TooltipProvider>
+            <TooltipRoot>
+              <TooltipTrigger asChild>
+                <Link
+                  to="/agents"
+                  className={cn(
+                    buttonVariants({ variant: 'ghost', size: 'sm' }),
+                    'w-full pl-1.5 justify-start',
+                  )}
+                  onClick={onSelectSession}
+                >
+                  <HugeiconsIcon
+                    icon={AiBrain01Icon}
+                    size={20}
+                    strokeWidth={1.5}
+                    className="min-w-5"
+                  />
+                  <AnimatePresence initial={false} mode="wait">
+                    {!isCollapsed && (
+                      <motion.span
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={transition}
+                        className="overflow-hidden whitespace-nowrap"
+                      >
+                        Agents
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+                </Link>
+              </TooltipTrigger>
+              {isCollapsed && (
+                <TooltipContent side="right">
+                  Agents
                 </TooltipContent>
               )}
             </TooltipRoot>

@@ -8,7 +8,10 @@
   "background_color": "#0a0a0a",
   "start_url": "/",
   "scope": "/",
-  "categories": ["productivity", "utilities"],
+  "categories": [
+    "productivity",
+    "utilities"
+  ],
   "icons": [
     {
       "src": "/favicon.svg",
@@ -36,5 +39,8 @@
       "type": "image/png",
       "purpose": "maskable"
     }
+  ],
+  "permissions": [
+    "microphone"
   ]
 }

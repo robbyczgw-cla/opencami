@@ -122,6 +122,37 @@ export function SettingsDialog({
     }
   })
 
+  // TTS provider state
+  const [ttsProvider, setTtsProvider] = useState(() => {
+    if (typeof window === 'undefined') return 'auto'
+    try { return localStorage.getItem('opencami-tts-provider') || 'auto' } catch { return 'auto' }
+  })
+  const [ttsVoice, setTtsVoice] = useState(() => {
+    if (typeof window === 'undefined') return 'nova'
+    try { return localStorage.getItem('opencami-tts-voice') || 'nova' } catch { return 'nova' }
+  })
+
+  // STT provider state
+  const [sttProvider, setSttProvider] = useState(() => {
+    if (typeof window === 'undefined') return 'auto'
+    try { return localStorage.getItem('opencami-stt-provider') || 'auto' } catch { return 'auto' }
+  })
+
+  const handleTtsProviderChange = (value: string) => {
+    setTtsProvider(value)
+    try { localStorage.setItem('opencami-tts-provider', value) } catch { /* ignore */ }
+  }
+
+  const handleTtsVoiceChange = (value: string) => {
+    setTtsVoice(value)
+    try { localStorage.setItem('opencami-tts-voice', value) } catch { /* ignore */ }
+  }
+
+  const handleSttProviderChange = (value: string) => {
+    setSttProvider(value)
+    try { localStorage.setItem('opencami-stt-provider', value) } catch { /* ignore */ }
+  }
+
   function applyTextSize(value: TextSizeValue) {
     if (typeof document === 'undefined') return
     document.documentElement.style.setProperty('--opencami-text-size', value)
@@ -405,6 +436,55 @@ export function SettingsDialog({
                 checked={ttsEnabled}
                 onCheckedChange={handleTtsToggle}
               />
+            </SettingsRow>
+            <SettingsRow
+              label="TTS Provider"
+              description="Choose which service generates speech"
+            >
+              <select
+                value={ttsProvider}
+                onChange={(e) => handleTtsProviderChange(e.target.value)}
+                className="rounded-md border border-primary-200 bg-surface px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="auto">Auto</option>
+                <option value="elevenlabs">ElevenLabs</option>
+                <option value="openai">OpenAI</option>
+                <option value="edge">Edge TTS (free)</option>
+              </select>
+            </SettingsRow>
+            {(ttsProvider === 'openai') && (
+              <SettingsRow
+                label="Voice"
+                description="OpenAI voice selection"
+              >
+                <select
+                  value={ttsVoice}
+                  onChange={(e) => handleTtsVoiceChange(e.target.value)}
+                  className="rounded-md border border-primary-200 bg-surface px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                >
+                  {['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'].map((v) => (
+                    <option key={v} value={v}>{v.charAt(0).toUpperCase() + v.slice(1)}</option>
+                  ))}
+                </select>
+              </SettingsRow>
+            )}
+          </SettingsSection>
+
+          <SettingsSection title="Speech-to-Text">
+            <SettingsRow
+              label="STT Provider"
+              description="Choose which service transcribes your voice"
+            >
+              <select
+                value={sttProvider}
+                onChange={(e) => handleSttProviderChange(e.target.value)}
+                className="rounded-md border border-primary-200 bg-surface px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="auto">Auto</option>
+                <option value="elevenlabs">ElevenLabs</option>
+                <option value="openai">OpenAI</option>
+                <option value="browser">Browser (free)</option>
+              </select>
             </SettingsRow>
           </SettingsSection>
 

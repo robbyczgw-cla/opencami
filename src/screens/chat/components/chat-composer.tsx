@@ -1,6 +1,6 @@
-import { memo, useCallback, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
-import { ArrowUp02Icon } from '@hugeicons/core-free-icons'
+import { ArrowUp02Icon, Mic02Icon, StopIcon } from '@hugeicons/core-free-icons'
 import type { DragEvent, KeyboardEvent, MutableRefObject, Ref } from 'react'
 
 import {
@@ -103,6 +103,14 @@ function ChatComposerComponent({
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0)
   const [slashMenuDismissed, setSlashMenuDismissed] = useState(false)
   const [isDragActive, setIsDragActive] = useState(false)
+  const [isRecording, setIsRecording] = useState(false)
+  const [recordingTime, setRecordingTime] = useState(0)
+  const [sttLoading, setSttLoading] = useState(false)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const recordingChunksRef = useRef<Blob[]>([])
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const webSpeechRef = useRef<any>(null)
   const promptRef = useRef<HTMLTextAreaElement | null>(null)
 
   const showSlashCommands = useMemo(() => /^\/\S*$/.test(value) && !slashMenuDismissed, [value, slashMenuDismissed])
@@ -266,6 +274,180 @@ function ChatComposerComponent({
     },
     [showSlashCommands, filteredSlashCommands, selectedCommandIndex, selectSlashCommand],
   )
+  // Cleanup recording timer on unmount
+  useEffect(() => {
+    return () => {
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current)
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop()
+      }
+      if (webSpeechRef.current) webSpeechRef.current.abort()
+    }
+  }, [])
+
+  const getSttProvider = useCallback((): string => {
+    if (typeof window === 'undefined') return 'auto'
+    try {
+      return localStorage.getItem('opencami-stt-provider') || 'auto'
+    } catch {
+      return 'auto'
+    }
+  }, [])
+
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop()
+    }
+    if (webSpeechRef.current) {
+      webSpeechRef.current.stop()
+    }
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current)
+      recordingTimerRef.current = null
+    }
+    setIsRecording(false)
+    setRecordingTime(0)
+  }, [])
+
+  const startRecording = useCallback(async () => {
+    const provider = getSttProvider()
+
+    // Browser Web Speech API path
+    if (provider === 'browser') {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+      if (!SpeechRecognition) {
+        alert('Web Speech API is not supported in this browser.')
+        return
+      }
+      const recognition = new SpeechRecognition()
+      recognition.continuous = true
+      recognition.interimResults = false
+      recognition.lang = navigator.language || 'en-US'
+      webSpeechRef.current = recognition
+
+      setIsRecording(true)
+      setRecordingTime(0)
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingTime((t) => {
+          if (t >= 119) {
+            stopRecording()
+            return 0
+          }
+          return t + 1
+        })
+      }, 1000)
+
+      let transcript = ''
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      recognition.onresult = (event: any) => {
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          if (event.results[i].isFinal) {
+            transcript += event.results[i][0].transcript
+          }
+        }
+      }
+      recognition.onend = () => {
+        setIsRecording(false)
+        setRecordingTime(0)
+        if (recordingTimerRef.current) clearInterval(recordingTimerRef.current)
+        if (transcript.trim()) {
+          setValue((prev) => prev + (prev ? ' ' : '') + transcript.trim())
+          focusPrompt()
+        }
+      }
+      recognition.onerror = () => {
+        setIsRecording(false)
+        setRecordingTime(0)
+        if (recordingTimerRef.current) clearInterval(recordingTimerRef.current)
+      }
+      recognition.start()
+      return
+    }
+
+    // MediaRecorder path (send to server)
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm')
+        ? 'audio/webm'
+        : 'audio/mp4'
+      const recorder = new MediaRecorder(stream, { mimeType })
+      mediaRecorderRef.current = recorder
+      recordingChunksRef.current = []
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) recordingChunksRef.current.push(e.data)
+      }
+
+      recorder.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop())
+        const audioBlob = new Blob(recordingChunksRef.current, { type: mimeType })
+        if (audioBlob.size === 0) return
+
+        setSttLoading(true)
+        try {
+          const formData = new FormData()
+          formData.append('audio', audioBlob, `recording.${mimeType === 'audio/webm' ? 'webm' : 'mp4'}`)
+          if (provider !== 'auto') formData.append('provider', provider)
+
+          const res = await fetch('/api/stt', { method: 'POST', body: formData })
+          const data = (await res.json()) as { ok: boolean; text?: string; error?: string }
+          if (data.ok && data.text) {
+            setValue((prev) => prev + (prev ? ' ' : '') + data.text)
+            focusPrompt()
+          } else if (!data.ok) {
+            console.warn('STT failed:', data.error)
+            alert(data.error || 'Speech-to-text failed. Try the Browser provider in Settings.')
+          }
+        } catch (err) {
+          console.warn('STT request failed:', err)
+          alert('Could not reach speech-to-text service.')
+        } finally {
+          setSttLoading(false)
+        }
+      }
+
+      setIsRecording(true)
+      setRecordingTime(0)
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingTime((t) => {
+          if (t >= 119) {
+            stopRecording()
+            return 0
+          }
+          return t + 1
+        })
+      }, 1000)
+
+      recorder.start()
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      if (msg.includes('NotAllowedError') || msg.includes('Permission')) {
+        // On Android/PWA, explicitly request permission first
+        try {
+          const status = await navigator.permissions.query({ name: 'microphone' as PermissionName })
+          if (status.state === 'denied') {
+            alert('Microphone access is blocked. Please enable it in your browser/app settings.')
+          } else {
+            alert('Microphone permission was not granted. Please try again and allow access when prompted.')
+          }
+        } catch {
+          alert('Could not access microphone. Please check your browser settings and allow microphone access for this site.')
+        }
+      } else {
+        alert('Could not access microphone: ' + msg)
+      }
+    }
+  }, [getSttProvider, stopRecording, focusPrompt])
+
+  const handleMicClick = useCallback(() => {
+    if (isRecording) {
+      stopRecording()
+    } else {
+      startRecording()
+    }
+  }, [isRecording, stopRecording, startRecording])
+
   const validAttachments = attachments.filter((a) => !a.error && a.base64)
   const submitDisabled = disabled || (value.trim().length === 0 && validAttachments.length === 0)
 
@@ -317,6 +499,28 @@ function ChatComposerComponent({
                 onFileSelect={handleFileSelect}
                 disabled={disabled}
               />
+            </PromptInputAction>
+            <PromptInputAction tooltip={isRecording ? 'Stop recording' : 'Voice input'}>
+              <Button
+                onClick={handleMicClick}
+                disabled={disabled || sttLoading}
+                size="icon-sm"
+                variant={isRecording ? 'destructive' : 'ghost'}
+                className={`rounded-full ${isRecording ? 'animate-pulse' : ''}`}
+                aria-label={isRecording ? 'Stop recording' : 'Voice input'}
+              >
+                {sttLoading ? (
+                  <span className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                ) : isRecording ? (
+                  <span className="flex items-center gap-1">
+                    <span className="size-2 rounded-full bg-red-500" />
+                    <span className="text-xs tabular-nums">{Math.floor(recordingTime / 60)}:{String(recordingTime % 60).padStart(2, '0')}</span>
+                    <HugeiconsIcon icon={StopIcon} size={14} strokeWidth={2} />
+                  </span>
+                ) : (
+                  <HugeiconsIcon icon={Mic02Icon} size={18} strokeWidth={2} />
+                )}
+              </Button>
             </PromptInputAction>
             <PromptInputAction tooltip="Send message">
               <Button

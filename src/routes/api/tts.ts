@@ -1,6 +1,22 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
 import { gatewayRpc } from '../../server/gateway'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { homedir } from 'node:os'
+
+function readApiKeysFromConfig(): { elevenlabs?: string; openai?: string } {
+  try {
+    const cfgPath = join(homedir(), '.openclaw', 'openclaw.json')
+    const cfg = JSON.parse(readFileSync(cfgPath, 'utf-8'))
+    return {
+      elevenlabs: cfg?.messages?.tts?.elevenlabs?.apiKey || undefined,
+      openai: cfg?.env?.OPENAI_API_KEY || process.env.OPENAI_API_KEY || undefined,
+    }
+  } catch {
+    return {}
+  }
+}
 
 /**
  * API Route: /api/tts
@@ -155,12 +171,17 @@ export const Route = createFileRoute('/api/tts')({
           const ttsConfig = configRes?.config?.messages?.tts
           const env = configRes?.config?.env || {}
 
+          // config.get redacts API keys — read directly from config file
+          const directKeys = readApiKeysFromConfig()
           const elevenLabsKey =
+            directKeys.elevenlabs ||
             ttsConfig?.elevenlabs?.apiKey ||
             env.ELEVENLABS_API_KEY ||
             env.XI_API_KEY
           const openaiKey =
-            ttsConfig?.openai?.apiKey || env.OPENAI_API_KEY
+            directKeys.openai ||
+            ttsConfig?.openai?.apiKey ||
+            env.OPENAI_API_KEY
 
           // Determine provider priority
           const preferredProvider =
@@ -203,10 +224,10 @@ export const Route = createFileRoute('/api/tts')({
             }
           }
 
-          // 2. Auto mode: try all in order
+          // 2. Auto mode: try all in order (skip already-attempted provider)
           if (preferredProvider === 'auto' || errors.length > 0) {
             // Try ElevenLabs first (best quality)
-            if (elevenLabsKey) {
+            if (elevenLabsKey && preferredProvider !== 'elevenlabs') {
               try {
                 return await ttsElevenLabs(
                   text,
@@ -221,7 +242,7 @@ export const Route = createFileRoute('/api/tts')({
             }
 
             // Try OpenAI
-            if (openaiKey) {
+            if (openaiKey && preferredProvider !== 'openai') {
               try {
                 return await ttsOpenAI(text, openaiKey, voice)
               } catch (e) {

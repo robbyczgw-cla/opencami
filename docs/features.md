@@ -48,6 +48,37 @@ Listen to AI responses with text-to-speech:
 - Toggle on/off in Settings
 - Reads TTS config directly from your OpenClaw Gateway
 
+### 🎤 Voice Input (STT)
+Dictate messages with speech-to-text:
+- 🎤 Microphone button in chat composer
+- **Multi-provider with auto-fallback:**
+  - 🥇 **ElevenLabs Scribe v2** (best quality, if configured)
+  - 🥈 **OpenAI Whisper** (if API key available)
+  - 🥉 **Browser Web Speech API** (free, no server needed)
+- Recording UI with timer, pulse animation, and stop button
+- Auto-stop at 120 seconds
+- Transcribed text inserted into composer — edit before sending
+- Provider selection in Settings
+
+### 🔧 TTS/STT Provider Settings
+Fine-tune your voice experience:
+- **TTS Provider:** Auto / ElevenLabs / OpenAI / Edge TTS (free)
+- **STT Provider:** Auto / ElevenLabs / OpenAI / Browser (free)
+- **Voice selection:** OpenAI voices (alloy/echo/fable/onyx/nova/shimmer)
+- All preferences stored locally
+
+### 🤖 Agent Manager
+Manage your AI agents from the sidebar:
+- CRUD operations for agents
+- Configuration enrichment
+- Sidebar panel integration
+
+### 🔎 Search Sources Badge
+See where search results come from:
+- Expandable badge on search-enhanced messages
+- Favicons for each source
+- Toggle visibility in Settings
+
 ## Organization
 
 ### 📁 Session Folders

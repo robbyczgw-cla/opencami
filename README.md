@@ -43,13 +43,17 @@ docker run -p 3000:3000 opencami
 
 ⚡ **Real-time streaming** — persistent WebSocket + SSE, token-by-token\
 🔍 **Conversation search** — current session (⌘F) and global (⌘⇧F)\
-🔊 **Voice playback** — ElevenLabs → OpenAI → Edge TTS fallback chain\
+🔊 **Voice playback (TTS)** — ElevenLabs → OpenAI → Edge TTS fallback chain\
+🎤 **Voice input (STT)** — ElevenLabs Scribe → OpenAI Whisper → Browser Web Speech API\
+🔧 **TTS/STT provider selection** — choose provider and voice in Settings\
 📂 **File explorer** — 30+ file types, built-in editor, path jailing\
 🎭 **Persona picker** — 20 personas, integrated with the personas skill\
+🤖 **Agent manager** — sidebar panel for managing agents\
 🎨 **Model selector** — switch models on the fly\
 🏷️ **Smart titles** — LLM-generated session titles\
 💡 **Smart follow-ups** — contextual suggestions after each response\
 🖼️ **Image attachments** — with compression for the 512KB WS limit\
+🔎 **Search sources badge** — expandable badge with favicons for search results\
 📁 **Session folders** — grouped by kind (chats, subagents, cron, other)\
 📌 **Pin sessions** — pinned always on top\
 📥 **Export** — Markdown, JSON, or plain text\

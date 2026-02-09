@@ -12,9 +12,11 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as NewRouteImport } from './routes/new'
 import { Route as FilesRouteImport } from './routes/files'
 import { Route as ConnectRouteImport } from './routes/connect'
+import { Route as AgentsRouteImport } from './routes/agents'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ChatSessionKeyRouteImport } from './routes/chat/$sessionKey'
 import { Route as ApiTtsRouteImport } from './routes/api/tts'
+import { Route as ApiSttRouteImport } from './routes/api/stt'
 import { Route as ApiStreamRouteImport } from './routes/api/stream'
 import { Route as ApiSessionsRouteImport } from './routes/api/sessions'
 import { Route as ApiSendRouteImport } from './routes/api/send'
@@ -25,6 +27,7 @@ import { Route as ApiModelsRouteImport } from './routes/api/models'
 import { Route as ApiLlmFeaturesRouteImport } from './routes/api/llm-features'
 import { Route as ApiHistoryRouteImport } from './routes/api/history'
 import { Route as ApiFollowUpsRouteImport } from './routes/api/follow-ups'
+import { Route as ApiAgentsRouteImport } from './routes/api/agents'
 import { Route as ApiFilesUploadRouteImport } from './routes/api/files/upload'
 import { Route as ApiFilesSaveRouteImport } from './routes/api/files/save'
 import { Route as ApiFilesRenameRouteImport } from './routes/api/files/rename'
@@ -50,6 +53,11 @@ const ConnectRoute = ConnectRouteImport.update({
   path: '/connect',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AgentsRoute = AgentsRouteImport.update({
+  id: '/agents',
+  path: '/agents',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -63,6 +71,11 @@ const ChatSessionKeyRoute = ChatSessionKeyRouteImport.update({
 const ApiTtsRoute = ApiTtsRouteImport.update({
   id: '/api/tts',
   path: '/api/tts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSttRoute = ApiSttRouteImport.update({
+  id: '/api/stt',
+  path: '/api/stt',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiStreamRoute = ApiStreamRouteImport.update({
@@ -115,6 +128,11 @@ const ApiFollowUpsRoute = ApiFollowUpsRouteImport.update({
   path: '/api/follow-ups',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAgentsRoute = ApiAgentsRouteImport.update({
+  id: '/api/agents',
+  path: '/api/agents',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiFilesUploadRoute = ApiFilesUploadRouteImport.update({
   id: '/api/files/upload',
   path: '/api/files/upload',
@@ -163,9 +181,11 @@ const ApiFilesDeleteRoute = ApiFilesDeleteRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/agents': typeof AgentsRoute
   '/connect': typeof ConnectRoute
   '/files': typeof FilesRoute
   '/new': typeof NewRoute
+  '/api/agents': typeof ApiAgentsRoute
   '/api/follow-ups': typeof ApiFollowUpsRoute
   '/api/history': typeof ApiHistoryRoute
   '/api/llm-features': typeof ApiLlmFeaturesRoute
@@ -176,6 +196,7 @@ export interface FileRoutesByFullPath {
   '/api/send': typeof ApiSendRoute
   '/api/sessions': typeof ApiSessionsRoute
   '/api/stream': typeof ApiStreamRoute
+  '/api/stt': typeof ApiSttRoute
   '/api/tts': typeof ApiTtsRoute
   '/chat/$sessionKey': typeof ChatSessionKeyRoute
   '/api/files/delete': typeof ApiFilesDeleteRoute
@@ -190,9 +211,11 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/agents': typeof AgentsRoute
   '/connect': typeof ConnectRoute
   '/files': typeof FilesRoute
   '/new': typeof NewRoute
+  '/api/agents': typeof ApiAgentsRoute
   '/api/follow-ups': typeof ApiFollowUpsRoute
   '/api/history': typeof ApiHistoryRoute
   '/api/llm-features': typeof ApiLlmFeaturesRoute
@@ -203,6 +226,7 @@ export interface FileRoutesByTo {
   '/api/send': typeof ApiSendRoute
   '/api/sessions': typeof ApiSessionsRoute
   '/api/stream': typeof ApiStreamRoute
+  '/api/stt': typeof ApiSttRoute
   '/api/tts': typeof ApiTtsRoute
   '/chat/$sessionKey': typeof ChatSessionKeyRoute
   '/api/files/delete': typeof ApiFilesDeleteRoute
@@ -218,9 +242,11 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/agents': typeof AgentsRoute
   '/connect': typeof ConnectRoute
   '/files': typeof FilesRoute
   '/new': typeof NewRoute
+  '/api/agents': typeof ApiAgentsRoute
   '/api/follow-ups': typeof ApiFollowUpsRoute
   '/api/history': typeof ApiHistoryRoute
   '/api/llm-features': typeof ApiLlmFeaturesRoute
@@ -231,6 +257,7 @@ export interface FileRoutesById {
   '/api/send': typeof ApiSendRoute
   '/api/sessions': typeof ApiSessionsRoute
   '/api/stream': typeof ApiStreamRoute
+  '/api/stt': typeof ApiSttRoute
   '/api/tts': typeof ApiTtsRoute
   '/chat/$sessionKey': typeof ChatSessionKeyRoute
   '/api/files/delete': typeof ApiFilesDeleteRoute
@@ -247,9 +274,11 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/agents'
     | '/connect'
     | '/files'
     | '/new'
+    | '/api/agents'
     | '/api/follow-ups'
     | '/api/history'
     | '/api/llm-features'
@@ -260,6 +289,7 @@ export interface FileRouteTypes {
     | '/api/send'
     | '/api/sessions'
     | '/api/stream'
+    | '/api/stt'
     | '/api/tts'
     | '/chat/$sessionKey'
     | '/api/files/delete'
@@ -274,9 +304,11 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/agents'
     | '/connect'
     | '/files'
     | '/new'
+    | '/api/agents'
     | '/api/follow-ups'
     | '/api/history'
     | '/api/llm-features'
@@ -287,6 +319,7 @@ export interface FileRouteTypes {
     | '/api/send'
     | '/api/sessions'
     | '/api/stream'
+    | '/api/stt'
     | '/api/tts'
     | '/chat/$sessionKey'
     | '/api/files/delete'
@@ -301,9 +334,11 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/agents'
     | '/connect'
     | '/files'
     | '/new'
+    | '/api/agents'
     | '/api/follow-ups'
     | '/api/history'
     | '/api/llm-features'
@@ -314,6 +349,7 @@ export interface FileRouteTypes {
     | '/api/send'
     | '/api/sessions'
     | '/api/stream'
+    | '/api/stt'
     | '/api/tts'
     | '/chat/$sessionKey'
     | '/api/files/delete'
@@ -329,9 +365,11 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AgentsRoute: typeof AgentsRoute
   ConnectRoute: typeof ConnectRoute
   FilesRoute: typeof FilesRoute
   NewRoute: typeof NewRoute
+  ApiAgentsRoute: typeof ApiAgentsRoute
   ApiFollowUpsRoute: typeof ApiFollowUpsRoute
   ApiHistoryRoute: typeof ApiHistoryRoute
   ApiLlmFeaturesRoute: typeof ApiLlmFeaturesRoute
@@ -342,6 +380,7 @@ export interface RootRouteChildren {
   ApiSendRoute: typeof ApiSendRoute
   ApiSessionsRoute: typeof ApiSessionsRoute
   ApiStreamRoute: typeof ApiStreamRoute
+  ApiSttRoute: typeof ApiSttRoute
   ApiTtsRoute: typeof ApiTtsRoute
   ChatSessionKeyRoute: typeof ChatSessionKeyRoute
   ApiFilesDeleteRoute: typeof ApiFilesDeleteRoute
@@ -378,6 +417,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConnectRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/agents': {
+      id: '/agents'
+      path: '/agents'
+      fullPath: '/agents'
+      preLoaderRoute: typeof AgentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -397,6 +443,13 @@ declare module '@tanstack/react-router' {
       path: '/api/tts'
       fullPath: '/api/tts'
       preLoaderRoute: typeof ApiTtsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/stt': {
+      id: '/api/stt'
+      path: '/api/stt'
+      fullPath: '/api/stt'
+      preLoaderRoute: typeof ApiSttRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/stream': {
@@ -469,6 +522,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiFollowUpsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/agents': {
+      id: '/api/agents'
+      path: '/api/agents'
+      fullPath: '/api/agents'
+      preLoaderRoute: typeof ApiAgentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/files/upload': {
       id: '/api/files/upload'
       path: '/api/files/upload'
@@ -537,9 +597,11 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AgentsRoute: AgentsRoute,
   ConnectRoute: ConnectRoute,
   FilesRoute: FilesRoute,
   NewRoute: NewRoute,
+  ApiAgentsRoute: ApiAgentsRoute,
   ApiFollowUpsRoute: ApiFollowUpsRoute,
   ApiHistoryRoute: ApiHistoryRoute,
   ApiLlmFeaturesRoute: ApiLlmFeaturesRoute,
@@ -550,6 +612,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSendRoute: ApiSendRoute,
   ApiSessionsRoute: ApiSessionsRoute,
   ApiStreamRoute: ApiStreamRoute,
+  ApiSttRoute: ApiSttRoute,
   ApiTtsRoute: ApiTtsRoute,
   ChatSessionKeyRoute: ChatSessionKeyRoute,
   ApiFilesDeleteRoute: ApiFilesDeleteRoute,

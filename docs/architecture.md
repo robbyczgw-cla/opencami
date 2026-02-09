@@ -32,6 +32,36 @@ OpenCami is a modern web client for OpenClaw, built with TanStack ecosystem and 
 - **Tool call indicators** during agent processing
 - **Fast-polling fallback** if SSE disconnects
 
+## API Routes
+
+### `/api/tts` (POST)
+Text-to-speech conversion. Accepts JSON `{ text, voice?, provider? }`.
+Provider cascade: ElevenLabs → OpenAI → Edge TTS. Returns `audio/mpeg`.
+
+### `/api/stt` (POST)
+Speech-to-text transcription. Accepts multipart form data with `audio` file, optional `provider` and `language`.
+Provider cascade: ElevenLabs Scribe v2 → OpenAI Whisper. Browser Web Speech API handled client-side.
+Returns JSON `{ ok, text, provider }`.
+
+### `/api/personas` (GET)
+Returns available personas from the Gateway personas skill.
+
+### `/api/chat/stream` (SSE)
+Server-Sent Events endpoint forwarding Gateway streaming responses to the browser.
+
+## Zustand Stores
+
+### `chat-settings` (persisted)
+UI preferences: theme, showToolMessages, showReasoningBlocks, showSearchSources, inlineFilePreview.
+
+### localStorage keys
+- `opencami-tts-enabled` — TTS toggle
+- `opencami-tts-provider` — TTS provider (auto/elevenlabs/openai/edge)
+- `opencami-tts-voice` — TTS voice selection
+- `opencami-stt-provider` — STT provider (auto/elevenlabs/openai/browser)
+- `opencami-text-size` — Text size preference
+- `opencami-personas-enabled` — Persona picker toggle
+
 ## Session Management
 
 ### Session Keys

@@ -159,7 +159,7 @@ function FilesSidebarComponent({
             <TooltipRoot>
               <TooltipTrigger asChild>
                 <Link
-                  to="/chat/main"
+                  to="/chat/$sessionKey" params={{ sessionKey: 'main' }}
                   className={cn(
                     buttonVariants({ variant: 'ghost', size: 'sm' }),
                     'w-full pl-1.5 justify-start',

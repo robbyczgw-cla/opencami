@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-02-09
+
+### Added
+- **Voice Input (STT)** — Microphone button in chat composer with recording UI (timer, pulse animation, stop button)
+  - **ElevenLabs Scribe v2** — highest quality transcription (if API key configured)
+  - **OpenAI Whisper** — reliable fallback (if API key configured)
+  - **Browser Web Speech API** — free client-side fallback, no server needed
+  - Auto-stop at 120 seconds, visual recording feedback
+  - Transcribed text inserted into composer for editing before send
+- **TTS Provider Selection** — Choose between Auto / ElevenLabs / OpenAI / Edge TTS (free) in Settings
+  - Voice selection dropdown for OpenAI (alloy/echo/fable/onyx/nova/shimmer)
+- **STT Provider Selection** — Choose between Auto / ElevenLabs / OpenAI / Browser (free) in Settings
+- **Search Sources Badge** — Expandable badge showing search sources with favicons, toggle in Settings
+- **Agent Manager** — Sidebar panel for managing agents (CRUD, config enrichment)
+
+### Changed
+- Removed thinking-content from search results
+
+### Fixed
+- Various UI and performance fixes
+
 ## [1.1.0] - 2026-02-07
 
 ### Added
@@ -50,12 +71,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Planned
 - Push Notifications (PWA)
-- Voice Input (Whisper transcription)
 - File Uploads (PDFs/docs/code)
 - Usage Dashboard
 - Official Docker image
 
 ---
 
+[1.2.0]: https://github.com/robbyczgw-cla/opencami/releases/tag/v1.2.0
 [1.1.0]: https://github.com/robbyczgw-cla/opencami/releases/tag/v1.1.0
 [1.0.0]: https://github.com/robbyczgw-cla/opencami/releases/tag/v1.0.0
