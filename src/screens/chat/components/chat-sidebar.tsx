@@ -308,6 +308,7 @@ function ChatSidebarComponent({
             </TooltipRoot>
           </TooltipProvider>
 
+          {(() => { try { return localStorage.getItem('opencami-agent-manager') === 'true' } catch { return false } })() && (
           <TooltipProvider>
             <TooltipRoot>
               <TooltipTrigger asChild>
@@ -347,6 +348,7 @@ function ChatSidebarComponent({
               )}
             </TooltipRoot>
           </TooltipProvider>
+          )}
         </motion.div>
         <motion.div
           layout
