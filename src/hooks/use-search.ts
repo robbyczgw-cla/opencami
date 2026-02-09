@@ -29,9 +29,6 @@ function extractTextFromContent(content: unknown): string {
       if (item?.type === 'text' && typeof item.text === 'string') {
         return item.text
       }
-      if (item?.type === 'thinking' && typeof item.thinking === 'string') {
-        return item.thinking
-      }
       return ''
     })
     .filter(Boolean)

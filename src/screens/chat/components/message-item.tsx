@@ -12,6 +12,7 @@ import { Thinking } from '@/components/prompt-kit/thinking'
 import { Tool } from '@/components/prompt-kit/tool'
 import { useChatSettings } from '@/hooks/use-chat-settings'
 import { cn } from '@/lib/utils'
+import { SearchSourcesBadge, type SearchSource } from '@/components/search-sources-badge'
 
 type MessageItemProps = {
   message: GatewayMessage
@@ -170,6 +171,62 @@ function imagesFromMessage(msg: GatewayMessage): ImagePart[] {
   return images
 }
 
+function extractSearchSources(
+  message: GatewayMessage,
+  toolResultsByCallId?: Map<string, GatewayMessage>,
+): SearchSource[] {
+  if (!toolResultsByCallId) return []
+  const toolCalls = getToolCallsFromMessage(message)
+  const sources: SearchSource[] = []
+
+  for (const tc of toolCalls) {
+    if (!tc.id) continue
+    const isSearch = tc.name === 'web_search'
+    const isFetch = tc.name === 'web_fetch'
+    if (!isSearch && !isFetch) continue
+
+    const result = toolResultsByCallId.get(tc.id)
+    if (!result) continue
+
+    const text = result.content
+      ?.map((p) => (p.type === 'text' ? String(p.text ?? '') : ''))
+      .join('')
+      .trim()
+    if (!text) continue
+
+    try {
+      if (isSearch) {
+        const parsed = JSON.parse(text)
+        const items = Array.isArray(parsed) ? parsed : parsed?.results ?? parsed?.web?.results ?? []
+        for (const item of items) {
+          if (item?.url && item?.title) {
+            sources.push({
+              title: item.title,
+              url: item.url,
+              snippet: item.description || item.snippet || item.content,
+            })
+          }
+        }
+      } else if (isFetch) {
+        // web_fetch: extract URL from args
+        const url = tc.arguments?.url as string
+        if (url) {
+          let title: string
+          try {
+            title = new URL(url).hostname
+          } catch {
+            title = url
+          }
+          sources.push({ title, url })
+        }
+      }
+    } catch {
+      // malformed data, skip
+    }
+  }
+  return sources
+}
+
 function MessageItemComponent({
   message,
   toolResultsByCallId,
@@ -190,6 +247,7 @@ function MessageItemComponent({
   // Get tool calls from this message (for assistant messages)
   const toolCalls = role === 'assistant' ? getToolCallsFromMessage(message) : []
   const hasToolCalls = toolCalls.length > 0
+  const searchSources = role === 'assistant' ? extractSearchSources(message, toolResultsByCallId) : []
 
   return (
     <div
@@ -262,6 +320,12 @@ function MessageItemComponent({
               />
             )
           })}
+        </div>
+      )}
+
+      {searchSources.length > 0 && (
+        <div className="w-full max-w-[900px]">
+          <SearchSourcesBadge sources={searchSources} />
         </div>
       )}
 
