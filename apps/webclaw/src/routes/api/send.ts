@@ -26,7 +26,18 @@ export const Route = createFileRoute('/api/send')({
           const thinking =
             typeof body.thinking === 'string' ? body.thinking : undefined
 
-          if (!message.trim()) {
+          const rawAttachments = body.attachments
+          const attachments = Array.isArray(rawAttachments)
+            ? rawAttachments.filter(
+                (a: unknown): a is { mimeType: string; content: string } =>
+                  typeof a === 'object' &&
+                  a !== null &&
+                  typeof (a as Record<string, unknown>).mimeType === 'string' &&
+                  typeof (a as Record<string, unknown>).content === 'string',
+              )
+            : undefined
+
+          if (!message.trim() && (!attachments || attachments.length === 0)) {
             return json(
               { ok: false, error: 'message required' },
               { status: 400 },
@@ -63,6 +74,7 @@ export const Route = createFileRoute('/api/send')({
             sessionKey,
             message,
             thinking,
+            attachments,
             deliver: false,
             timeoutMs: 120_000,
             idempotencyKey:
