@@ -71,6 +71,41 @@ function ChatMessageListComponent({
 
   // Aggregate all search sources across all assistant messages for the badge
   const aggregatedSearchSources = useMemo(() => {
+    // Strip Gateway security tags from search result text
+    const strip = (s: string) => {
+      if (!s) return ''
+      return s
+        .replace(/SECURITY NOTICE:[\s\S]*?<<<EXTERNAL_UNTRUSTED_CONTENT>>>/g, '')
+        .replace(/<<<\/?EXTERNAL_UNTRUSTED_CONTENT>>>/g, '')
+        .replace(/<<<\/?END_EXTERNAL_UNTRUSTED_CONTENT>>>/g, '')
+        .replace(/Source: Web (?:Search|Fetch)\n---/g, '')
+        .replace(/\n{2,}/g, '\n')
+        .trim()
+    }
+    // Try to extract search results from any JSON text
+    const extractResults = (text: string, sources: SearchSource[], seenUrls: Set<string>) => {
+      try {
+        const parsed = JSON.parse(text)
+        // Handle web-search-plus format: { provider, query, results: [...] }
+        // Handle web_search format: { results: [...] } or direct array
+        const items = Array.isArray(parsed) ? parsed
+          : parsed?.results ?? parsed?.web?.results ?? []
+        if (!Array.isArray(items)) return false
+        let found = false
+        for (const item of items) {
+          if (item?.url && item?.title && !seenUrls.has(item.url)) {
+            seenUrls.add(item.url)
+            sources.push({
+              title: strip(item.title),
+              url: item.url,
+              snippet: strip(item.description || item.snippet || item.content || '')
+            })
+            found = true
+          }
+        }
+        return found
+      } catch { return false }
+    }
     const sources: SearchSource[] = []
     const seenUrls = new Set<string>()
     for (const msg of displayMessages) {
@@ -80,7 +115,8 @@ function ChatMessageListComponent({
         if (!tc.id) continue
         const isSearch = tc.name === 'web_search'
         const isFetch = tc.name === 'web_fetch'
-        if (!isSearch && !isFetch) continue
+        const isExec = tc.name === 'exec'
+        if (!isSearch && !isFetch && !isExec) continue
         const result = toolResultsByCallId.get(tc.id)
         if (!result) continue
         const text = result.content
@@ -88,26 +124,23 @@ function ChatMessageListComponent({
           .join('')
           .trim()
         if (!text) continue
-        try {
-          if (isSearch) {
-            const parsed = JSON.parse(text)
-            const items = Array.isArray(parsed) ? parsed : parsed?.results ?? parsed?.web?.results ?? []
-            for (const item of items) {
-              if (item?.url && item?.title && !seenUrls.has(item.url)) {
-                seenUrls.add(item.url)
-                sources.push({ title: item.title, url: item.url, snippet: item.description || item.snippet || item.content })
-              }
-            }
-          } else if (isFetch) {
-            const url = tc.arguments?.url as string
-            if (url && !seenUrls.has(url)) {
-              seenUrls.add(url)
-              let title: string
-              try { title = new URL(url).hostname } catch { title = url }
-              sources.push({ title, url })
-            }
+        if (isSearch || isExec) {
+          // For exec: only extract if the output looks like search JSON
+          // (has "results" array with url+title objects)
+          if (isExec) {
+            // Quick check: must contain "results" and "url" to be search output
+            if (!text.includes('"results"') || !text.includes('"url"')) continue
           }
-        } catch { /* skip */ }
+          extractResults(text, sources, seenUrls)
+        } else if (isFetch) {
+          const url = tc.arguments?.url as string
+          if (url && !seenUrls.has(url)) {
+            seenUrls.add(url)
+            let title: string
+            try { title = new URL(url).hostname } catch { title = url }
+            sources.push({ title, url })
+          }
+        }
       }
     }
     return sources
