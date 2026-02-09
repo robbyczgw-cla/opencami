@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpenCami Analytics 🦎</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+:root {
+  --bg-primary: #0a0a0f;
+  --bg-card: #12121a;
+  --bg-card-hover: #181824;
+  --bg-row-hover: #1a1a28;
+  --border: #1e1e2e;
+  --text-primary: #e8e8ed;
+  --text-secondary: #6b6b7b;
+  --text-muted: #3a3a4a;
+  --accent-cyan: #00e5ff;
+  --accent-amber: #ffab00;
+  --accent-emerald: #00e676;
+  --accent-rose: #ff5272;
+  --accent-violet: #b388ff;
+  --accent-blue: #40c4ff;
+  --accent-orange: #ff9100;
+  --font-sans: 'Outfit', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+.container { max-width: 1480px; margin: 0 auto; padding: 1.5rem; }
+
+.header {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 2rem; padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+.header h1 { font-size: 1.5rem; font-weight: 600; letter-spacing: -0.02em; }
+.header h1 span { color: var(--accent-cyan); }
+.header .meta { text-align: right; }
+.header .updated { font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-secondary); }
+.header .date-range { font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.15rem; }
+
+/* Hero Stats - 5 cards */
+.hero-stats {
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+.stat-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 10px; padding: 1.2rem 1rem;
+  position: relative; overflow: hidden;
+  opacity: 0; transform: translateY(12px);
+  animation: cardIn 0.4s ease forwards;
+}
+.stat-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+}
+.stat-card:nth-child(1)::before { background: var(--accent-cyan); }
+.stat-card:nth-child(2)::before { background: var(--accent-amber); }
+.stat-card:nth-child(3)::before { background: var(--accent-emerald); }
+.stat-card:nth-child(4)::before { background: var(--accent-rose); }
+.stat-card:nth-child(5)::before { background: var(--accent-violet); }
+.stat-card:nth-child(1) { animation-delay: 0s; }
+.stat-card:nth-child(2) { animation-delay: 0.05s; }
+.stat-card:nth-child(3) { animation-delay: 0.1s; }
+.stat-card:nth-child(4) { animation-delay: 0.15s; }
+.stat-card:nth-child(5) { animation-delay: 0.2s; }
+.stat-card .label {
+  font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--text-secondary); margin-bottom: 0.4rem; font-weight: 500;
+}
+.stat-card .value {
+  font-family: var(--font-mono); font-size: 1.8rem; font-weight: 700;
+  letter-spacing: -0.03em;
+}
+.stat-card:nth-child(1) .value { color: var(--accent-cyan); }
+.stat-card:nth-child(2) .value { color: var(--accent-amber); }
+.stat-card:nth-child(3) .value { color: var(--accent-emerald); }
+.stat-card:nth-child(4) .value { color: var(--accent-rose); }
+.stat-card:nth-child(5) .value { color: var(--accent-violet); }
+
+/* Dashboard grid */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+.card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 10px; padding: 1.25rem;
+  opacity: 0; transform: translateY(12px);
+  animation: cardIn 0.4s ease forwards;
+}
+.card.wide { grid-column: 1 / -1; }
+.card h2 {
+  font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.12em;
+  color: var(--text-secondary); margin-bottom: 1rem; font-weight: 500;
+  display: flex; align-items: center; gap: 0.5rem;
+}
+.card h2 .badge {
+  font-family: var(--font-mono); font-size: 0.6rem; background: rgba(0,229,255,0.1);
+  color: var(--accent-cyan); padding: 0.15rem 0.5rem; border-radius: 4px;
+  text-transform: none; letter-spacing: 0;
+}
+.card canvas { max-height: 260px; }
+
+/* Model table */
+.model-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+.model-table th {
+  text-align: left; font-size: 0.6rem; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--text-muted); font-weight: 500;
+  padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border);
+}
+.model-table th.right, .model-table td.right { text-align: right; }
+.model-table td {
+  padding: 0.55rem 0.6rem; border-bottom: 1px solid rgba(30,30,46,0.5);
+  font-family: var(--font-mono); font-size: 0.72rem;
+}
+.model-table tr:hover td { background: var(--bg-row-hover); }
+.model-table .model-name { color: var(--accent-cyan); font-weight: 500; }
+.model-table .provider-badge {
+  font-size: 0.58rem; padding: 0.12rem 0.4rem; border-radius: 3px;
+  font-family: var(--font-sans); font-weight: 500; display: inline-block;
+}
+.provider-anthropic { background: rgba(179,136,255,0.15); color: var(--accent-violet); }
+.provider-openai-codex { background: rgba(0,230,118,0.12); color: var(--accent-emerald); }
+.provider-openrouter { background: rgba(255,145,0,0.12); color: var(--accent-orange); }
+.provider-synthetic, .provider-synthetic-openai { background: rgba(64,196,255,0.12); color: var(--accent-blue); }
+.provider-openclaw { background: rgba(255,82,114,0.12); color: var(--accent-rose); }
+.provider-unknown { background: rgba(58,58,74,0.3); color: var(--text-secondary); }
+.model-table .bar-cell { width: 30%; }
+.model-table .bar-bg {
+  height: 6px; background: rgba(255,255,255,0.04); border-radius: 3px;
+  overflow: hidden; position: relative;
+}
+.model-table .bar-fill {
+  height: 100%; border-radius: 3px; transition: width 0.8s ease;
+}
+.token-dim { color: var(--text-secondary); }
+
+/* Provider cards */
+.providers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.6rem; }
+.provider-card {
+  background: var(--bg-primary); border: 1px solid var(--border);
+  border-radius: 8px; padding: 0.9rem;
+}
+.provider-card .prov-name {
+  font-family: var(--font-mono); font-size: 0.8rem; font-weight: 500;
+  margin-bottom: 0.4rem;
+}
+.provider-card .prov-stat {
+  font-size: 0.65rem; color: var(--text-secondary); line-height: 1.9;
+}
+.provider-card .prov-stat strong {
+  font-family: var(--font-mono); color: var(--text-primary); font-weight: 400;
+}
+
+/* Agent cards */
+.agents-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 0.6rem; }
+.agent-item {
+  background: var(--bg-primary); border: 1px solid var(--border);
+  border-radius: 8px; padding: 0.9rem;
+}
+.agent-item .agent-name {
+  font-family: var(--font-mono); font-size: 0.8rem; font-weight: 500;
+  color: var(--accent-cyan); margin-bottom: 0.35rem;
+}
+.agent-item .agent-stat {
+  font-size: 0.65rem; color: var(--text-secondary); line-height: 1.9;
+}
+.agent-item .agent-stat strong {
+  font-family: var(--font-mono); color: var(--text-primary); font-weight: 400;
+}
+
+.footer {
+  text-align: center; padding: 1.5rem 0 0.5rem;
+  font-size: 0.7rem; color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+@keyframes cardIn { to { opacity: 1; transform: translateY(0); } }
+
+@media (max-width: 900px) {
+  .hero-stats { grid-template-columns: repeat(3, 1fr); }
+  .dashboard-grid { grid-template-columns: 1fr; }
+  .stat-card .value { font-size: 1.4rem; }
+  .header { flex-direction: column; gap: 0.5rem; }
+}
+@media (max-width: 600px) {
+  .hero-stats { grid-template-columns: repeat(2, 1fr); }
+  .model-table { font-size: 0.65rem; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div>
+      <h1><span>OpenCami</span> Analytics 🦎</h1>
+      <div class="date-range" id="dateRange"></div>
+    </div>
+    <div class="meta">
+      <div class="updated" id="updatedAt"></div>
+    </div>
+  </div>
+
+  <div class="hero-stats">
+    <div class="stat-card"><div class="label">Total Tokens</div><div class="value" id="totalTokens">—</div></div>
+    <div class="stat-card"><div class="label">Messages</div><div class="value" id="totalMessages">—</div></div>
+    <div class="stat-card"><div class="label">Sessions</div><div class="value" id="totalSessions">—</div></div>
+    <div class="stat-card"><div class="label">Models</div><div class="value" id="totalModels">—</div></div>
+    <div class="stat-card"><div class="label">Agents</div><div class="value" id="totalAgents">—</div></div>
+  </div>
+
+  <div class="dashboard-grid">
+    <!-- Daily tokens -->
+    <div class="card wide" style="animation-delay:0.25s">
+      <h2>Daily Token Usage</h2>
+      <canvas id="dailyChart"></canvas>
+    </div>
+
+    <!-- By Model - THE BIG ONE -->
+    <div class="card wide" style="animation-delay:0.3s">
+      <h2>Token Usage by Model <span class="badge" id="modelCount"></span></h2>
+      <div style="overflow-x:auto">
+        <table class="model-table" id="modelTable">
+          <thead>
+            <tr>
+              <th>Model</th>
+              <th>Provider</th>
+              <th class="right">Total Tokens</th>
+              <th class="right">Messages</th>
+              <th class="right">Tokens/Msg</th>
+              <th class="bar-cell">Share</th>
+            </tr>
+          </thead>
+          <tbody id="modelBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- By Provider -->
+    <div class="card" style="animation-delay:0.35s">
+      <h2>By Provider</h2>
+      <div class="providers-grid" id="providersGrid"></div>
+    </div>
+
+    <!-- Token Breakdown -->
+    <div class="card" style="animation-delay:0.38s">
+      <h2>Token Breakdown</h2>
+      <canvas id="tokenBreakdownChart"></canvas>
+    </div>
+
+    <!-- Activity by Hour -->
+    <div class="card" style="animation-delay:0.42s">
+      <h2>Activity by Hour <span class="badge">UTC</span></h2>
+      <canvas id="hourChart"></canvas>
+    </div>
+
+    <!-- Top Tools -->
+    <div class="card" style="animation-delay:0.45s">
+      <h2>Top Tools <span class="badge" id="toolCount"></span></h2>
+      <canvas id="toolsChart"></canvas>
+    </div>
+
+    <!-- Agents -->
+    <div class="card wide" style="animation-delay:0.5s">
+      <h2>By Agent</h2>
+      <div class="agents-grid" id="agentsGrid"></div>
+    </div>
+  </div>
+
+  <div class="footer">🦎 OpenCami Analytics — tokens only, no dollars</div>
+</div>
+
+<script>
+const SAMPLE = {
+  generatedAt: "2026-02-09T09:00:00Z",
+  daily: Array.from({length:25},(_,i)=>{
+    const d=new Date(2026,0,16+i);
+    return {date:d.toISOString().slice(0,10),totalTokens:Math.round(15e6+Math.random()*85e6),sessions:Math.round(3+Math.random()*20),messages:Math.round(300+Math.random()*2000)};
+  }),
+  byModel:[
+    {model:"claude-opus-4-5",provider:"anthropic",totalTokens:1406133099,messages:14400},
+    {model:"claude-sonnet-4-5",provider:"anthropic",totalTokens:426049002,messages:5858},
+    {model:"claude-opus-4-6",provider:"anthropic",totalTokens:424354704,messages:3950},
+    {model:"gpt-5.2",provider:"openai-codex",totalTokens:71158180,messages:1162},
+    {model:"claude-haiku-4-5",provider:"anthropic",totalTokens:36245539,messages:1036},
+  ],
+  byAgent:[
+    {agent:"main",totalTokens:2407067242,sessions:734,messages:37580},
+    {agent:"codex",totalTokens:16342194,sessions:3,messages:251},
+  ],
+  byHour: Array.from({length:24},(_,h)=>({hour:h,messages:Math.round(100+Math.random()*2900)})),
+  topTools:[{tool:"exec",count:9826},{tool:"read",count:2357},{tool:"process",count:1910},{tool:"bash",count:1572},{tool:"edit",count:1203}],
+  totals:{tokens:2439095843,sessions:760,messages:38564,dateRange:"2026-01-16 to 2026-02-09"}
+};
+
+Chart.defaults.color = '#6b6b7b';
+Chart.defaults.font.family = "'JetBrains Mono', monospace";
+Chart.defaults.font.size = 10;
+Chart.defaults.plugins.legend.display = false;
+Chart.defaults.scale.grid = { color: 'rgba(255,255,255,0.04)', drawBorder: false };
+
+function fmtNum(n) {
+  if (n >= 1e9) return (n/1e9).toFixed(1) + 'B';
+  if (n >= 1e6) return (n/1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return (n/1e3).toFixed(1) + 'K';
+  return n.toString();
+}
+
+function fmtNumPrecise(n) {
+  if (n >= 1e9) return (n/1e9).toFixed(2) + 'B';
+  if (n >= 1e6) return (n/1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return (n/1e3).toFixed(1) + 'K';
+  return n.toLocaleString();
+}
+
+function fmtComma(n) { return Math.round(n).toLocaleString(); }
+
+const providerColors = {
+  anthropic: '#b388ff',
+  'openai-codex': '#00e676',
+  openrouter: '#ff9100',
+  synthetic: '#40c4ff',
+  'synthetic-openai': '#40c4ff',
+  openclaw: '#ff5272',
+  unknown: '#3a3a4a'
+};
+
+const modelBarColors = ['#00e5ff','#b388ff','#ffab00','#00e676','#ff5272','#40c4ff','#ff9100','#e040fb','#69f0ae','#ffd740','#ff6e40','#448aff'];
+
+function render(data) {
+  document.getElementById('updatedAt').textContent = 'Updated ' + new Date(data.generatedAt).toLocaleString();
+  document.getElementById('dateRange').textContent = data.totals.dateRange;
+
+  // Hero stats
+  const realModels = data.byModel.filter(m => m.model !== 'unknown' && m.model !== 'delivery-mirror');
+  document.getElementById('totalTokens').textContent = fmtNum(data.totals.tokens);
+  document.getElementById('totalMessages').textContent = fmtNum(data.totals.messages);
+  document.getElementById('totalSessions').textContent = fmtComma(data.totals.sessions);
+  document.getElementById('totalModels').textContent = realModels.length;
+  document.getElementById('totalAgents').textContent = data.byAgent.length;
+
+  // Daily tokens chart
+  new Chart(document.getElementById('dailyChart'), {
+    type: 'line',
+    data: {
+      labels: data.daily.map(d => d.date.slice(5)),
+      datasets: [{
+        data: data.daily.map(d => d.totalTokens),
+        borderColor: '#00e5ff',
+        backgroundColor: 'rgba(0,229,255,0.06)',
+        fill: true, tension: 0.3, pointRadius: 2.5, pointHoverRadius: 6,
+        borderWidth: 2, pointBackgroundColor: '#00e5ff'
+      }]
+    },
+    options: {
+      scales: {
+        y: { ticks: { callback: v => fmtNum(v) } }
+      },
+      plugins: {
+        tooltip: {
+          callbacks: {
+            label: c => fmtComma(c.raw) + ' tokens',
+            title: t => t[0].label
+          }
+        }
+      }
+    }
+  });
+
+  // Model table
+  const models = [...data.byModel]
+    .filter(m => m.totalTokens > 0 || (m.messages > 0 && m.model !== 'unknown'))
+    .sort((a, b) => b.totalTokens - a.totalTokens);
+  const maxTokens = models[0]?.totalTokens || 1;
+  const tbody = document.getElementById('modelBody');
+  document.getElementById('modelCount').textContent = models.length + ' models';
+
+  models.forEach((m, i) => {
+    const pct = (m.totalTokens / maxTokens * 100).toFixed(1);
+    const tpm = m.messages > 0 ? Math.round(m.totalTokens / m.messages) : 0;
+    const provClass = 'provider-' + (m.provider || 'unknown').replace(/[^a-z-]/g, '');
+    const color = modelBarColors[i % modelBarColors.length];
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="model-name">${m.model}</td>
+      <td><span class="provider-badge ${provClass}">${m.provider}</span></td>
+      <td class="right">${fmtNumPrecise(m.totalTokens)}</td>
+      <td class="right">${fmtComma(m.messages)}</td>
+      <td class="right"><span class="token-dim">${fmtNum(tpm)}</span></td>
+      <td class="bar-cell"><div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div></td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  // By Provider - aggregate
+  const provMap = {};
+  data.byModel.forEach(m => {
+    const p = m.provider || 'unknown';
+    if (!provMap[p]) provMap[p] = { tokens: 0, messages: 0, models: [] };
+    provMap[p].tokens += m.totalTokens;
+    provMap[p].messages += m.messages;
+    if (m.model !== 'unknown' && m.model !== 'delivery-mirror') provMap[p].models.push(m.model);
+  });
+  const providers = Object.entries(provMap).sort((a, b) => b[1].tokens - a[1].tokens);
+  const provGrid = document.getElementById('providersGrid');
+  providers.forEach(([name, p]) => {
+    const color = providerColors[name] || '#6b6b7b';
+    provGrid.innerHTML += `<div class="provider-card">
+      <div class="prov-name" style="color:${color}">${name}</div>
+      <div class="prov-stat">Tokens <strong>${fmtNumPrecise(p.tokens)}</strong></div>
+      <div class="prov-stat">Messages <strong>${fmtComma(p.messages)}</strong></div>
+      <div class="prov-stat">Models <strong>${p.models.length}</strong></div>
+    </div>`;
+  });
+
+  // Token Breakdown donut - use overall split estimate from model data
+  // Since we don't have per-token-type data, show total tokens distribution by model category
+  // Actually let's do a by-provider donut
+  new Chart(document.getElementById('tokenBreakdownChart'), {
+    type: 'doughnut',
+    data: {
+      labels: providers.map(([n]) => n),
+      datasets: [{
+        data: providers.map(([, p]) => p.tokens),
+        backgroundColor: providers.map(([n]) => providerColors[n] || '#3a3a4a'),
+        borderWidth: 0,
+        spacing: 2
+      }]
+    },
+    options: {
+      cutout: '65%',
+      plugins: {
+        legend: { display: true, position: 'right', labels: { font: { size: 10 }, padding: 8, boxWidth: 12 } },
+        tooltip: { callbacks: { label: c => c.label + ': ' + fmtNumPrecise(c.raw) + ' tokens' } }
+      }
+    }
+  });
+
+  // Activity by hour
+  const maxH = Math.max(...data.byHour.map(x => x.messages));
+  new Chart(document.getElementById('hourChart'), {
+    type: 'bar',
+    data: {
+      labels: data.byHour.map(h => h.hour.toString().padStart(2, '0')),
+      datasets: [{
+        data: data.byHour.map(h => h.messages),
+        backgroundColor: data.byHour.map(h => {
+          const t = h.messages / maxH;
+          return `rgba(0,229,255,${0.12 + t * 0.88})`;
+        }),
+        borderRadius: 3, barThickness: 14
+      }]
+    },
+    options: {
+      scales: {
+        x: { ticks: { maxRotation: 0 } },
+        y: { ticks: { callback: v => fmtNum(v) } }
+      },
+      plugins: { tooltip: { callbacks: { label: c => fmtComma(c.raw) + ' messages' } } }
+    }
+  });
+
+  // Tools
+  const tools = data.topTools.slice(0, 15);
+  document.getElementById('toolCount').textContent = data.topTools.length + ' tools';
+  new Chart(document.getElementById('toolsChart'), {
+    type: 'bar',
+    data: {
+      labels: tools.map(t => t.tool),
+      datasets: [{
+        data: tools.map(t => t.count),
+        backgroundColor: 'rgba(255,171,0,0.65)',
+        borderRadius: 3, barThickness: 14
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      plugins: { tooltip: { callbacks: { label: c => fmtComma(c.raw) + ' calls' } } }
+    }
+  });
+
+  // Agents
+  const agents = [...data.byAgent].sort((a, b) => b.totalTokens - a.totalTokens);
+  const agGrid = document.getElementById('agentsGrid');
+  agents.forEach(a => {
+    agGrid.innerHTML += `<div class="agent-item">
+      <div class="agent-name">${a.agent}</div>
+      <div class="agent-stat">Tokens <strong>${fmtNumPrecise(a.totalTokens)}</strong></div>
+      <div class="agent-stat">Messages <strong>${fmtComma(a.messages)}</strong></div>
+      <div class="agent-stat">Sessions <strong>${a.sessions}</strong></div>
+    </div>`;
+  });
+}
+
+fetch('analytics.json').then(r => r.json()).then(render).catch(() => render(SAMPLE));
+</script>
+</body>
+</html>

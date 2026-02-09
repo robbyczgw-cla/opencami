@@ -1,0 +1,598 @@
+{
+  "generatedAt": "2026-02-09T09:15:34.577695+00:00",
+  "period": {
+    "from": "2026-01-16",
+    "to": "2026-02-09"
+  },
+  "daily": [
+    {
+      "date": "2026-01-16",
+      "totalCost": 55.356792,
+      "totalTokens": 47206752,
+      "sessions": 5,
+      "messages": 979
+    },
+    {
+      "date": "2026-01-17",
+      "totalCost": 19.715327,
+      "totalTokens": 17580172,
+      "sessions": 7,
+      "messages": 568
+    },
+    {
+      "date": "2026-01-18",
+      "totalCost": 19.475751,
+      "totalTokens": 18382802,
+      "sessions": 6,
+      "messages": 492
+    },
+    {
+      "date": "2026-01-19",
+      "totalCost": 52.389605,
+      "totalTokens": 27323353,
+      "sessions": 2,
+      "messages": 609
+    },
+    {
+      "date": "2026-01-20",
+      "totalCost": 87.945875,
+      "totalTokens": 54438515,
+      "sessions": 98,
+      "messages": 1366
+    },
+    {
+      "date": "2026-01-21",
+      "totalCost": 113.272796,
+      "totalTokens": 66020670,
+      "sessions": 23,
+      "messages": 1612
+    },
+    {
+      "date": "2026-01-22",
+      "totalCost": 137.760256,
+      "totalTokens": 69727635,
+      "sessions": 56,
+      "messages": 1216
+    },
+    {
+      "date": "2026-01-23",
+      "totalCost": 192.568273,
+      "totalTokens": 87943580,
+      "sessions": 32,
+      "messages": 1484
+    },
+    {
+      "date": "2026-01-24",
+      "totalCost": 97.072658,
+      "totalTokens": 59628795,
+      "sessions": 25,
+      "messages": 1137
+    },
+    {
+      "date": "2026-01-25",
+      "totalCost": 110.047498,
+      "totalTokens": 102572176,
+      "sessions": 14,
+      "messages": 1373
+    },
+    {
+      "date": "2026-01-26",
+      "totalCost": 190.303487,
+      "totalTokens": 177141338,
+      "sessions": 12,
+      "messages": 2306
+    },
+    {
+      "date": "2026-01-27",
+      "totalCost": 123.803432,
+      "totalTokens": 127371026,
+      "sessions": 12,
+      "messages": 1640
+    },
+    {
+      "date": "2026-01-28",
+      "totalCost": 163.01681,
+      "totalTokens": 156056992,
+      "sessions": 133,
+      "messages": 2523
+    },
+    {
+      "date": "2026-01-29",
+      "totalCost": 155.230712,
+      "totalTokens": 148682720,
+      "sessions": 16,
+      "messages": 2242
+    },
+    {
+      "date": "2026-01-30",
+      "totalCost": 127.01572,
+      "totalTokens": 141653844,
+      "sessions": 19,
+      "messages": 2299
+    },
+    {
+      "date": "2026-01-31",
+      "totalCost": 132.175082,
+      "totalTokens": 146712434,
+      "sessions": 16,
+      "messages": 2063
+    },
+    {
+      "date": "2026-02-01",
+      "totalCost": 175.25269,
+      "totalTokens": 96497114,
+      "sessions": 23,
+      "messages": 1715
+    },
+    {
+      "date": "2026-02-02",
+      "totalCost": 75.371698,
+      "totalTokens": 84108508,
+      "sessions": 22,
+      "messages": 1395
+    },
+    {
+      "date": "2026-02-03",
+      "totalCost": 77.327708,
+      "totalTokens": 122747347,
+      "sessions": 16,
+      "messages": 1973
+    },
+    {
+      "date": "2026-02-04",
+      "totalCost": 92.735772,
+      "totalTokens": 80722081,
+      "sessions": 21,
+      "messages": 1185
+    },
+    {
+      "date": "2026-02-05",
+      "totalCost": 115.568532,
+      "totalTokens": 130381662,
+      "sessions": 9,
+      "messages": 1830
+    },
+    {
+      "date": "2026-02-06",
+      "totalCost": 160.024579,
+      "totalTokens": 222482985,
+      "sessions": 7,
+      "messages": 2649
+    },
+    {
+      "date": "2026-02-07",
+      "totalCost": 114.743953,
+      "totalTokens": 129485483,
+      "sessions": 161,
+      "messages": 2194
+    },
+    {
+      "date": "2026-02-08",
+      "totalCost": 93.378963,
+      "totalTokens": 113029420,
+      "sessions": 15,
+      "messages": 1482
+    },
+    {
+      "date": "2026-02-09",
+      "totalCost": 11.720338,
+      "totalTokens": 11198439,
+      "sessions": 10,
+      "messages": 232
+    }
+  ],
+  "byModel": [
+    {
+      "model": "claude-opus-4-5",
+      "provider": "anthropic",
+      "totalCost": 1802.423073,
+      "totalTokens": 1406133099,
+      "messages": 14400
+    },
+    {
+      "model": "claude-sonnet-4-5",
+      "provider": "anthropic",
+      "totalCost": 466.510145,
+      "totalTokens": 426049002,
+      "messages": 5858
+    },
+    {
+      "model": "claude-opus-4-6",
+      "provider": "anthropic",
+      "totalCost": 346.88463,
+      "totalTokens": 424354704,
+      "messages": 3950
+    },
+    {
+      "model": "gpt-5.2",
+      "provider": "openai-codex",
+      "totalCost": 42.895644,
+      "totalTokens": 71158180,
+      "messages": 1162
+    },
+    {
+      "model": "gpt-5.3-codex",
+      "provider": "openai-codex",
+      "totalCost": 16.030451,
+      "totalTokens": 20329329,
+      "messages": 647
+    },
+    {
+      "model": "claude-haiku-4-5",
+      "provider": "anthropic",
+      "totalCost": 15.374057,
+      "totalTokens": 36245539,
+      "messages": 1036
+    },
+    {
+      "model": "claude-sonnet-4-5-20250929",
+      "provider": "anthropic",
+      "totalCost": 1.385495,
+      "totalTokens": 1012969,
+      "messages": 31
+    },
+    {
+      "model": "claude-sonnet-4-20250514",
+      "provider": "anthropic",
+      "totalCost": 0.904394,
+      "totalTokens": 1127460,
+      "messages": 24
+    },
+    {
+      "model": "gpt-5.2-codex",
+      "provider": "openai-codex",
+      "totalCost": 0.836152,
+      "totalTokens": 1500188,
+      "messages": 36
+    },
+    {
+      "model": "x-ai/grok-4.1-fast",
+      "provider": "openrouter",
+      "totalCost": 0.030266,
+      "totalTokens": 67353,
+      "messages": 7
+    },
+    {
+      "model": "unknown",
+      "provider": "unknown",
+      "totalCost": 0.0,
+      "totalTokens": 0,
+      "messages": 9696
+    },
+    {
+      "model": "hf:MiniMaxAI/MiniMax-M2.1",
+      "provider": "synthetic",
+      "totalCost": 0.0,
+      "totalTokens": 14838718,
+      "messages": 196
+    },
+    {
+      "model": "hf:zai-org/GLM-4.7",
+      "provider": "synthetic",
+      "totalCost": 0.0,
+      "totalTokens": 26482845,
+      "messages": 329
+    },
+    {
+      "model": "hf:moonshotai/Kimi-K2.5",
+      "provider": "synthetic-openai",
+      "totalCost": 0.0,
+      "totalTokens": 8403817,
+      "messages": 200
+    },
+    {
+      "model": "delivery-mirror",
+      "provider": "openclaw",
+      "totalCost": 0.0,
+      "totalTokens": 0,
+      "messages": 976
+    },
+    {
+      "model": "claude-3-5-sonnet-20241022",
+      "provider": "anthropic",
+      "totalCost": 0.0,
+      "totalTokens": 0,
+      "messages": 1
+    },
+    {
+      "model": "hf:deepseek-ai/DeepSeek-V3.2",
+      "provider": "synthetic",
+      "totalCost": 0.0,
+      "totalTokens": 1392640,
+      "messages": 15
+    }
+  ],
+  "byAgent": [
+    {
+      "agent": "main",
+      "totalCost": 2667.378278,
+      "totalTokens": 2407067242,
+      "sessions": 734,
+      "messages": 37580
+    },
+    {
+      "agent": "moltbook-cami",
+      "totalCost": 11.75995,
+      "totalTokens": 12506547,
+      "sessions": 4,
+      "messages": 401
+    },
+    {
+      "agent": "codex",
+      "totalCost": 7.538753,
+      "totalTokens": 16342194,
+      "sessions": 3,
+      "messages": 251
+    },
+    {
+      "agent": "experiments",
+      "totalCost": 4.374167,
+      "totalTokens": 1049558,
+      "sessions": 8,
+      "messages": 129
+    },
+    {
+      "agent": "tefy",
+      "totalCost": 1.774511,
+      "totalTokens": 1335815,
+      "sessions": 3,
+      "messages": 95
+    },
+    {
+      "agent": "opus",
+      "totalCost": 0.28695,
+      "totalTokens": 63701,
+      "sessions": 1,
+      "messages": 8
+    },
+    {
+      "agent": "haiku",
+      "totalCost": 0.096353,
+      "totalTokens": 96645,
+      "sessions": 1,
+      "messages": 12
+    },
+    {
+      "agent": "gpt",
+      "totalCost": 0.03508,
+      "totalTokens": 22988,
+      "sessions": 1,
+      "messages": 4
+    },
+    {
+      "agent": "grok",
+      "totalCost": 0.030266,
+      "totalTokens": 67353,
+      "sessions": 2,
+      "messages": 14
+    },
+    {
+      "agent": "minimax",
+      "totalCost": 0.0,
+      "totalTokens": 170693,
+      "sessions": 1,
+      "messages": 20
+    },
+    {
+      "agent": "glm",
+      "totalCost": 0.0,
+      "totalTokens": 165211,
+      "sessions": 1,
+      "messages": 20
+    },
+    {
+      "agent": "kimi",
+      "totalCost": 0.0,
+      "totalTokens": 207896,
+      "sessions": 1,
+      "messages": 30
+    }
+  ],
+  "byHour": [
+    {
+      "hour": 0,
+      "messages": 108
+    },
+    {
+      "hour": 1,
+      "messages": 106
+    },
+    {
+      "hour": 2,
+      "messages": 121
+    },
+    {
+      "hour": 3,
+      "messages": 112
+    },
+    {
+      "hour": 4,
+      "messages": 364
+    },
+    {
+      "hour": 5,
+      "messages": 1119
+    },
+    {
+      "hour": 6,
+      "messages": 1132
+    },
+    {
+      "hour": 7,
+      "messages": 1330
+    },
+    {
+      "hour": 8,
+      "messages": 1684
+    },
+    {
+      "hour": 9,
+      "messages": 2142
+    },
+    {
+      "hour": 10,
+      "messages": 2181
+    },
+    {
+      "hour": 11,
+      "messages": 2127
+    },
+    {
+      "hour": 12,
+      "messages": 3083
+    },
+    {
+      "hour": 13,
+      "messages": 2550
+    },
+    {
+      "hour": 14,
+      "messages": 2816
+    },
+    {
+      "hour": 15,
+      "messages": 2388
+    },
+    {
+      "hour": 16,
+      "messages": 2074
+    },
+    {
+      "hour": 17,
+      "messages": 1283
+    },
+    {
+      "hour": 18,
+      "messages": 988
+    },
+    {
+      "hour": 19,
+      "messages": 1573
+    },
+    {
+      "hour": 20,
+      "messages": 2639
+    },
+    {
+      "hour": 21,
+      "messages": 2976
+    },
+    {
+      "hour": 22,
+      "messages": 2927
+    },
+    {
+      "hour": 23,
+      "messages": 741
+    }
+  ],
+  "topTools": [
+    {
+      "tool": "exec",
+      "count": 9826
+    },
+    {
+      "tool": "read",
+      "count": 2357
+    },
+    {
+      "tool": "process",
+      "count": 1910
+    },
+    {
+      "tool": "bash",
+      "count": 1572
+    },
+    {
+      "tool": "edit",
+      "count": 1203
+    },
+    {
+      "tool": "sessions_spawn",
+      "count": 505
+    },
+    {
+      "tool": "web_fetch",
+      "count": 469
+    },
+    {
+      "tool": "web_search",
+      "count": 457
+    },
+    {
+      "tool": "write",
+      "count": 419
+    },
+    {
+      "tool": "gateway",
+      "count": 307
+    },
+    {
+      "tool": "cron",
+      "count": 307
+    },
+    {
+      "tool": "nodes",
+      "count": 277
+    },
+    {
+      "tool": "message",
+      "count": 275
+    },
+    {
+      "tool": "sessions_list",
+      "count": 259
+    },
+    {
+      "tool": "memory_search",
+      "count": 178
+    },
+    {
+      "tool": "sessions_history",
+      "count": 86
+    },
+    {
+      "tool": "browser",
+      "count": 74
+    },
+    {
+      "tool": "sessions_send",
+      "count": 69
+    },
+    {
+      "tool": "session_status",
+      "count": 63
+    },
+    {
+      "tool": "memory_get",
+      "count": 43
+    },
+    {
+      "tool": "image",
+      "count": 17
+    },
+    {
+      "tool": "canvas",
+      "count": 17
+    },
+    {
+      "tool": "agents_list",
+      "count": 9
+    },
+    {
+      "tool": "tts",
+      "count": 5
+    },
+    {
+      "tool": "Bash",
+      "count": 1
+    }
+  ],
+  "totals": {
+    "cost": 2693.274307,
+    "tokens": 2439095843,
+    "sessions": 760,
+    "messages": 38564,
+    "dateRange": "2026-01-16 to 2026-02-09"
+  }
+}
