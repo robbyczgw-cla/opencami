@@ -342,6 +342,14 @@ export function SettingsDialog({
                 }
               />
             </SettingsRow>
+            <SettingsRow label="Show search sources">
+              <Switch
+                checked={settings.showSearchSources}
+                onCheckedChange={(checked) =>
+                  updateSettings({ showSearchSources: checked })
+                }
+              />
+            </SettingsRow>
             <SettingsRow
               label="Inline File Preview"
               description="Make file paths in messages clickable to preview file contents"

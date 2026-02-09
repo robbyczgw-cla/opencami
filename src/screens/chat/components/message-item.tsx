@@ -198,7 +198,7 @@ function MessageItemComponent({
   const toolCalls = role === 'assistant' ? getToolCallsFromMessage(message) : []
   const hasToolCalls = toolCalls.length > 0
   // Search sources are shown only on the last assistant message via aggregatedSearchSources
-  const searchSources = isLastAssistant && !isStreaming && aggregatedSearchSources ? aggregatedSearchSources : []
+  const searchSources = isLastAssistant && !isStreaming && settings.showSearchSources && aggregatedSearchSources ? aggregatedSearchSources : []
 
   return (
     <div
