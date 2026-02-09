@@ -382,6 +382,18 @@ export function SettingsDialog({
               />
             </SettingsRow>
             <SettingsRow
+              label="Agent Manager (Beta)"
+              description="Show Agent Manager in sidebar for creating and managing agents"
+            >
+              <Switch
+                checked={(() => { try { return localStorage.getItem('opencami-agent-manager') === 'true' } catch { return false } })()}
+                onCheckedChange={(checked) => {
+                  localStorage.setItem('opencami-agent-manager', String(checked))
+                  window.location.reload()
+                }}
+              />
+            </SettingsRow>
+            <SettingsRow
               label="Inline File Preview"
               description="Make file paths in messages clickable to preview file contents"
             >
