@@ -1,6 +1,7 @@
 import { memo, useLayoutEffect, useMemo, useRef } from 'react'
 import { getToolCallsFromMessage, textFromMessage } from '../utils'
 import { MessageItem } from './message-item'
+import type { SearchSource } from '@/components/search-sources-badge'
 import { FollowUpSuggestions } from './follow-up-suggestions'
 import type { GatewayMessage } from '../types'
 import {
@@ -67,6 +68,50 @@ function ChatMessageListComponent({
     }
     return map
   }, [messages])
+
+  // Aggregate all search sources across all assistant messages for the badge
+  const aggregatedSearchSources = useMemo(() => {
+    const sources: SearchSource[] = []
+    const seenUrls = new Set<string>()
+    for (const msg of displayMessages) {
+      if (msg.role !== 'assistant') continue
+      const toolCalls = getToolCallsFromMessage(msg)
+      for (const tc of toolCalls) {
+        if (!tc.id) continue
+        const isSearch = tc.name === 'web_search'
+        const isFetch = tc.name === 'web_fetch'
+        if (!isSearch && !isFetch) continue
+        const result = toolResultsByCallId.get(tc.id)
+        if (!result) continue
+        const text = result.content
+          ?.map((p: any) => (p.type === 'text' ? String(p.text ?? '') : ''))
+          .join('')
+          .trim()
+        if (!text) continue
+        try {
+          if (isSearch) {
+            const parsed = JSON.parse(text)
+            const items = Array.isArray(parsed) ? parsed : parsed?.results ?? parsed?.web?.results ?? []
+            for (const item of items) {
+              if (item?.url && item?.title && !seenUrls.has(item.url)) {
+                seenUrls.add(item.url)
+                sources.push({ title: item.title, url: item.url, snippet: item.description || item.snippet || item.content })
+              }
+            }
+          } else if (isFetch) {
+            const url = tc.arguments?.url as string
+            if (url && !seenUrls.has(url)) {
+              seenUrls.add(url)
+              let title: string
+              try { title = new URL(url).hostname } catch { title = url }
+              sources.push({ title, url })
+            }
+          }
+        } catch { /* skip */ }
+      }
+    }
+    return sources
+  }, [displayMessages, toolResultsByCallId])
 
   const lastAssistantIndex = displayMessages
     .map((message, index) => ({ message, index }))
@@ -168,6 +213,8 @@ function ChatMessageListComponent({
                     }
                     forceActionsVisible={forceActionsVisible}
                     isStreaming={isLastAssistant && isStreaming}
+                    isLastAssistant={isLastAssistant}
+                    aggregatedSearchSources={isLastAssistant ? aggregatedSearchSources : undefined}
                   />
                 )
               })}
@@ -206,6 +253,8 @@ function ChatMessageListComponent({
                       }
                       forceActionsVisible={forceActionsVisible}
                       isStreaming={isLastAssistant && isStreaming}
+                    isLastAssistant={isLastAssistant}
+                    aggregatedSearchSources={isLastAssistant ? aggregatedSearchSources : undefined}
                       wrapperRef={wrapperRef}
                       wrapperClassName={wrapperClassName}
                       wrapperScrollMarginTop={wrapperScrollMarginTop}
@@ -249,6 +298,8 @@ function ChatMessageListComponent({
                   }
                   forceActionsVisible={forceActionsVisible}
                   isStreaming={isLastAssistant && isStreaming}
+                    isLastAssistant={isLastAssistant}
+                    aggregatedSearchSources={isLastAssistant ? aggregatedSearchSources : undefined}
                 />
               )
             })}
