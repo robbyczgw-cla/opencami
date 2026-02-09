@@ -131,7 +131,13 @@ function ChatMessageListComponent({
             // Quick check: must contain "results" and "url" to be search output
             if (!text.includes('"results"') || !text.includes('"url"')) continue
           }
-          extractResults(text, sources, seenUrls)
+          // Try to find JSON in the text (exec output may have extra text before/after)
+          let jsonText = text
+          const jsonStart = text.indexOf('{')
+          if (jsonStart > 0) jsonText = text.slice(jsonStart)
+          const jsonEnd = jsonText.lastIndexOf('}')
+          if (jsonEnd > 0) jsonText = jsonText.slice(0, jsonEnd + 1)
+          extractResults(jsonText, sources, seenUrls)
         } else if (isFetch) {
           const url = tc.arguments?.url as string
           if (url && !seenUrls.has(url)) {
