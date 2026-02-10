@@ -29,7 +29,7 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsList, TabsTab } from '@/components/ui/tabs'
 import { useChatSettings } from '@/hooks/use-chat-settings'
-import type { ThemeMode } from '@/hooks/use-chat-settings'
+import type { ThemeMode, FontFamilyMode, DensityMode } from '@/hooks/use-chat-settings'
 import { Button } from '@/components/ui/button'
 import { useLlmSettings, getLlmProviderDefaults } from '@/hooks/use-llm-settings'
 
@@ -95,8 +95,64 @@ const textSizeOptions = [
 
 type TextSizeValue = (typeof textSizeOptions)[number]['value']
 
+const fontFamilyOptions = [
+  {
+    value: 'system',
+    label: 'System',
+    cssValue: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    previewClass: 'font-sans',
+  },
+  {
+    value: 'inter',
+    label: 'Inter',
+    cssValue: '"Inter", sans-serif',
+    previewClass: 'font-["Inter",sans-serif]',
+  },
+  {
+    value: 'ibm-plex-sans',
+    label: 'IBM Plex Sans',
+    cssValue: '"IBM Plex Sans", sans-serif',
+    previewClass: 'font-["IBM Plex Sans",sans-serif]',
+  },
+  {
+    value: 'jetbrains-mono',
+    label: 'JetBrains Mono',
+    cssValue: '"JetBrains Mono", monospace',
+    previewClass: 'font-["JetBrains Mono",monospace]',
+  },
+  {
+    value: 'merriweather',
+    label: 'Merriweather',
+    cssValue: '"Merriweather", serif',
+    previewClass: 'font-["Merriweather",serif]',
+  },
+  {
+    value: 'roboto',
+    label: 'Roboto',
+    cssValue: '"Roboto", sans-serif',
+    previewClass: 'font-["Roboto",sans-serif]',
+  },
+] as const
+
+const densityOptions = [
+  { value: 'compact', label: 'Compact' },
+  { value: 'comfortable', label: 'Comfortable' },
+  { value: 'spacious', label: 'Spacious' },
+] as const
+
+type FontFamilyValue = (typeof fontFamilyOptions)[number]['value']
+type DensityValue = (typeof densityOptions)[number]['value']
+
 function isTextSizeValue(value: string): value is TextSizeValue {
   return textSizeOptions.some((option) => option.value === value)
+}
+
+function isFontFamilyValue(value: string): value is FontFamilyValue {
+  return fontFamilyOptions.some((option) => option.value === value)
+}
+
+function isDensityValue(value: string): value is DensityValue {
+  return densityOptions.some((option) => option.value === value)
 }
 
 export function SettingsDialog({
@@ -155,6 +211,44 @@ export function SettingsDialog({
     try { return localStorage.getItem('opencami-stt-provider') || 'auto' } catch { return 'auto' }
   })
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    try {
+      const storedFontFamily = localStorage.getItem('opencami-font-family')
+      if (storedFontFamily && isFontFamilyValue(storedFontFamily)) {
+        applyFontFamily(storedFontFamily)
+        if (settings.fontFamily !== storedFontFamily) {
+          updateSettings({ fontFamily: storedFontFamily as FontFamilyMode })
+        }
+      } else {
+        applyFontFamily(settings.fontFamily)
+      }
+
+      const storedDensity = localStorage.getItem('opencami-density')
+      if (storedDensity && isDensityValue(storedDensity)) {
+        applyDensity(storedDensity)
+        if (settings.density !== storedDensity) {
+          updateSettings({ density: storedDensity as DensityMode })
+        }
+      } else {
+        applyDensity(settings.density)
+      }
+    } catch {
+      applyFontFamily(settings.fontFamily)
+      applyDensity(settings.density)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    applyFontFamily(settings.fontFamily)
+  }, [settings.fontFamily])
+
+  useEffect(() => {
+    applyDensity(settings.density)
+  }, [settings.density])
+
   const handleTtsProviderChange = (value: string) => {
     setTtsProvider(value)
     try { localStorage.setItem('opencami-tts-provider', value) } catch { /* ignore */ }
@@ -175,12 +269,65 @@ export function SettingsDialog({
     document.documentElement.style.setProperty('--opencami-text-size', value)
   }
 
+  function applyFontFamily(value: FontFamilyValue) {
+    if (typeof document === 'undefined') return
+    const selected = fontFamilyOptions.find((option) => option.value === value)
+    const cssValue = selected?.cssValue ?? fontFamilyOptions[0].cssValue
+    document.documentElement.style.setProperty('--opencami-font-family', cssValue)
+  }
+
+  function applyDensity(value: DensityValue) {
+    if (typeof document === 'undefined') return
+    const root = document.documentElement
+    root.style.setProperty('--opencami-density', value)
+
+    if (value === 'compact') {
+      root.style.setProperty('--opencami-msg-padding-y', '0.25rem')
+      root.style.setProperty('--opencami-msg-gap', '0.25rem')
+      root.style.setProperty('--opencami-user-bubble-py', '0.4rem')
+      return
+    }
+
+    if (value === 'spacious') {
+      root.style.setProperty('--opencami-msg-padding-y', '1.25rem')
+      root.style.setProperty('--opencami-msg-gap', '1rem')
+      root.style.setProperty('--opencami-user-bubble-py', '1rem')
+      return
+    }
+
+    root.style.setProperty('--opencami-msg-padding-y', '0.75rem')
+    root.style.setProperty('--opencami-msg-gap', '0.5rem')
+    root.style.setProperty('--opencami-user-bubble-py', '0.625rem')
+  }
+
   const handleTextSizeChange = (value: string) => {
     if (!isTextSizeValue(value)) return
     setTextSize(value)
     applyTextSize(value)
     try {
       localStorage.setItem('opencami-text-size', value)
+    } catch {
+      // ignore storage errors
+    }
+  }
+
+  const handleFontFamilyChange = (value: string) => {
+    if (!isFontFamilyValue(value)) return
+    applyFontFamily(value)
+    updateSettings({ fontFamily: value as FontFamilyMode })
+    try {
+      localStorage.setItem('opencami-font-family', value)
+    } catch {
+      // ignore storage errors
+    }
+  }
+
+  const handleDensityChange = (value: string) => {
+    if (!isDensityValue(value)) return
+    applyDensity(value)
+    updateSettings({ density: value as DensityMode })
+    try {
+      localStorage.setItem('opencami-density', value)
     } catch {
       // ignore storage errors
     }
@@ -407,6 +554,46 @@ export function SettingsDialog({
                       <span className="tabular-nums text-xs">
                         {option.label}
                       </span>
+                    </TabsTab>
+                  ))}
+                </TabsList>
+              </Tabs>
+            </SettingsRow>
+            <SettingsRow
+              label="Font Family"
+              description="Choose your reading style"
+            >
+              <select
+                value={settings.fontFamily}
+                onChange={(e) => handleFontFamilyChange(e.target.value)}
+                className={cn(
+                  'rounded-md border border-primary-200 bg-surface px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500',
+                  fontFamilyOptions.find((option) => option.value === settings.fontFamily)?.previewClass,
+                )}
+              >
+                {fontFamilyOptions.map((option) => (
+                  <option
+                    key={option.value}
+                    value={option.value}
+                    className={option.previewClass}
+                  >
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </SettingsRow>
+            <SettingsRow
+              label="Message Density"
+              description="Control spacing between messages"
+            >
+              <Tabs value={settings.density} onValueChange={handleDensityChange}>
+                <TabsList
+                  variant="default"
+                  className="gap-2 *:data-[slot=tab-indicator]:duration-0"
+                >
+                  {densityOptions.map((option) => (
+                    <TabsTab key={option.value} value={option.value}>
+                      <span className="text-xs">{option.label}</span>
                     </TabsTab>
                   ))}
                 </TabsList>

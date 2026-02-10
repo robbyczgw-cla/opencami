@@ -85,6 +85,51 @@ const textSizeScript = `
 })()
 `
 
+const fontFamilyScript = `
+(() => {
+  try {
+    const stored = localStorage.getItem('opencami-font-family')
+    const map = {
+      'system': '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+      'inter': '"Inter", sans-serif',
+      'ibm-plex-sans': '"IBM Plex Sans", sans-serif',
+      'jetbrains-mono': '"JetBrains Mono", monospace',
+      'merriweather': '"Merriweather", serif',
+      'roboto': '"Roboto", sans-serif',
+    }
+    const value = map[stored] || map.system
+    document.documentElement.style.setProperty('--opencami-font-family', value)
+  } catch {}
+})()
+`
+
+const densityScript = `
+(() => {
+  try {
+    const stored = localStorage.getItem('opencami-density')
+    const value = stored === 'compact' || stored === 'spacious' || stored === 'comfortable'
+      ? stored
+      : 'comfortable'
+    const root = document.documentElement
+    root.style.setProperty('--opencami-density', value)
+
+    if (value === 'compact') {
+      root.style.setProperty('--opencami-msg-padding-y', '0.25rem')
+      root.style.setProperty('--opencami-msg-gap', '0.25rem')
+      root.style.setProperty('--opencami-user-bubble-py', '0.4rem')
+    } else if (value === 'spacious') {
+      root.style.setProperty('--opencami-msg-padding-y', '1.25rem')
+      root.style.setProperty('--opencami-msg-gap', '1rem')
+      root.style.setProperty('--opencami-user-bubble-py', '1rem')
+    } else {
+      root.style.setProperty('--opencami-msg-padding-y', '0.75rem')
+      root.style.setProperty('--opencami-msg-gap', '0.5rem')
+      root.style.setProperty('--opencami-user-bubble-py', '0.625rem')
+    }
+  } catch {}
+})()
+`
+
 function NotFoundRedirect() {
   if (typeof window !== 'undefined') {
     window.location.href = '/chat/main'
@@ -194,6 +239,8 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       <head>
         <script dangerouslySetInnerHTML={{ __html: tauriDetectScript }} />
         <script dangerouslySetInnerHTML={{ __html: textSizeScript }} />
+        <script dangerouslySetInnerHTML={{ __html: fontFamilyScript }} />
+        <script dangerouslySetInnerHTML={{ __html: densityScript }} />
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <script dangerouslySetInnerHTML={{ __html: swRegisterScript }} />
         <HeadContent />

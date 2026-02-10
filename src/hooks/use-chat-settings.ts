@@ -3,6 +3,8 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
 export type ThemeMode = 'system' | 'light' | 'dark' | 'chameleon'
+export type FontFamilyMode = 'system' | 'inter' | 'ibm-plex-sans' | 'jetbrains-mono' | 'merriweather' | 'roboto'
+export type DensityMode = 'compact' | 'comfortable' | 'spacious'
 
 export type ChatSettings = {
   showToolMessages: boolean
@@ -10,6 +12,8 @@ export type ChatSettings = {
   showSearchSources: boolean
   inlineFilePreview: boolean
   theme: ThemeMode
+  fontFamily: FontFamilyMode
+  density: DensityMode
 }
 
 type ChatSettingsState = {
@@ -26,6 +30,8 @@ export const useChatSettingsStore = create<ChatSettingsState>()(
         showSearchSources: true,
         inlineFilePreview: false,
         theme: 'system',
+        fontFamily: 'system',
+        density: 'comfortable',
       },
       updateSettings: (updates) =>
         set((state) => ({
@@ -34,6 +40,17 @@ export const useChatSettingsStore = create<ChatSettingsState>()(
     }),
     {
       name: 'chat-settings',
+      merge: (persistedState, currentState) => {
+        const persisted = persistedState as Partial<ChatSettingsState> | undefined
+        return {
+          ...currentState,
+          ...persisted,
+          settings: {
+            ...currentState.settings,
+            ...(persisted?.settings ?? {}),
+          },
+        }
+      },
     },
   ),
 )

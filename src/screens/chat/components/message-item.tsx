@@ -211,7 +211,7 @@ function MessageItemComponent({
           : undefined),
       }}
       className={cn(
-        'group flex flex-col gap-1',
+        'group flex flex-col gap-1 py-[var(--opencami-msg-padding-y)]',
         wrapperClassName,
         isUser ? 'items-end' : 'items-start',
       )}
@@ -246,7 +246,7 @@ function MessageItemComponent({
             'text-primary-900 opencami-text-size min-w-0 max-w-full',
             !isUser
               ? 'bg-transparent w-full'
-              : 'bg-primary-100 px-4 py-2.5 max-w-[85%]',
+              : 'bg-primary-100 px-4 py-[var(--opencami-user-bubble-py)] max-w-[85%]',
             !isUser && isStreaming && 'stream-fade-in',
           )}
         >
