@@ -85,7 +85,7 @@ Then open the URL printed by Vite in your terminal.
 - [Architecture](docs/architecture.md)
 - [Deployment](docs/deployment.md)
 - [Contributing](docs/contributing.md)
-- [Changelog](CHANGELOG.md)
+- [Changelog](https://github.com/robbyczgw-cla/opencami/blob/main/CHANGELOG.md)
 
 ## Credits
 
