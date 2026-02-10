@@ -742,7 +742,7 @@ export function SettingsDialog({
               label="Accent Color"
               description="Personalize buttons, links, and highlights"
             >
-              <div className="grid grid-cols-4 gap-2">
+              <div className="flex gap-1 flex-wrap">
                 {accentColorOptions.map((option) => {
                   const selected = settings.accentColor === option.value
                   return (
@@ -751,18 +751,18 @@ export function SettingsDialog({
                       type="button"
                       onClick={() => handleAccentColorChange(option.value)}
                       className={cn(
-                        'flex flex-col items-center gap-1 rounded-lg px-2 py-1.5 transition-colors',
+                        'flex items-center justify-center rounded-lg p-1.5 transition-colors',
                         selected ? 'bg-primary-100' : 'hover:bg-primary-50',
                       )}
                     >
                       <span
                         className={cn(
-                          'size-6 rounded-full border-2',
+                          'size-8 rounded-full border-2',
                           selected ? 'border-primary-900' : 'border-primary-300',
                         )}
                         style={{ backgroundColor: option.accent }}
                       />
-                      <span className="text-[11px] text-primary-700">{option.label}</span>
+                      {/* Label removed for cleaner look */}
                     </button>
                   )
                 })}
