@@ -194,7 +194,7 @@ Open OpenCami in your phone browser and use the browser’s “Add to Home Scree
 <details>
 <summary><strong>Is there a native mobile app?</strong></summary>
 
-There is no official fully independent native OpenCami mobile app in this repo today. The recommended mobile path is the PWA experience. (Separately, the broader ecosystem may include companion apps built in other repositories.)
+Yes — OpenCami includes a **Capacitor-based Android app** (source in the `android/` directory). It's currently in **Beta** and not distributed as a pre-built APK. You can build it yourself with `npx cap sync android && npx cap open android`. The recommended mobile path for most users is the **PWA**, which works out of the box on both Android and iOS.
 
 </details>
 
