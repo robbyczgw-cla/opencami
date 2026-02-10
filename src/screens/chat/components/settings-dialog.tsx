@@ -67,10 +67,24 @@ function SettingsSection({ title, tabId, activeTab, children }: SettingsSectionP
 type SettingsRowProps = {
   label: string
   description?: string
+  inline?: boolean
   children: React.ReactNode
 }
 
-function SettingsRow({ label, description, children }: SettingsRowProps) {
+function SettingsRow({ label, description, inline, children }: SettingsRowProps) {
+  if (inline) {
+    return (
+      <div className="flex items-center justify-between">
+        <div className="flex-1 select-none">
+          <div className="text-[13px] font-medium text-primary-800">{label}</div>
+          {description && (
+            <div className="text-xs text-primary-500">{description}</div>
+          )}
+        </div>
+        <div className="flex items-center gap-2">{children}</div>
+      </div>
+    )
+  }
   return (
     <div className="space-y-1">
       <div className="select-none">
@@ -704,7 +718,7 @@ export function SettingsDialog({
             <div className="flex-1 overflow-y-auto md:max-h-[calc(85vh-90px)] max-h-none">
 
           <SettingsSection title="Connection" tabId="connection" activeTab={activeTab}>
-            <SettingsRow label="Status">
+            <SettingsRow inline label="Status">
               <span className="flex items-center gap-1.5 text-sm text-green-600">
                 <span className="size-2 rounded-full bg-green-500" />
                 Connected
@@ -886,7 +900,7 @@ export function SettingsDialog({
           </SettingsSection>
 
           <SettingsSection title="Chat" tabId="chat" activeTab={activeTab}>
-            <SettingsRow label="Show tool messages">
+            <SettingsRow inline label="Show tool messages">
               <Switch
                 checked={settings.showToolMessages}
                 onCheckedChange={(checked) =>
@@ -894,7 +908,7 @@ export function SettingsDialog({
                 }
               />
             </SettingsRow>
-            <SettingsRow label="Show reasoning blocks">
+            <SettingsRow inline label="Show reasoning blocks">
               <Switch
                 checked={settings.showReasoningBlocks}
                 onCheckedChange={(checked) =>
@@ -902,7 +916,7 @@ export function SettingsDialog({
                 }
               />
             </SettingsRow>
-            <SettingsRow label="Show search sources">
+            <SettingsRow inline label="Show search sources">
               <Switch
                 checked={settings.showSearchSources}
                 onCheckedChange={(checked) =>
@@ -910,7 +924,7 @@ export function SettingsDialog({
                 }
               />
             </SettingsRow>
-            <SettingsRow
+            <SettingsRow inline
               label="Agent Manager (Beta)"
               description="Show Agent Manager in sidebar for creating and managing agents"
             >
@@ -922,7 +936,7 @@ export function SettingsDialog({
                 }}
               />
             </SettingsRow>
-            <SettingsRow
+            <SettingsRow inline
               label="Cron Jobs Panel (Beta)"
               description="Show Cron Jobs in sidebar for managing OpenClaw cron schedules"
             >
@@ -934,7 +948,7 @@ export function SettingsDialog({
                 }}
               />
             </SettingsRow>
-            <SettingsRow
+            <SettingsRow inline
               label="Inline File Preview"
               description="Make file paths in messages clickable to preview file contents"
             >
@@ -949,7 +963,7 @@ export function SettingsDialog({
 
           <SettingsSection title="Personas" tabId="personas" activeTab={activeTab}>
             {personasAvailable ? (
-              <SettingsRow
+              <SettingsRow inline
                 label="Persona Picker"
                 description="Show persona picker in chat (20 personalities)"
               >
@@ -959,7 +973,7 @@ export function SettingsDialog({
                 />
               </SettingsRow>
             ) : (
-              <SettingsRow
+              <SettingsRow inline
                 label="Persona Picker"
                 description="Install the Personas skill to unlock 20 AI personalities"
               >
@@ -981,7 +995,7 @@ export function SettingsDialog({
           </SettingsSection>
 
           <SettingsSection title="Text-to-Speech" tabId="voice" activeTab={activeTab}>
-            <SettingsRow
+            <SettingsRow inline
               label="Voice Playback"
               description="Add a 🔊 button to AI messages for text-to-speech"
             >
@@ -990,7 +1004,7 @@ export function SettingsDialog({
                 onCheckedChange={handleTtsToggle}
               />
             </SettingsRow>
-            <SettingsRow
+            <SettingsRow inline
               label="TTS Provider"
               description="Choose which service generates speech"
             >
@@ -1006,7 +1020,7 @@ export function SettingsDialog({
               </select>
             </SettingsRow>
             {(ttsProvider === 'openai') && (
-              <SettingsRow
+              <SettingsRow inline
                 label="Voice"
                 description="OpenAI voice selection"
               >
@@ -1024,7 +1038,7 @@ export function SettingsDialog({
           </SettingsSection>
 
           <SettingsSection title="Speech-to-Text" tabId="voice" activeTab={activeTab}>
-            <SettingsRow
+            <SettingsRow inline
               label="STT Provider"
               description="Choose which service transcribes your voice"
             >
@@ -1056,7 +1070,7 @@ export function SettingsDialog({
               )}
             </div>
 
-            <SettingsRow
+            <SettingsRow inline
               label="Provider"
               description="Choose LLM provider for titles & follow-ups"
             >
@@ -1079,7 +1093,7 @@ export function SettingsDialog({
               </select>
             </SettingsRow>
 
-            <SettingsRow
+            <SettingsRow inline
               label="Smart session titles"
               description="Generate concise titles using AI"
             >
@@ -1092,7 +1106,7 @@ export function SettingsDialog({
               />
             </SettingsRow>
 
-            <SettingsRow
+            <SettingsRow inline
               label="Smart follow-up suggestions"
               description="AI-generated contextual follow-ups"
             >
