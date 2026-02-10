@@ -117,6 +117,29 @@ export function useSearchSkills(query: string) {
   return { skills, loading, error }
 }
 
+export function usePublishedSkills() {
+  const [skills, setSkills] = useState<ExploreSkill[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const refresh = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const data = await fetchApi<ExploreSkill>('/api/skills?action=published')
+      setSkills(data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { void refresh() }, [refresh])
+
+  return { skills, loading, error, refresh }
+}
+
 export function useInstallSkill() {
   const [installing, setInstalling] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)

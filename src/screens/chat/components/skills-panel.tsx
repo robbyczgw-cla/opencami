@@ -10,6 +10,7 @@ import {
   ArrowLeft01Icon,
   ArrowUpRight01Icon,
   Calendar01Icon,
+  StarIcon,
 } from '@hugeicons/core-free-icons'
 import { Link } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
@@ -20,6 +21,7 @@ import {
   useSearchSkills,
   useInstallSkill,
   useUpdateSkill,
+  usePublishedSkills,
 } from '@/hooks/use-skills'
 import type { ExploreSkill } from '@/hooks/use-skills'
 
@@ -410,11 +412,136 @@ function InstalledTab() {
   )
 }
 
+function PublishedTab() {
+  const { skills, loading, error } = usePublishedSkills()
+
+  const totalDownloads = useMemo(
+    () => skills.reduce((sum, s) => sum + (s.stats?.downloads || 0), 0),
+    [skills],
+  )
+  const totalStars = useMemo(
+    () => skills.reduce((sum, s) => sum + (s.stats?.stars || 0), 0),
+    [skills],
+  )
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <HugeiconsIcon icon={Loading02Icon} size={18} className="animate-spin text-primary-300" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return <div className="text-sm text-red-500 py-8 text-center">{error}</div>
+  }
+
+  if (skills.length === 0) {
+    return (
+      <div className="py-12 text-center">
+        <p className="text-sm text-primary-400">No published skills found</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Portfolio summary */}
+      <div className="flex items-center gap-6 py-3 px-4 rounded-lg bg-primary-50/60 border border-primary-100">
+        <div>
+          <div className="text-lg font-semibold text-primary-900">{skills.length}</div>
+          <div className="text-[10px] text-primary-400 uppercase tracking-wide">Skills</div>
+        </div>
+        <div>
+          <div className="text-lg font-semibold text-primary-900">{totalDownloads.toLocaleString()}</div>
+          <div className="text-[10px] text-primary-400 uppercase tracking-wide">Downloads</div>
+        </div>
+        {totalStars > 0 && (
+          <div>
+            <div className="text-lg font-semibold text-primary-900">{totalStars}</div>
+            <div className="text-[10px] text-primary-400 uppercase tracking-wide">Stars</div>
+          </div>
+        )}
+      </div>
+
+      {/* Skill cards */}
+      <div className="space-y-2">
+        {skills.map((skill) => {
+          const slug = skill.slug || ''
+          const name = skill.displayName || slug
+          const version = skill.version || skill.latestVersion?.version || ''
+          const downloads = skill.stats?.downloads || 0
+          const stars = skill.stats?.stars || 0
+          const installs = skill.stats?.installsAllTime || skill.stats?.installsCurrent || 0
+
+          return (
+            <a
+              key={slug}
+              href={`https://www.clawhub.ai/${slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group block rounded-lg border border-primary-100 bg-surface p-4 transition-all duration-150 ease-out hover:border-primary-200 hover:shadow-sm"
+            >
+              <div className="flex items-start justify-between gap-3 mb-1.5">
+                <h4 className="text-[13px] font-semibold text-primary-900 leading-tight truncate group-hover:text-primary-700 transition-colors duration-150">
+                  {name}
+                </h4>
+                <div className="flex items-center gap-2 shrink-0">
+                  {version && (
+                    <span className="text-[10px] font-mono text-primary-400">{version}</span>
+                  )}
+                  <HugeiconsIcon
+                    icon={ArrowUpRight01Icon}
+                    size={12}
+                    strokeWidth={1.5}
+                    className="text-primary-300 opacity-0 group-hover:opacity-100 transition-opacity duration-150"
+                  />
+                </div>
+              </div>
+
+              {skill.summary && (
+                <p className="text-xs text-primary-500 leading-relaxed line-clamp-2 mb-3">
+                  {skill.summary}
+                </p>
+              )}
+
+              <div className="flex items-center gap-4 pt-2 border-t border-primary-50">
+                <span className="text-[11px] text-primary-400 flex items-center gap-1">
+                  <HugeiconsIcon icon={Download04Icon} size={11} strokeWidth={1.5} />
+                  {downloads.toLocaleString()}
+                </span>
+                {stars > 0 && (
+                  <span className="text-[11px] text-primary-400 flex items-center gap-1">
+                    <HugeiconsIcon icon={StarIcon} size={11} strokeWidth={1.5} />
+                    {stars}
+                  </span>
+                )}
+                {installs > 0 && (
+                  <span className="text-[11px] text-primary-400 flex items-center gap-1">
+                    <HugeiconsIcon icon={Tick01Icon} size={11} strokeWidth={1.5} />
+                    {installs.toLocaleString()}
+                  </span>
+                )}
+                {skill.updatedAt && (
+                  <span className="text-[11px] text-primary-400 flex items-center gap-1 ml-auto">
+                    <HugeiconsIcon icon={Calendar01Icon} size={11} strokeWidth={1.5} />
+                    {formatDate(skill.updatedAt)}
+                  </span>
+                )}
+              </div>
+            </a>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 function BrowseTab() {
-  const [sort, setSort] = useState('trending')
+  const [sort, setSort] = useState('downloads')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedSkill, setSelectedSkill] = useState<ExploreSkill | null>(null)
-  const { skills: exploreSkills, loading: exploreLoading, error: exploreError } = useExploreSkills(sort, 25)
+  const { skills: exploreSkills, loading: exploreLoading, error: exploreError } = useExploreSkills(sort, 50)
   const { skills: searchResults, loading: searchLoading } = useSearchSkills(searchQuery)
   const { skills: installedSkills } = useInstalledSkills()
   const { install, installing } = useInstallSkill()
@@ -545,6 +672,9 @@ export function SkillsPanel() {
             <TabsTab value="installed">
               <span className="text-xs">Installed</span>
             </TabsTab>
+            <TabsTab value="published">
+              <span className="text-xs">Published</span>
+            </TabsTab>
             <TabsTab value="browse">
               <span className="text-xs">Browse</span>
             </TabsTab>
@@ -552,7 +682,9 @@ export function SkillsPanel() {
         </Tabs>
       </div>
       <div className="flex-1 overflow-y-auto px-4 pb-4 pt-4">
-        {tab === 'installed' ? <InstalledTab /> : <BrowseTab />}
+        {tab === 'installed' && <InstalledTab />}
+        {tab === 'published' && <PublishedTab />}
+        {tab === 'browse' && <BrowseTab />}
       </div>
     </div>
   )

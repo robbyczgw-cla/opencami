@@ -82,6 +82,30 @@ export const Route = createFileRoute('/api/skills')({
             return json({ ok: true, skills: parseSearchResults(output) })
           }
 
+          if (action === 'published') {
+            const PUBLISHED_SKILLS = [
+              'web-search-plus',
+              'elevenlabs-voices',
+              'sports-ticker',
+              'smart-followups',
+              'agent-chronicle',
+              'topic-monitor',
+              'personas',
+              'youtube-apify-transcript',
+            ]
+            const raw = runCmd('clawhub explore --json --limit 200 --sort downloads')
+            const output = raw.substring(raw.indexOf('{'))
+            try {
+              const data = JSON.parse(output)
+              const all = Array.isArray(data) ? data : data.items || data.skills || data.results || []
+              const slugSet = new Set(PUBLISHED_SKILLS)
+              const filtered = all.filter((s: { slug?: string }) => s.slug && slugSet.has(s.slug))
+              return json({ ok: true, skills: filtered })
+            } catch {
+              return json({ ok: true, skills: [] })
+            }
+          }
+
           return json({ ok: false, error: 'Unknown action' }, { status: 400 })
         } catch (err) {
           return json(
