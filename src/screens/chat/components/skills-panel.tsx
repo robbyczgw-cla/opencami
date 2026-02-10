@@ -346,7 +346,7 @@ function SkillDetailView({
           </Button>
         )}
         <a
-          href={`https://www.clawhub.ai/${slug}`}
+          href={`https://clawhub.com/skills/${slug}`}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1 px-4 py-2 text-sm font-medium text-primary-600 hover:text-primary-800 transition-colors duration-150"
@@ -479,7 +479,7 @@ function MySkillsTab() {
           return (
             <a
               key={slug}
-              href={`https://www.clawhub.ai/${slug}`}
+              href={`https://clawhub.com/skills/${slug}`}
               target="_blank"
               rel="noopener noreferrer"
               className="group block rounded-lg border border-primary-100 bg-surface p-4 transition-all duration-150 ease-out hover:border-primary-200 hover:shadow-sm"

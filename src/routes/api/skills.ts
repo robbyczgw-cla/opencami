@@ -109,40 +109,31 @@ export const Route = createFileRoute('/api/skills')({
             return json({ ok: true, skills: parseSearchResults(output) })
           }
 
-          if (action === 'my-skills') {
-            const mySlugs = loadMySkillsSlugs()
-            if (mySlugs.length === 0) {
+          if (action === 'my-skills' || action === 'recommended') {
+            const targetSlugs = action === 'my-skills' ? loadMySkillsSlugs() : RECOMMENDED_SKILLS
+            if (targetSlugs.length === 0) {
               return json({ ok: true, skills: [] })
             }
-            const raw = runCmd('clawhub explore --json --limit 200 --sort downloads')
-            const output = raw.substring(raw.indexOf('{'))
-            try {
-              const data = JSON.parse(output)
-              const all = Array.isArray(data) ? data : data.items || data.skills || data.results || []
-              const slugSet = new Set(mySlugs)
-              const filtered = all.filter((s: { slug?: string }) => s.slug && slugSet.has(s.slug))
-              return json({ ok: true, skills: filtered })
-            } catch {
-              return json({ ok: true, skills: [] })
+            const slugSet = new Set(targetSlugs)
+            const found = new Map<string, unknown>()
+            // Fetch multiple sort orders to maximize coverage
+            for (const sort of ['downloads', 'installs', 'newest', 'trending']) {
+              if (found.size >= slugSet.size) break
+              try {
+                const raw = runCmd(`clawhub explore --json --limit 200 --sort ${sort}`)
+                const output = raw.substring(raw.indexOf('{'))
+                const data = JSON.parse(output)
+                const items = Array.isArray(data) ? data : data.items || []
+                for (const item of items) {
+                  if (item.slug && slugSet.has(item.slug) && !found.has(item.slug)) {
+                    found.set(item.slug, item)
+                  }
+                }
+              } catch { /* skip this sort */ }
             }
-          }
-
-          if (action === 'recommended') {
-            const raw = runCmd('clawhub explore --json --limit 200 --sort downloads')
-            const output = raw.substring(raw.indexOf('{'))
-            try {
-              const data = JSON.parse(output)
-              const all = Array.isArray(data) ? data : data.items || data.skills || data.results || []
-              const slugSet = new Set(RECOMMENDED_SKILLS)
-              const filtered = all.filter((s: { slug?: string }) => s.slug && slugSet.has(s.slug))
-              // Sort by downloads (already sorted by API, but ensure order)
-              filtered.sort((a: { stats?: { downloads?: number } }, b: { stats?: { downloads?: number } }) =>
-                (b.stats?.downloads || 0) - (a.stats?.downloads || 0)
-              )
-              return json({ ok: true, skills: filtered })
-            } catch {
-              return json({ ok: true, skills: [] })
-            }
+            const skills = Array.from(found.values())
+            skills.sort((a: any, b: any) => (b.stats?.downloads || 0) - (a.stats?.downloads || 0))
+            return json({ ok: true, skills })
           }
 
           return json({ ok: false, error: 'Unknown action' }, { status: 400 })
