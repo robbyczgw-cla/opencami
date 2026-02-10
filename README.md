@@ -79,9 +79,11 @@ Then open the URL printed by Vite in your terminal.
 
 > Dev port notes: this repo's `npm run dev` script uses port `3002`. If you run Vite directly with the config default, it targets `3003` and auto-falls back to the next free port.
 
-## 🖥️ Desktop App (Tauri)
+## 🖥️ Desktop App (Tauri) — ⚠️ Beta
 
-OpenCami also ships as a native macOS/Windows/Linux desktop wrapper built with Tauri v2. The app loads your self-hosted OpenCami web instance.
+> **Note:** The desktop app is experimental and under active development. The primary focus of OpenCami is the **web app**. Native builds (desktop & mobile) are secondary.
+
+OpenCami can also run as a native macOS/Windows/Linux desktop wrapper built with Tauri v2. The app loads your self-hosted OpenCami web instance.
 
 ### Prerequisites
 
