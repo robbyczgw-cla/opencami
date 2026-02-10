@@ -21,7 +21,8 @@ import {
   useSearchSkills,
   useInstallSkill,
   useUpdateSkill,
-  usePublishedSkills,
+  useMySkills,
+  useRecommendedSkills,
 } from '@/hooks/use-skills'
 import type { ExploreSkill } from '@/hooks/use-skills'
 
@@ -412,8 +413,8 @@ function InstalledTab() {
   )
 }
 
-function PublishedTab() {
-  const { skills, loading, error } = usePublishedSkills()
+function MySkillsTab() {
+  const { skills, loading, error } = useMySkills()
 
   const totalDownloads = useMemo(
     () => skills.reduce((sum, s) => sum + (s.stats?.downloads || 0), 0),
@@ -439,7 +440,8 @@ function PublishedTab() {
   if (skills.length === 0) {
     return (
       <div className="py-12 text-center">
-        <p className="text-sm text-primary-400">No published skills found</p>
+        <p className="text-sm text-primary-400">No skills configured</p>
+        <p className="text-xs text-primary-300 mt-1">Add slugs to .clawhub-my-skills.json</p>
       </div>
     )
   }
@@ -537,11 +539,161 @@ function PublishedTab() {
   )
 }
 
+function RecommendedTab() {
+  const { skills, loading, error } = useRecommendedSkills()
+  const { skills: installedSkills } = useInstalledSkills()
+  const { install, installing } = useInstallSkill()
+  const refreshInstalled = useInstalledSkills().refresh
+
+  const installedSet = useMemo(
+    () => new Set(installedSkills.map((s) => s.name)),
+    [installedSkills],
+  )
+
+  const handleInstall = async (slug: string) => {
+    try {
+      await install(slug)
+      void refreshInstalled()
+    } catch {
+      // handled in hook
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <HugeiconsIcon icon={Loading02Icon} size={18} className="animate-spin text-primary-300" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return <div className="text-sm text-red-500 py-8 text-center">{error}</div>
+  }
+
+  if (skills.length === 0) {
+    return (
+      <div className="py-12 text-center">
+        <p className="text-sm text-primary-400">No recommended skills available</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center gap-2 text-xs text-primary-500">
+        <HugeiconsIcon icon={StarIcon} size={14} strokeWidth={1.5} className="text-amber-400" />
+        <span>Curated skills we recommend</span>
+      </div>
+
+      {/* Skill cards grid */}
+      <div className="grid gap-3">
+        {skills.map((skill) => {
+          const slug = skill.slug || ''
+          const name = skill.displayName || slug
+          const isInstalled = installedSet.has(slug) || installedSet.has(name)
+
+          return (
+            <div
+              key={slug}
+              className="group relative rounded-lg border border-primary-100 bg-surface p-4 transition-all duration-150 ease-out hover:border-primary-200 hover:shadow-sm"
+            >
+              {/* Recommended badge */}
+              <div className="absolute -top-1.5 -right-1.5">
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[9px] font-medium rounded-full bg-amber-50 text-amber-600 border border-amber-100">
+                  <HugeiconsIcon icon={StarIcon} size={8} strokeWidth={2} />
+                  Pick
+                </span>
+              </div>
+
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <h4 className="text-[13px] font-semibold text-primary-900 leading-tight truncate">
+                  {name}
+                </h4>
+                {skill.version && (
+                  <span className="shrink-0 text-[10px] font-mono text-primary-400">
+                    {skill.version}
+                  </span>
+                )}
+              </div>
+
+              {skill.summary && (
+                <p className="text-xs text-primary-500 leading-relaxed line-clamp-2 mb-3">
+                  {skill.summary}
+                </p>
+              )}
+
+              <div className="flex items-center justify-between pt-2 border-t border-primary-50">
+                <div className="flex items-center gap-2">
+                  {skill.stats?.downloads !== undefined && skill.stats.downloads > 0 && (
+                    <span className="text-[11px] text-primary-400 flex items-center gap-1">
+                      <HugeiconsIcon icon={Download04Icon} size={11} strokeWidth={1.5} />
+                      {skill.stats.downloads.toLocaleString()}
+                    </span>
+                  )}
+                  {skill.stats?.stars !== undefined && skill.stats.stars > 0 && (
+                    <span className="text-[11px] text-primary-400 flex items-center gap-1">
+                      <HugeiconsIcon icon={StarIcon} size={11} strokeWidth={1.5} />
+                      {skill.stats.stars}
+                    </span>
+                  )}
+                </div>
+
+                <div onClick={(e) => e.stopPropagation()}>
+                  {isInstalled ? (
+                    <span className="text-[11px] font-medium text-emerald-500 flex items-center gap-1">
+                      <HugeiconsIcon icon={Tick01Icon} size={11} strokeWidth={2} />
+                      Installed
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => handleInstall(slug)}
+                      disabled={installing === slug}
+                      className="text-[11px] font-medium text-primary-600 hover:text-primary-800 transition-colors duration-150 disabled:opacity-50"
+                    >
+                      {installing === slug ? (
+                        <HugeiconsIcon icon={Loading02Icon} size={12} className="animate-spin" />
+                      ) : (
+                        'Install'
+                      )}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+type SortField = 'downloads' | 'stars' | 'updatedAt'
+
+function sortSkills<T extends ExploreSkill>(skills: T[], sortBy: SortField): T[] {
+  return [...skills].sort((a, b) => {
+    if (sortBy === 'downloads') {
+      return (b.stats?.downloads || 0) - (a.stats?.downloads || 0)
+    }
+    if (sortBy === 'stars') {
+      return (b.stats?.stars || 0) - (a.stats?.stars || 0)
+    }
+    if (sortBy === 'updatedAt') {
+      return (b.updatedAt || 0) - (a.updatedAt || 0)
+    }
+    return 0
+  })
+}
+
 function BrowseTab() {
-  const [sort, setSort] = useState('downloads')
+  const [sort, setSort] = useState<SortField>('downloads')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedSkill, setSelectedSkill] = useState<ExploreSkill | null>(null)
-  const { skills: exploreSkills, loading: exploreLoading, error: exploreError } = useExploreSkills(sort, 50)
+  
+  // Map sort field to API sort param
+  const apiSort = sort === 'updatedAt' ? 'newest' : sort === 'stars' ? 'trending' : 'downloads'
+  const { skills: exploreSkills, loading: exploreLoading, error: exploreError } = useExploreSkills(apiSort, 50)
   const { skills: searchResults, loading: searchLoading } = useSearchSkills(searchQuery)
   const { skills: installedSkills } = useInstalledSkills()
   const { install, installing } = useInstallSkill()
@@ -563,7 +715,16 @@ function BrowseTab() {
   }
 
   const isSearching = searchQuery.trim().length > 0
-  const skills = isSearching ? searchResults : exploreSkills
+  
+  // Client-side sort search results, server-side sort for explore
+  const skills = useMemo(() => {
+    if (isSearching) {
+      // Cast search results to ExploreSkill for sorting
+      return sortSkills(searchResults as ExploreSkill[], sort)
+    }
+    return exploreSkills
+  }, [isSearching, searchResults, exploreSkills, sort])
+  
   const loading = isSearching ? searchLoading : exploreLoading
 
   if (selectedSkill) {
@@ -584,35 +745,35 @@ function BrowseTab() {
 
   return (
     <div className="space-y-4">
-      {/* Search */}
-      <div className="relative">
-        <HugeiconsIcon
-          icon={Search01Icon}
-          size={15}
-          strokeWidth={1.5}
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-primary-300"
-        />
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search skills…"
-          className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-primary-100 bg-surface placeholder:text-primary-300 focus:outline-none focus:border-primary-300 transition-colors duration-150"
-        />
-      </div>
+      {/* Search + Sort row */}
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1">
+          <HugeiconsIcon
+            icon={Search01Icon}
+            size={15}
+            strokeWidth={1.5}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-primary-300"
+          />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search skills…"
+            className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-primary-100 bg-surface placeholder:text-primary-300 focus:outline-none focus:border-primary-300 transition-colors duration-150"
+          />
+        </div>
 
-      {/* Sort dropdown */}
-      {!isSearching && (
+        {/* Sort dropdown - always visible */}
         <select
           value={sort}
-          onChange={(e) => setSort(e.target.value)}
-          className="text-xs text-primary-600 rounded-md border border-primary-100 bg-surface px-2 py-1.5 focus:outline-none focus:border-primary-300 transition-colors duration-150"
+          onChange={(e) => setSort(e.target.value as SortField)}
+          className="shrink-0 text-xs text-primary-600 rounded-md border border-primary-100 bg-surface px-2 py-2 focus:outline-none focus:border-primary-300 transition-colors duration-150"
         >
-          <option value="trending">Trending</option>
-          <option value="newest">Newest</option>
           <option value="downloads">Most Downloads</option>
+          <option value="stars">Most Stars</option>
+          <option value="updatedAt">Recently Updated</option>
         </select>
-      )}
+      </div>
 
       {/* Content */}
       {loading ? (
@@ -651,6 +812,10 @@ function BrowseTab() {
 
 export function SkillsPanel() {
   const [tab, setTab] = useState('installed')
+  const { skills: mySkills, loading: mySkillsLoading } = useMySkills()
+  
+  // Only show My Skills tab if user has skills configured
+  const showMySkills = !mySkillsLoading && mySkills.length > 0
 
   return (
     <div className="flex flex-col h-full">
@@ -672,8 +837,13 @@ export function SkillsPanel() {
             <TabsTab value="installed">
               <span className="text-xs">Installed</span>
             </TabsTab>
-            <TabsTab value="published">
-              <span className="text-xs">Published</span>
+            {showMySkills && (
+              <TabsTab value="my-skills">
+                <span className="text-xs">My Skills</span>
+              </TabsTab>
+            )}
+            <TabsTab value="recommended">
+              <span className="text-xs">Recommended</span>
             </TabsTab>
             <TabsTab value="browse">
               <span className="text-xs">Browse</span>
@@ -683,7 +853,8 @@ export function SkillsPanel() {
       </div>
       <div className="flex-1 overflow-y-auto px-4 pb-4 pt-4">
         {tab === 'installed' && <InstalledTab />}
-        {tab === 'published' && <PublishedTab />}
+        {tab === 'my-skills' && <MySkillsTab />}
+        {tab === 'recommended' && <RecommendedTab />}
         {tab === 'browse' && <BrowseTab />}
       </div>
     </div>
