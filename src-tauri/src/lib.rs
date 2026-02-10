@@ -5,13 +5,16 @@ use tauri::{
 };
 use tauri_plugin_autostart::MacosLauncher;
 
-const DEFAULT_REMOTE_URL: &str = "http://localhost:3003";
-
 fn resolved_remote_url() -> String {
-  std::env::var("OPENCAMI_REMOTE_URL")
-    .ok()
-    .filter(|v| !v.trim().is_empty())
-    .unwrap_or_else(|| DEFAULT_REMOTE_URL.to_string())
+  // 1. Runtime env var (highest priority)
+  if let Ok(v) = std::env::var("OPENCAMI_REMOTE_URL") {
+    if !v.trim().is_empty() {
+      return v;
+    }
+  }
+  // 2. Compile-time env var (set during build)
+  let build_url = option_env!("OPENCAMI_REMOTE_URL").unwrap_or("http://localhost:3003");
+  build_url.to_string()
 }
 
 fn apply_remote_url(window: &tauri::WebviewWindow, remote_url: &str) -> tauri::Result<()> {
