@@ -5,8 +5,12 @@ import {
   Tick01Icon,
   Loading02Icon,
   Search01Icon,
-  ArrowDown01Icon,
   RefreshIcon,
+  Shield01Icon,
+  ArrowLeft01Icon,
+  ArrowUpRight01Icon,
+  Calendar01Icon,
+  StarCircleIcon,
 } from '@hugeicons/core-free-icons'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTab } from '@/components/ui/tabs'
@@ -19,34 +23,88 @@ import {
 } from '@/hooks/use-skills'
 import type { ExploreSkill } from '@/hooks/use-skills'
 
+// Known trusted publishers (add more as needed)
+const TRUSTED_PUBLISHERS = new Set([
+  'openclaw',
+  'clawhub',
+  'anthropic',
+  'robbyczgw-cla',
+])
+
+// Minimum downloads to be considered "verified" by popularity
+const VERIFIED_DOWNLOAD_THRESHOLD = 100
+
+type SecurityBadgeType = 'verified' | 'community' | 'installed'
+
+function getSecurityBadge(
+  skill: ExploreSkill,
+  isInstalled: boolean
+): { type: SecurityBadgeType; label: string; color: string } {
+  if (isInstalled) {
+    return { type: 'installed', label: 'Installed', color: 'text-blue-500' }
+  }
+
+  const publisher = skill.publisher || skill.author || ''
+  const downloads = skill.stats?.downloads || 0
+
+  if (TRUSTED_PUBLISHERS.has(publisher.toLowerCase()) || downloads >= VERIFIED_DOWNLOAD_THRESHOLD) {
+    return { type: 'verified', label: 'Verified', color: 'text-green-500' }
+  }
+
+  return { type: 'community', label: 'Community', color: 'text-primary-400' }
+}
+
+function SecurityBadge({ type, label, color }: { type: SecurityBadgeType; label: string; color: string }) {
+  return (
+    <div className={`flex items-center gap-1 ${color}`} title={`${label} Skill`}>
+      <HugeiconsIcon
+        icon={type === 'installed' ? Tick01Icon : Shield01Icon}
+        size={12}
+        strokeWidth={1.5}
+      />
+      <span className="text-[10px] font-medium">{label}</span>
+    </div>
+  )
+}
+
 function SkillCard({
-  name,
-  summary,
-  version,
-  downloads,
+  skill,
   installed,
   installing,
   onInstall,
   onUpdate,
   updating,
   showUpdate,
+  onClick,
 }: {
-  name: string
-  summary?: string
-  version?: string
-  downloads?: number
+  skill: ExploreSkill
   installed: boolean
   installing: boolean
   onInstall: () => void
   onUpdate?: () => void
   updating?: boolean
   showUpdate?: boolean
+  onClick?: () => void
 }) {
+  const slug = skill.slug || ''
+  const name = skill.displayName || slug
+  const summary = skill.summary
+  const version = skill.version || skill.latestVersion?.version || ''
+  const downloads = skill.stats?.downloads
+
+  const badge = getSecurityBadge(skill, installed)
+
   return (
-    <div className="rounded-lg border border-primary-200 bg-surface p-3 flex flex-col gap-2">
+    <div
+      className={`rounded-lg border border-primary-200 bg-surface p-3 flex flex-col gap-2 ${onClick ? 'cursor-pointer hover:border-primary-400 hover:bg-primary-50 transition-colors' : ''}`}
+      onClick={onClick}
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-medium text-primary-800 truncate">{name}</div>
+          <div className="flex items-center gap-2">
+            <div className="text-sm font-medium text-primary-800 truncate">{name}</div>
+            <SecurityBadge {...badge} />
+          </div>
           {summary && (
             <div className="text-xs text-primary-500 mt-0.5 line-clamp-2">{summary}</div>
           )}
@@ -66,7 +124,7 @@ function SkillCard({
         ) : (
           <span />
         )}
-        <div className="flex gap-1.5">
+        <div className="flex gap-1.5" onClick={(e) => e.stopPropagation()}>
           {showUpdate && onUpdate && (
             <Button
               size="sm"
@@ -111,6 +169,179 @@ function SkillCard({
   )
 }
 
+function formatDate(timestamp?: number): string {
+  if (!timestamp) return 'Unknown'
+  return new Date(timestamp).toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  })
+}
+
+function SkillDetailView({
+  skill,
+  installed,
+  installing,
+  onInstall,
+  onBack,
+}: {
+  skill: ExploreSkill
+  installed: boolean
+  installing: boolean
+  onInstall: () => void
+  onBack: () => void
+}) {
+  const slug = skill.slug || ''
+  const name = skill.displayName || slug
+  const version = skill.version || skill.latestVersion?.version || ''
+  const badge = getSecurityBadge(skill, installed)
+
+  const tags = skill.tags
+    ? Array.isArray(skill.tags)
+      ? skill.tags
+      : Object.keys(skill.tags).filter((k) => k !== 'latest')
+    : []
+
+  return (
+    <div className="space-y-4">
+      {/* Header with back button */}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={onBack}
+          className="p-1 rounded hover:bg-primary-100 transition-colors text-primary-600"
+          aria-label="Back to browse"
+        >
+          <HugeiconsIcon icon={ArrowLeft01Icon} size={20} strokeWidth={1.5} />
+        </button>
+        <h3 className="text-lg font-semibold text-primary-800 flex-1 truncate">{name}</h3>
+        <SecurityBadge {...badge} />
+      </div>
+
+      {/* Version badge */}
+      {version && (
+        <span className="inline-block text-xs font-mono bg-primary-100 text-primary-600 px-2 py-1 rounded">
+          v{version}
+        </span>
+      )}
+
+      {/* Summary/Description */}
+      {skill.summary && (
+        <div className="text-sm text-primary-600 leading-relaxed">
+          {skill.summary}
+        </div>
+      )}
+
+      {/* Stats grid */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded-lg bg-primary-50 p-3">
+          <div className="flex items-center gap-1.5 text-primary-400 mb-1">
+            <HugeiconsIcon icon={Download04Icon} size={14} strokeWidth={1.5} />
+            <span className="text-xs">Downloads</span>
+          </div>
+          <div className="text-lg font-semibold text-primary-800">
+            {(skill.stats?.downloads || 0).toLocaleString()}
+          </div>
+        </div>
+        <div className="rounded-lg bg-primary-50 p-3">
+          <div className="flex items-center gap-1.5 text-primary-400 mb-1">
+            <HugeiconsIcon icon={StarCircleIcon} size={14} strokeWidth={1.5} />
+            <span className="text-xs">Stars</span>
+          </div>
+          <div className="text-lg font-semibold text-primary-800">
+            {(skill.stats?.stars || 0).toLocaleString()}
+          </div>
+        </div>
+      </div>
+
+      {/* Version info */}
+      {skill.latestVersion && (
+        <div className="rounded-lg border border-primary-200 p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-primary-600">Latest Version</span>
+            <span className="text-xs font-mono text-primary-500">v{skill.latestVersion.version}</span>
+          </div>
+          {skill.latestVersion.createdAt && (
+            <div className="flex items-center gap-1.5 text-xs text-primary-400">
+              <HugeiconsIcon icon={Calendar01Icon} size={12} strokeWidth={1.5} />
+              Released {formatDate(skill.latestVersion.createdAt)}
+            </div>
+          )}
+          {skill.latestVersion.changelog && (
+            <div className="text-xs text-primary-500 border-t border-primary-100 pt-2 mt-2">
+              <span className="font-medium text-primary-600">Changelog:</span>
+              <p className="mt-1 whitespace-pre-wrap">{skill.latestVersion.changelog}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Additional stats */}
+      <div className="text-xs text-primary-400 space-y-1">
+        {skill.stats?.versions !== undefined && (
+          <div>Total versions: {skill.stats.versions}</div>
+        )}
+        {skill.createdAt && (
+          <div>Created: {formatDate(skill.createdAt)}</div>
+        )}
+        {skill.updatedAt && (
+          <div>Updated: {formatDate(skill.updatedAt)}</div>
+        )}
+      </div>
+
+      {/* Tags */}
+      {tags.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {tags.map((tag) => (
+            <span
+              key={tag}
+              className="text-[10px] bg-primary-100 text-primary-600 px-2 py-0.5 rounded-full"
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Action buttons */}
+      <div className="flex gap-2 pt-2">
+        {installed ? (
+          <div className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-green-50 text-green-600 text-sm font-medium">
+            <HugeiconsIcon icon={Tick01Icon} size={16} />
+            Installed
+          </div>
+        ) : (
+          <Button
+            onClick={onInstall}
+            disabled={installing}
+            className="flex-1"
+          >
+            {installing ? (
+              <>
+                <HugeiconsIcon icon={Loading02Icon} size={16} className="animate-spin mr-2" />
+                Installing...
+              </>
+            ) : (
+              <>
+                <HugeiconsIcon icon={Download04Icon} size={16} strokeWidth={1.5} className="mr-2" />
+                Install
+              </>
+            )}
+          </Button>
+        )}
+        <a
+          href={`https://www.clawhub.ai/${slug}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="shrink-0 inline-flex items-center justify-center gap-1 px-3 py-2 text-sm font-medium rounded-md border border-primary-200 bg-surface text-primary-700 hover:bg-primary-50 transition-colors"
+        >
+          <HugeiconsIcon icon={ArrowUpRight01Icon} size={16} strokeWidth={1.5} />
+          ClawHub
+        </a>
+      </div>
+    </div>
+  )
+}
+
 function InstalledTab() {
   const { skills, loading, error, refresh } = useInstalledSkills()
   const { update, updating } = useUpdateSkill()
@@ -149,8 +380,7 @@ function InstalledTab() {
       {skills.map((skill) => (
         <SkillCard
           key={skill.name}
-          name={skill.name}
-          version={skill.version}
+          skill={{ slug: skill.name, displayName: skill.name, version: skill.version }}
           installed
           installing={false}
           onInstall={() => {}}
@@ -166,6 +396,7 @@ function InstalledTab() {
 function BrowseTab() {
   const [sort, setSort] = useState('trending')
   const [searchQuery, setSearchQuery] = useState('')
+  const [selectedSkill, setSelectedSkill] = useState<ExploreSkill | null>(null)
   const { skills: exploreSkills, loading: exploreLoading, error: exploreError } = useExploreSkills(sort, 25)
   const { skills: searchResults, loading: searchLoading } = useSearchSkills(searchQuery)
   const { skills: installedSkills } = useInstalledSkills()
@@ -190,6 +421,23 @@ function BrowseTab() {
   const isSearching = searchQuery.trim().length > 0
   const skills = isSearching ? searchResults : exploreSkills
   const loading = isSearching ? searchLoading : exploreLoading
+
+  // Show detail view if a skill is selected
+  if (selectedSkill) {
+    const slug = selectedSkill.slug || ''
+    const name = selectedSkill.displayName || slug
+    const isInstalled = installedSet.has(slug) || installedSet.has(name)
+
+    return (
+      <SkillDetailView
+        skill={selectedSkill}
+        installed={isInstalled}
+        installing={installing === slug}
+        onInstall={() => handleInstall(slug)}
+        onBack={() => setSelectedSkill(null)}
+      />
+    )
+  }
 
   return (
     <div className="space-y-3">
@@ -241,13 +489,11 @@ function BrowseTab() {
             return (
               <SkillCard
                 key={slug}
-                name={name}
-                summary={skill.summary}
-                version={skill.version || (skill.versions && Array.isArray(skill.versions) ? String((skill.versions[0] as { version?: string })?.version || '') : '')}
-                downloads={skill.stats?.downloads}
+                skill={skill}
                 installed={installedSet.has(slug) || installedSet.has(name)}
                 installing={installing === slug}
                 onInstall={() => handleInstall(slug)}
+                onClick={() => setSelectedSkill(skill)}
               />
             )
           })}

@@ -10,9 +10,25 @@ export type ExploreSkill = {
   displayName?: string
   summary?: string
   version?: string
-  stats?: { downloads?: number }
-  tags?: string[]
+  stats?: {
+    downloads?: number
+    stars?: number
+    comments?: number
+    installsAllTime?: number
+    installsCurrent?: number
+    versions?: number
+  }
+  tags?: Record<string, string> | string[]
   versions?: unknown[]
+  createdAt?: number
+  updatedAt?: number
+  latestVersion?: {
+    version: string
+    createdAt?: number
+    changelog?: string
+  }
+  publisher?: string
+  author?: string
 }
 
 export type SearchSkill = {
