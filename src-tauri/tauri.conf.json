@@ -8,21 +8,7 @@
     "devUrl": "http://localhost:3003"
   },
   "app": {
-    "windows": [
-      {
-        "label": "main",
-        "title": "OpenCami",
-        "width": 1200,
-        "height": 800,
-        "minWidth": 800,
-        "minHeight": 600,
-        "resizable": true,
-        "decorations": true,
-        "titleBarStyle": "Overlay",
-        "hiddenTitle": true,
-        "center": true
-      }
-    ],
+    "windows": [],
     "security": {
       "csp": null
     }
