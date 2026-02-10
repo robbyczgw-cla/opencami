@@ -196,3 +196,19 @@ code {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Tauri desktop: offset for macOS traffic light buttons */
+.tauri-drag-header {
+  padding-left: env(titlebar-area-x, 1rem);
+}
+
+@supports (padding-left: env(titlebar-area-x)) {
+  .tauri-drag-header {
+    padding-left: calc(env(titlebar-area-x) + env(titlebar-area-width) + 0.5rem);
+  }
+}
+
+/* Fallback: detect Tauri via window.__TAURI__ injected by runtime */
+html.tauri .tauri-drag-header {
+  padding-left: 5rem;
+}
