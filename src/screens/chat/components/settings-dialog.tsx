@@ -55,11 +55,11 @@ function SettingsSection({ title, tabId, activeTab, children }: SettingsSectionP
   const hiddenOnDesktop = tabId && activeTab && tabId !== activeTab
   return (
     <div className={cn(
-      'border-b border-primary-200 py-3 last:border-0',
+      'border-b border-primary-200 py-2 last:border-0',
       hiddenOnDesktop && 'md:hidden',
     )}>
-      <h3 className="mb-2 text-sm font-medium text-primary-900">{title}</h3>
-      <div className="space-y-2">{children}</div>
+      <h3 className="mb-1.5 text-sm font-semibold text-primary-700">{title}</h3>
+      <div className="space-y-1.5">{children}</div>
     </div>
   )
 }
@@ -72,9 +72,9 @@ type SettingsRowProps = {
 
 function SettingsRow({ label, description, children }: SettingsRowProps) {
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-1">
       <div className="select-none">
-        <div className="text-sm font-medium text-primary-800">{label}</div>
+        <div className="text-[13px] font-medium text-primary-800">{label}</div>
         {description && (
           <div className="text-xs text-primary-500">{description}</div>
         )}
@@ -621,8 +621,8 @@ export function SettingsDialog({
     { value: 'light', label: 'Light', icon: Sun01Icon },
     { value: 'dark', label: 'Dark', icon: Moon01Icon },
     { value: 'chameleon', label: 'Chameleon', icon: Leaf01Icon },
-    { value: 'frost-light', label: 'Frost ☀', icon: DropletIcon },
-    { value: 'frost-dark', label: 'Frost 🌑', icon: DropletIcon },
+    { value: 'frost-light', label: 'Frost Light', icon: DropletIcon },
+    { value: 'frost-dark', label: 'Frost Dark', icon: DropletIcon },
   ] as const
   function applyTheme(theme: ThemeMode) {
     if (typeof document === 'undefined') return
@@ -643,8 +643,8 @@ export function SettingsDialog({
 
   return (
     <DialogRoot open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[min(680px,92vw)] max-h-[80vh] overflow-hidden">
-        <div className="p-4">
+      <DialogContent className="w-[min(680px,92vw)] max-h-[85vh] overflow-hidden">
+        <div className="p-3">
           <div className="flex items-start justify-between">
             <div>
               <DialogTitle className="mb-1">Settings</DialogTitle>
@@ -671,7 +671,7 @@ export function SettingsDialog({
           </div>
 
           {/* Desktop: sidebar + content | Mobile: vertical scroll */}
-          <div className="mt-3 flex md:flex-row flex-col md:gap-4 gap-0 md:min-h-[400px]">
+          <div className="mt-2 flex md:flex-row flex-col md:gap-3 gap-0 md:min-h-[400px]">
             {/* Sidebar - desktop only */}
             <nav className="hidden md:flex flex-col gap-0.5 min-w-[160px] border-r border-primary-200 pr-3">
               {([
@@ -689,9 +689,10 @@ export function SettingsDialog({
                   className={cn(
                     'flex items-center gap-2 px-2.5 py-1.5 rounded-md text-sm text-left transition-colors',
                     activeTab === tab.id
-                      ? 'bg-primary-100 text-primary-900 font-medium'
+                      ? 'text-primary-900 font-medium'
                       : 'text-primary-600 hover:text-primary-900 hover:bg-primary-50',
                   )}
+                  style={activeTab === tab.id ? { backgroundColor: 'var(--opencami-accent-light)' } : undefined}
                 >
                   <HugeiconsIcon icon={tab.icon} size={16} strokeWidth={1.5} />
                   {tab.label}
@@ -700,7 +701,7 @@ export function SettingsDialog({
             </nav>
 
             {/* Content area */}
-            <div className="flex-1 overflow-y-auto md:max-h-[calc(80vh-100px)] max-h-none">
+            <div className="flex-1 overflow-y-auto md:max-h-[calc(85vh-90px)] max-h-none">
 
           <SettingsSection title="Connection" tabId="connection" activeTab={activeTab}>
             <SettingsRow label="Status">
@@ -743,7 +744,7 @@ export function SettingsDialog({
             <SettingsRow
               label="Accent Color"
             >
-              <div className="flex gap-1 flex-wrap">
+              <div className="flex gap-0.5 flex-wrap">
                 {accentColorOptions.map((option) => {
                   const selected = settings.accentColor === option.value
                   return (
@@ -752,18 +753,20 @@ export function SettingsDialog({
                       type="button"
                       onClick={() => handleAccentColorChange(option.value)}
                       className={cn(
-                        'flex items-center justify-center rounded-lg p-1.5 transition-colors',
-                        selected ? 'bg-primary-100' : 'hover:bg-primary-50',
+                        'flex items-center justify-center rounded-md p-1 transition-all duration-150',
+                        selected ? 'scale-110' : 'hover:bg-primary-50 hover:scale-105',
                       )}
                     >
                       <span
                         className={cn(
-                          'size-8 rounded-full border-2',
-                          selected ? 'border-primary-900' : 'border-primary-300',
+                          'size-6 rounded-full transition-shadow duration-150',
+                          selected ? 'ring-2 ring-offset-2' : 'border-2 border-primary-200',
                         )}
-                        style={{ backgroundColor: option.accent }}
+                        style={{
+                          backgroundColor: option.accent,
+                          ...(selected ? { '--tw-ring-color': option.accent } as React.CSSProperties : {}),
+                        }}
                       />
-                      {/* Label removed for cleaner look */}
                     </button>
                   )
                 })}
@@ -790,7 +793,7 @@ export function SettingsDialog({
             <SettingsRow
               label="Font Family"
             >
-              <div className="grid grid-cols-3 gap-1.5 w-full">
+              <div className="grid grid-cols-3 gap-1 w-full">
                 {fontFamilyOptions.map((option) => {
                   const selected = settings.fontFamily === option.value
                   return (
@@ -799,14 +802,18 @@ export function SettingsDialog({
                       type="button"
                       onClick={() => handleFontFamilyChange(option.value)}
                       className={cn(
-                        'rounded-md border px-2 py-1.5 text-xs transition-colors text-center truncate',
+                        'rounded-md border px-1.5 py-1.5 transition-colors text-center',
                         selected
-                          ? 'border-primary-900 bg-primary-100 text-primary-900 font-medium'
+                          ? 'border-[var(--opencami-accent)] text-primary-900 font-medium'
                           : 'border-primary-200 bg-surface text-primary-600 hover:border-primary-400 hover:bg-primary-50',
                       )}
-                      style={{ fontFamily: option.cssValue }}
+                      style={{
+                        fontFamily: option.cssValue,
+                        ...(selected ? { backgroundColor: 'var(--opencami-accent-light)' } : {}),
+                      }}
                     >
-                      {option.label}
+                      <div className="text-[11px] truncate">{option.label}</div>
+                      <div className="text-[15px] text-primary-400 leading-tight mt-0.5">Aa</div>
                     </button>
                   )
                 })}
@@ -1233,7 +1240,7 @@ export function SettingsDialog({
             </div>{/* end content area */}
           </div>{/* end flex sidebar+content */}
 
-          <div className="mt-4 flex justify-end">
+          <div className="mt-2 flex justify-end">
             <DialogClose onClick={onClose}>Close</DialogClose>
           </div>
         </div>
