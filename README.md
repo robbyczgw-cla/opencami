@@ -79,9 +79,66 @@ Then open the URL printed by Vite in your terminal.
 
 > Dev port notes: this repo's `npm run dev` script uses port `3002`. If you run Vite directly with the config default, it targets `3003` and auto-falls back to the next free port.
 
+## 🖥️ Desktop App (Tauri)
+
+OpenCami also ships as a native macOS/Windows/Linux desktop wrapper built with Tauri v2. The app loads your self-hosted OpenCami web instance.
+
+### Prerequisites
+
+- Node.js 18+
+- Rust toolchain (`rustup`)
+
+### Build
+
+```bash
+# Install dependencies (if not already done)
+npm install
+
+# Build web assets first
+npm run build
+
+# Build desktop app
+npm run tauri:build
+```
+
+### Custom Gateway URL
+
+By default, the desktop app connects to `http://localhost:3003`.
+
+To override at build time:
+
+```bash
+OPENCAMI_REMOTE_URL="https://your-server.example.com" npm run tauri:build
+```
+
+### Output
+
+Built installers/bundles are written to `src-tauri/target/release/bundle/`:
+- macOS: `.app`, `.dmg`
+- Windows: `.exe`, `.msi`
+- Linux: `.deb`, `.AppImage`
+
+### Desktop Features
+
+- Tray icon (hide to tray on close)
+- Native notifications
+- Auto-start on login
+- Custom titlebar
+- Multiple windows (⌘N)
+- Clipboard integration
+
+### Dev Mode
+
+```bash
+npm run tauri:dev
+```
+
+Requires a display/GUI environment.
+
 ## Documentation
 
 - [Features](docs/features.md)
+- [Desktop App (Tauri)](docs/desktop-app.md)
 - [Architecture](docs/architecture.md)
 - [Deployment](docs/deployment.md)
 - [Contributing](docs/contributing.md)
