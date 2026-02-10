@@ -1,3 +1,18 @@
+## 1.3.0 (2026-02-10)
+
+### New Features
+- 🧠 **Thinking Level Toggle** — Select reasoning depth (off/low/medium/high) per message in the chat composer
+- 🔌 **Multi-Provider LLM Features** — Smart Titles & Follow-ups now support OpenAI, OpenRouter, Ollama (local), and Custom providers
+- ⚙️ **Settings Sidebar Layout** — Desktop-friendly tabbed navigation with sidebar (mobile unchanged)
+- 🎙️ **Voice Tab** — Merged Text-to-Speech and Speech-to-Text into a single "Voice" settings section
+
+### Improvements
+- LLM features (Smart Titles, Smart Follow-ups) now enabled by default
+- Increased token limits for reasoning models (fixes empty responses with thinking models)
+- Added `OPENROUTER_API_KEY` server-side support
+- Backwards-compatible migration from `openaiApiKey` to `llmApiKey`
+- Added codebase security/performance review (REVIEW.md)
+
 # Changelog
 
 All notable changes to this project will be documented in this file.
