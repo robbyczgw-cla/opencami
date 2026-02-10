@@ -11,6 +11,7 @@ import {
   ArrowUpRight01Icon,
   Calendar01Icon,
 } from '@hugeicons/core-free-icons'
+import { Link } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTab } from '@/components/ui/tabs'
 import {
@@ -526,8 +527,19 @@ export function SkillsPanel() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="px-4 pt-4 pb-3">
-        <h2 className="text-base font-semibold text-primary-900 mb-4">Skills</h2>
+      {/* Header with back button */}
+      <div className="px-4 pt-4 pb-3 border-b border-primary-100">
+        <div className="flex items-center gap-3 mb-4">
+          <Link
+            to="/chat/$sessionKey"
+            params={{ sessionKey: 'main' }}
+            className="p-1.5 -ml-1.5 rounded-md text-primary-500 hover:text-primary-700 hover:bg-primary-50 transition-colors duration-150"
+            aria-label="Back to Chat"
+          >
+            <HugeiconsIcon icon={ArrowLeft01Icon} size={18} strokeWidth={2} />
+          </Link>
+          <h2 className="text-base font-semibold text-primary-900">Skills</h2>
+        </div>
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList variant="default" className="gap-2 *:data-[slot=tab-indicator]:duration-0">
             <TabsTab value="installed">
@@ -539,7 +551,7 @@ export function SkillsPanel() {
           </TabsList>
         </Tabs>
       </div>
-      <div className="flex-1 overflow-y-auto px-4 pb-4">
+      <div className="flex-1 overflow-y-auto px-4 pb-4 pt-4">
         {tab === 'installed' ? <InstalledTab /> : <BrowseTab />}
       </div>
     </div>
