@@ -61,10 +61,11 @@ export const Route = createFileRoute('/api/skills')({
             const limit = url.searchParams.get('limit') || '25'
             const safeSort = sort.replace(/[^a-z-]/gi, '')
             const safeLimit = String(parseInt(limit, 10) || 25)
-            const output = runCmd(`clawhub explore --json --limit ${safeLimit} --sort ${safeSort}`)
+            const raw = runCmd(`clawhub explore --json --limit ${safeLimit} --sort ${safeSort}`)
+            const output = raw.substring(raw.indexOf('{'))
             try {
               const data = JSON.parse(output)
-              return json({ ok: true, skills: Array.isArray(data) ? data : data.skills || data.results || [] })
+              return json({ ok: true, skills: Array.isArray(data) ? data : data.items || data.skills || data.results || [] })
             } catch {
               return json({ ok: true, skills: [] })
             }
@@ -76,7 +77,8 @@ export const Route = createFileRoute('/api/skills')({
             if (!q.trim()) return json({ ok: true, skills: [] })
             const safeLimit = String(parseInt(limit, 10) || 10)
             const safeQ = q.replace(/"/g, '\\"')
-            const output = runCmd(`clawhub search "${safeQ}" --limit ${safeLimit}`)
+            const raw = runCmd(`clawhub search "${safeQ}" --limit ${safeLimit}`)
+            const output = raw.replace(/^- Searching\n?/, '')
             return json({ ok: true, skills: parseSearchResults(output) })
           }
 
