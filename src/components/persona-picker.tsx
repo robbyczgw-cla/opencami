@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { MenuRoot, MenuTrigger, MenuContent, MenuItem } from '@/components/ui/menu'
 import { cn } from '@/lib/utils'
 
@@ -75,6 +75,7 @@ export function PersonaPicker({ className, onSelect }: PersonaPickerProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [available, setAvailable] = useState(false)
   const [enabled, setEnabled] = useState(isPersonasEnabled)
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   // Listen for settings changes (from Settings dialog or other tabs)
   useEffect(() => {
@@ -91,9 +92,13 @@ export function PersonaPicker({ className, onSelect }: PersonaPickerProps) {
     let mounted = true
 
     async function fetchPersonas() {
+      abortControllerRef.current?.abort()
+      const controller = new AbortController()
+      abortControllerRef.current = controller
+
       try {
         setIsLoading(true)
-        const response = await fetch('/api/personas')
+        const response = await fetch('/api/personas', { signal: controller.signal })
         if (!response.ok) {
           setAvailable(false)
           return
@@ -110,7 +115,8 @@ export function PersonaPicker({ className, onSelect }: PersonaPickerProps) {
         } else {
           setAvailable(false)
         }
-      } catch {
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') return
         if (!mounted) return
         setAvailable(false)
       } finally {
@@ -124,6 +130,7 @@ export function PersonaPicker({ className, onSelect }: PersonaPickerProps) {
 
     return () => {
       mounted = false
+      abortControllerRef.current?.abort()
     }
   }, [])
 

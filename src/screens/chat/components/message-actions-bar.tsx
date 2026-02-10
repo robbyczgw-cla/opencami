@@ -35,6 +35,7 @@ export function MessageActionsBar({
   >('idle')
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const objectUrlRef = useRef<string | null>(null)
+  const ttsAbortControllerRef = useRef<AbortController | null>(null)
 
   // Check TTS enabled from localStorage
   const [ttsEnabled, setTtsEnabled] = useState(() => {
@@ -61,6 +62,7 @@ export function MessageActionsBar({
   // Cleanup audio on unmount
   useEffect(() => {
     return () => {
+      ttsAbortControllerRef.current?.abort()
       if (audioRef.current) {
         audioRef.current.pause()
         audioRef.current = null
@@ -84,6 +86,7 @@ export function MessageActionsBar({
 
   const handleTTS = async () => {
     if (audioState === 'playing') {
+      ttsAbortControllerRef.current?.abort()
       if (audioRef.current) {
         audioRef.current.pause()
         audioRef.current = null
@@ -96,12 +99,17 @@ export function MessageActionsBar({
       return
     }
 
+    ttsAbortControllerRef.current?.abort()
+    const controller = new AbortController()
+    ttsAbortControllerRef.current = controller
+
     setAudioState('loading')
     try {
       const res = await fetch('/api/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text }),
+        signal: controller.signal,
       })
 
       if (!res.ok) throw new Error('TTS failed')
@@ -132,7 +140,11 @@ export function MessageActionsBar({
 
       await audio.play()
       setAudioState('playing')
-    } catch {
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        setAudioState('idle')
+        return
+      }
       setAudioState('idle')
       if (objectUrlRef.current) {
         URL.revokeObjectURL(objectUrlRef.current)

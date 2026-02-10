@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import type { FileListing } from '../types'
 
 export const fileQueryKeys = {
@@ -19,8 +19,8 @@ export type FileContent = {
 export function useFileContent(path: string | null) {
   return useQuery({
     queryKey: fileQueryKeys.content(path || ''),
-    queryFn: async (): Promise<FileContent> => {
-      const response = await fetch(`/api/files/read?path=${encodeURIComponent(path!)}`)
+    queryFn: async ({ signal }): Promise<FileContent> => {
+      const response = await fetch(`/api/files/read?path=${encodeURIComponent(path!)}`, { signal })
       if (!response.ok) {
         const error = await response.json().catch(() => ({ error: 'Failed to read file' }))
         throw new Error(error.error || 'Failed to read file')
@@ -36,13 +36,25 @@ export function useFileContent(path: string | null) {
 // Save text file content
 export function useFileSave() {
   const queryClient = useQueryClient()
+  const abortControllerRef = useRef<AbortController | null>(null)
+
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort()
+    }
+  }, [])
 
   return useMutation({
     mutationFn: async ({ path, content }: { path: string; content: string }) => {
+      abortControllerRef.current?.abort()
+      const controller = new AbortController()
+      abortControllerRef.current = controller
+
       const response = await fetch('/api/files/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ path, content }),
+        signal: controller.signal,
       })
 
       if (!response.ok) {
@@ -70,8 +82,8 @@ export function useFileSave() {
 export function useFileListing(path: string) {
   return useQuery({
     queryKey: fileQueryKeys.listing(path),
-    queryFn: async (): Promise<FileListing> => {
-      const response = await fetch(`/api/files/list?path=${encodeURIComponent(path)}`)
+    queryFn: async ({ signal }): Promise<FileListing> => {
+      const response = await fetch(`/api/files/list?path=${encodeURIComponent(path)}`, { signal })
       if (!response.ok) {
         const error = await response.text()
         throw new Error(`Failed to load files: ${error}`)
@@ -81,27 +93,30 @@ export function useFileListing(path: string) {
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
     retry: 3,
-    onError: (error) => {
-      console.error('Failed to load file listing:', error)
-    },
   })
 }
 
 // Download a file
 export function useFileDownload() {
   const urls = new Set<string>()
-  
+  const abortControllerRef = useRef<AbortController | null>(null)
+
   useEffect(() => {
     // Cleanup URLs on unmount
     return () => {
+      abortControllerRef.current?.abort()
       urls.forEach(url => URL.revokeObjectURL(url))
       urls.clear()
     }
   }, [])
-  
+
   return useMutation({
     mutationFn: async (filePath: string) => {
-      const response = await fetch(`/api/files/download?path=${encodeURIComponent(filePath)}`)
+      abortControllerRef.current?.abort()
+      const controller = new AbortController()
+      abortControllerRef.current = controller
+
+      const response = await fetch(`/api/files/download?path=${encodeURIComponent(filePath)}`, { signal: controller.signal })
       
       if (!response.ok) {
         const error = await response.text()
@@ -131,6 +146,7 @@ export function useFileDownload() {
       }, 100)
     },
     onError: (error) => {
+      if (error instanceof Error && error.name === 'AbortError') return
       console.error('Download failed:', error)
     },
   })
@@ -139,9 +155,20 @@ export function useFileDownload() {
 // Upload files
 export function useFileUpload() {
   const queryClient = useQueryClient()
+  const abortControllerRef = useRef<AbortController | null>(null)
+
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort()
+    }
+  }, [])
 
   return useMutation({
     mutationFn: async ({ files, path }: { files: FileList; path: string }) => {
+      abortControllerRef.current?.abort()
+      const controller = new AbortController()
+      abortControllerRef.current = controller
+
       const results = []
       for (let i = 0; i < files.length; i++) {
         const formData = new FormData()
@@ -151,6 +178,7 @@ export function useFileUpload() {
         const response = await fetch('/api/files/upload', {
           method: 'POST',
           body: formData,
+          signal: controller.signal,
         })
 
         if (!response.ok) {
@@ -169,6 +197,7 @@ export function useFileUpload() {
       })
     },
     onError: (error) => {
+      if (error instanceof Error && error.name === 'AbortError') return
       console.error('Upload failed:', error)
     },
   })
@@ -177,11 +206,23 @@ export function useFileUpload() {
 // Delete file or folder
 export function useFileDelete() {
   const queryClient = useQueryClient()
+  const abortControllerRef = useRef<AbortController | null>(null)
+
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort()
+    }
+  }, [])
 
   return useMutation({
     mutationFn: async (filePath: string) => {
+      abortControllerRef.current?.abort()
+      const controller = new AbortController()
+      abortControllerRef.current = controller
+
       const response = await fetch(`/api/files/delete?path=${encodeURIComponent(filePath)}`, {
         method: 'DELETE',
+        signal: controller.signal,
       })
 
       if (!response.ok) {
@@ -199,6 +240,7 @@ export function useFileDelete() {
       })
     },
     onError: (error) => {
+      if (error instanceof Error && error.name === 'AbortError') return
       console.error('Delete failed:', error)
     },
   })
@@ -207,13 +249,25 @@ export function useFileDelete() {
 // Create folder
 export function useCreateFolder() {
   const queryClient = useQueryClient()
+  const abortControllerRef = useRef<AbortController | null>(null)
+
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort()
+    }
+  }, [])
 
   return useMutation({
     mutationFn: async ({ path, name }: { path: string; name: string }) => {
+      abortControllerRef.current?.abort()
+      const controller = new AbortController()
+      abortControllerRef.current = controller
+
       const response = await fetch('/api/files/mkdir', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ path: `${path}/${name}` }),
+        signal: controller.signal,
       })
 
       if (!response.ok) {
@@ -230,6 +284,7 @@ export function useCreateFolder() {
       })
     },
     onError: (error) => {
+      if (error instanceof Error && error.name === 'AbortError') return
       console.error('Create folder failed:', error)
     },
   })
@@ -238,9 +293,20 @@ export function useCreateFolder() {
 // Rename file or folder
 export function useFileRename() {
   const queryClient = useQueryClient()
+  const abortControllerRef = useRef<AbortController | null>(null)
+
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort()
+    }
+  }, [])
 
   return useMutation({
     mutationFn: async ({ oldPath, newName }: { oldPath: string; newName: string }) => {
+      abortControllerRef.current?.abort()
+      const controller = new AbortController()
+      abortControllerRef.current = controller
+
       const parentPath = oldPath.split('/').slice(0, -1).join('/')
       const newPath = `${parentPath}/${newName}`
 
@@ -248,6 +314,7 @@ export function useFileRename() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ src: oldPath, dst: newPath }),
+        signal: controller.signal,
       })
 
       if (!response.ok) {
@@ -265,6 +332,7 @@ export function useFileRename() {
       })
     },
     onError: (error) => {
+      if (error instanceof Error && error.name === 'AbortError') return
       console.error('Rename failed:', error)
     },
   })

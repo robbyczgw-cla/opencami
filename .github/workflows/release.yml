@@ -22,17 +22,39 @@ jobs:
       - run: npm ci
       - run: npm run build
 
-      # Publish to npm (skip if version already exists)
+      # Extract version for later steps
+      - name: Get version
+        id: version
+        run: echo "version=$(node -p 'require(\"./package.json\").version')" >> "$GITHUB_OUTPUT"
+
+      # Create GitHub Release from CHANGELOG (before any package.json rewrites)
+      - name: Extract changelog
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          # Try matching "## X.Y.Z" or "## [X.Y.Z]" formats
+          awk "/^## \\[?${VERSION}\\]?/{found=1; next} /^## /{if(found) exit} found" CHANGELOG.md > release-notes.md
+          # Fallback: use tag name as body
+          if [ ! -s release-notes.md ]; then
+            echo "Release v${VERSION}" > release-notes.md
+          fi
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          body_path: release-notes.md
+          generate_release_notes: false
+
+      # Publish to npm
       - run: npm publish --access public || echo "Version already published on npm, skipping"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      # Publish to GitHub Packages (scoped)
+      # Publish to GitHub Packages (scoped name required)
       - uses: actions/setup-node@v4
         with:
           registry-url: https://npm.pkg.github.com
 
-      - run: |
+      - name: Publish to GitHub Packages
+        run: |
           node -e "
             const p = require('./package.json');
             p.name = '@robbyczgw-cla/opencami';
@@ -42,18 +64,3 @@ jobs:
           npm publish --access public || echo "Version already published on GitHub Packages, skipping"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # Create GitHub Release from CHANGELOG
-      - name: Extract changelog
-        id: changelog
-        run: |
-          # Extract current version's changelog section
-          sed -n '/^## '"$(node -p "require('./package.json').version")"'/,/^## \[/p' CHANGELOG.md | head -n -1 > release-notes.md
-          if [ ! -s release-notes.md ]; then
-            sed -n '/^## /,/^## /p' CHANGELOG.md | head -n -1 > release-notes.md
-          fi
-
-      - uses: softprops/action-gh-release@v2
-        with:
-          body_path: release-notes.md
-          generate_release_notes: false

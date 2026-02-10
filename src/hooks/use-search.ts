@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { SessionMeta, GatewayMessage, HistoryResponse } from '@/screens/chat/types'
 import { chatQueryKeys } from '@/screens/chat/chat-queries'
@@ -53,6 +53,14 @@ export function useSearch({ sessions, currentFriendlyId, currentSessionKey }: Us
   const [query, setQuery] = useState('')
   const [isSearching, setIsSearching] = useState(false)
   const [globalResults, setGlobalResults] = useState<SearchResult[]>([])
+  const globalSearchControllerRef = useRef<AbortController | null>(null)
+
+  useEffect(() => {
+    return () => {
+      globalSearchControllerRef.current?.abort()
+      globalSearchControllerRef.current = null
+    }
+  }, [])
 
   // Search within current conversation (uses cached history)
   const searchCurrentConversation = useCallback(
@@ -99,85 +107,127 @@ export function useSearch({ sessions, currentFriendlyId, currentSessionKey }: Us
     [currentFriendlyId, currentSessionKey, queryClient, sessions]
   )
 
-  // Search across all sessions (fetches history for each)
+  // Search across all sessions (fetches history for each).
+  // NOTE: This function is called imperatively; caller should debounce input events.
   const searchAllSessions = useCallback(
     async (searchQuery: string): Promise<SearchResult[]> => {
-      if (!searchQuery.trim()) {
+      const trimmedQuery = searchQuery.trim()
+      if (!trimmedQuery) {
+        globalSearchControllerRef.current?.abort()
+        globalSearchControllerRef.current = null
         setGlobalResults([])
         return []
       }
 
+      // Cancel any in-flight global search before starting a new one.
+      globalSearchControllerRef.current?.abort()
+      const controller = new AbortController()
+      globalSearchControllerRef.current = controller
+
       setIsSearching(true)
-      const normalizedQuery = searchQuery.toLowerCase()
+      setGlobalResults([])
+
+      const normalizedQuery = trimmedQuery.toLowerCase()
       const allResults: SearchResult[] = []
+      const BATCH_SIZE = 10
 
       try {
-        // Search through all sessions
-        await Promise.all(
-          sessions.map(async (session) => {
-            try {
-              // Try to get from cache first
-              const historyKey = chatQueryKeys.history(session.friendlyId, session.key)
-              let historyData = queryClient.getQueryData(historyKey) as HistoryResponse | undefined
+        for (let i = 0; i < sessions.length; i += BATCH_SIZE) {
+          if (controller.signal.aborted) {
+            throw new DOMException('Search aborted', 'AbortError')
+          }
 
-              // If not cached, fetch it
-              if (!historyData) {
-                const params = new URLSearchParams({
-                  sessionKey: session.key,
-                  friendlyId: session.friendlyId,
-                  limit: '200',
-                })
-                const res = await fetch(`/api/history?${params.toString()}`)
-                if (res.ok) {
-                  historyData = await res.json() as HistoryResponse
-                  // Cache it for later
-                  queryClient.setQueryData(historyKey, historyData)
-                }
-              }
+          const batch = sessions.slice(i, i + BATCH_SIZE)
 
-              if (!historyData?.messages) return
+          const batchResults = await Promise.all(
+            batch.map(async (session) => {
+              try {
+                // Try to get from cache first
+                const historyKey = chatQueryKeys.history(session.friendlyId, session.key)
+                let historyData = queryClient.getQueryData(historyKey) as HistoryResponse | undefined
 
-              const sessionTitle = session.label || session.title || session.derivedTitle || session.friendlyId
-
-              historyData.messages.forEach((message, index) => {
-                const text = extractTextFromMessage(message)
-                if (!text) return
-
-                const lowerText = text.toLowerCase()
-                const matchIndex = lowerText.indexOf(normalizedQuery)
-
-                if (matchIndex !== -1) {
-                  allResults.push({
+                // If not cached, fetch it
+                if (!historyData) {
+                  const params = new URLSearchParams({
                     sessionKey: session.key,
                     friendlyId: session.friendlyId,
-                    sessionTitle,
-                    messageIndex: index,
-                    messageRole: message.role || 'unknown',
-                    messageText: text,
-                    matchStart: matchIndex,
-                    matchEnd: matchIndex + searchQuery.length,
-                    timestamp: message.timestamp,
+                    limit: '200',
                   })
+                  const res = await fetch(`/api/history?${params.toString()}`, {
+                    signal: controller.signal,
+                  })
+                  if (res.ok) {
+                    historyData = await res.json() as HistoryResponse
+                    // Cache it for later
+                    queryClient.setQueryData(historyKey, historyData)
+                  }
                 }
-              })
-            } catch {
-              // Skip sessions that fail to load
-            }
-          })
-        )
 
-        // Sort by timestamp (newest first)
-        allResults.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
-        setGlobalResults(allResults)
+                if (!historyData?.messages) return [] as SearchResult[]
+
+                const sessionTitle = session.label || session.title || session.derivedTitle || session.friendlyId
+                const sessionResults: SearchResult[] = []
+
+                historyData.messages.forEach((message, index) => {
+                  const text = extractTextFromMessage(message)
+                  if (!text) return
+
+                  const lowerText = text.toLowerCase()
+                  const matchIndex = lowerText.indexOf(normalizedQuery)
+
+                  if (matchIndex !== -1) {
+                    sessionResults.push({
+                      sessionKey: session.key,
+                      friendlyId: session.friendlyId,
+                      sessionTitle,
+                      messageIndex: index,
+                      messageRole: message.role || 'unknown',
+                      messageText: text,
+                      matchStart: matchIndex,
+                      matchEnd: matchIndex + trimmedQuery.length,
+                      timestamp: message.timestamp,
+                    })
+                  }
+                })
+
+                return sessionResults
+              } catch (error) {
+                if (error instanceof DOMException && error.name === 'AbortError') {
+                  throw error
+                }
+                // Skip sessions that fail to load
+                return [] as SearchResult[]
+              }
+            })
+          )
+
+          allResults.push(...batchResults.flat())
+
+          // Progressive updates after each batch.
+          allResults.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
+          setGlobalResults([...allResults])
+        }
+
         return allResults
+      } catch (error) {
+        if (!(error instanceof DOMException && error.name === 'AbortError')) {
+          throw error
+        }
+        return []
       } finally {
-        setIsSearching(false)
+        if (globalSearchControllerRef.current === controller) {
+          globalSearchControllerRef.current = null
+          setIsSearching(false)
+        }
       }
     },
     [sessions, queryClient]
   )
 
   const clearSearch = useCallback(() => {
+    globalSearchControllerRef.current?.abort()
+    globalSearchControllerRef.current = null
+    setIsSearching(false)
     setQuery('')
     setGlobalResults([])
   }, [])

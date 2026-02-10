@@ -72,17 +72,20 @@ export function SearchDialog({
     return () => clearTimeout(timer)
   }, [localQuery, mode, searchAllSessions, clearSearch])
 
-  // Focus input when dialog opens
+  // Focus input when dialog opens and cancel active search when it closes
   useEffect(() => {
-    if (open) {
-      setLocalQuery('')
-      setSelectedIndex(0)
+    if (!open) {
       clearSearch()
-      // Small delay to ensure dialog is mounted
-      setTimeout(() => {
-        inputRef.current?.focus()
-      }, 50)
+      return
     }
+
+    setLocalQuery('')
+    setSelectedIndex(0)
+    clearSearch()
+    // Small delay to ensure dialog is mounted
+    setTimeout(() => {
+      inputRef.current?.focus()
+    }, 50)
   }, [open, clearSearch])
 
   // Reset selection when results change
