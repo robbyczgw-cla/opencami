@@ -2,6 +2,7 @@ import { HugeiconsIcon } from '@hugeicons/react'
 import {
   AiBrain01Icon,
   Folder01Icon,
+  PackageOpenIcon,
   PencilEdit02Icon,
   Settings01Icon,
   SidebarLeft01Icon,
@@ -308,6 +309,44 @@ function ChatSidebarComponent({
               )}
             </TooltipRoot>
           </TooltipProvider>
+
+          {(() => { try { return localStorage.getItem('opencami-skills-browser') === 'true' } catch { return false } })() && (
+            <TooltipProvider>
+              <TooltipRoot>
+                <TooltipTrigger asChild>
+                  <Link
+                    to="/skills"
+                    className={cn(
+                      buttonVariants({ variant: 'ghost', size: 'sm' }),
+                      'w-full pl-1.5 justify-start',
+                    )}
+                    onClick={onSelectSession}
+                  >
+                    <HugeiconsIcon
+                      icon={PackageOpenIcon}
+                      size={20}
+                      strokeWidth={1.5}
+                      className="min-w-5"
+                    />
+                    <AnimatePresence initial={false} mode="wait">
+                      {!isCollapsed && (
+                        <motion.span
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          transition={transition}
+                          className="overflow-hidden whitespace-nowrap"
+                        >
+                          Skills
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
+                  </Link>
+                </TooltipTrigger>
+                {isCollapsed && <TooltipContent side="right">Skills</TooltipContent>}
+              </TooltipRoot>
+            </TooltipProvider>
+          )}
 
           {(() => { try { return localStorage.getItem('opencami-agent-manager') === 'true' } catch { return false } })() && (
             <TooltipProvider>

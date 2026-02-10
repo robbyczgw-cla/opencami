@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SkillsRouteImport } from './routes/skills'
 import { Route as NewRouteImport } from './routes/new'
 import { Route as FilesRouteImport } from './routes/files'
 import { Route as ConnectRouteImport } from './routes/connect'
@@ -19,6 +20,7 @@ import { Route as ChatSessionKeyRouteImport } from './routes/chat/$sessionKey'
 import { Route as ApiTtsRouteImport } from './routes/api/tts'
 import { Route as ApiSttRouteImport } from './routes/api/stt'
 import { Route as ApiStreamRouteImport } from './routes/api/stream'
+import { Route as ApiSkillsRouteImport } from './routes/api/skills'
 import { Route as ApiSessionsRouteImport } from './routes/api/sessions'
 import { Route as ApiSendRouteImport } from './routes/api/send'
 import { Route as ApiPingRouteImport } from './routes/api/ping'
@@ -40,6 +42,11 @@ import { Route as ApiFilesInfoRouteImport } from './routes/api/files/info'
 import { Route as ApiFilesDownloadRouteImport } from './routes/api/files/download'
 import { Route as ApiFilesDeleteRouteImport } from './routes/api/files/delete'
 
+const SkillsRoute = SkillsRouteImport.update({
+  id: '/skills',
+  path: '/skills',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const NewRoute = NewRouteImport.update({
   id: '/new',
   path: '/new',
@@ -88,6 +95,11 @@ const ApiSttRoute = ApiSttRouteImport.update({
 const ApiStreamRoute = ApiStreamRouteImport.update({
   id: '/api/stream',
   path: '/api/stream',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSkillsRoute = ApiSkillsRouteImport.update({
+  id: '/api/skills',
+  path: '/api/skills',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiSessionsRoute = ApiSessionsRouteImport.update({
@@ -198,6 +210,7 @@ export interface FileRoutesByFullPath {
   '/connect': typeof ConnectRoute
   '/files': typeof FilesRoute
   '/new': typeof NewRoute
+  '/skills': typeof SkillsRoute
   '/api/agents': typeof ApiAgentsRoute
   '/api/cron': typeof ApiCronRoute
   '/api/follow-ups': typeof ApiFollowUpsRoute
@@ -209,6 +222,7 @@ export interface FileRoutesByFullPath {
   '/api/ping': typeof ApiPingRoute
   '/api/send': typeof ApiSendRoute
   '/api/sessions': typeof ApiSessionsRoute
+  '/api/skills': typeof ApiSkillsRoute
   '/api/stream': typeof ApiStreamRoute
   '/api/stt': typeof ApiSttRoute
   '/api/tts': typeof ApiTtsRoute
@@ -230,6 +244,7 @@ export interface FileRoutesByTo {
   '/connect': typeof ConnectRoute
   '/files': typeof FilesRoute
   '/new': typeof NewRoute
+  '/skills': typeof SkillsRoute
   '/api/agents': typeof ApiAgentsRoute
   '/api/cron': typeof ApiCronRoute
   '/api/follow-ups': typeof ApiFollowUpsRoute
@@ -241,6 +256,7 @@ export interface FileRoutesByTo {
   '/api/ping': typeof ApiPingRoute
   '/api/send': typeof ApiSendRoute
   '/api/sessions': typeof ApiSessionsRoute
+  '/api/skills': typeof ApiSkillsRoute
   '/api/stream': typeof ApiStreamRoute
   '/api/stt': typeof ApiSttRoute
   '/api/tts': typeof ApiTtsRoute
@@ -263,6 +279,7 @@ export interface FileRoutesById {
   '/connect': typeof ConnectRoute
   '/files': typeof FilesRoute
   '/new': typeof NewRoute
+  '/skills': typeof SkillsRoute
   '/api/agents': typeof ApiAgentsRoute
   '/api/cron': typeof ApiCronRoute
   '/api/follow-ups': typeof ApiFollowUpsRoute
@@ -274,6 +291,7 @@ export interface FileRoutesById {
   '/api/ping': typeof ApiPingRoute
   '/api/send': typeof ApiSendRoute
   '/api/sessions': typeof ApiSessionsRoute
+  '/api/skills': typeof ApiSkillsRoute
   '/api/stream': typeof ApiStreamRoute
   '/api/stt': typeof ApiSttRoute
   '/api/tts': typeof ApiTtsRoute
@@ -297,6 +315,7 @@ export interface FileRouteTypes {
     | '/connect'
     | '/files'
     | '/new'
+    | '/skills'
     | '/api/agents'
     | '/api/cron'
     | '/api/follow-ups'
@@ -308,6 +327,7 @@ export interface FileRouteTypes {
     | '/api/ping'
     | '/api/send'
     | '/api/sessions'
+    | '/api/skills'
     | '/api/stream'
     | '/api/stt'
     | '/api/tts'
@@ -329,6 +349,7 @@ export interface FileRouteTypes {
     | '/connect'
     | '/files'
     | '/new'
+    | '/skills'
     | '/api/agents'
     | '/api/cron'
     | '/api/follow-ups'
@@ -340,6 +361,7 @@ export interface FileRouteTypes {
     | '/api/ping'
     | '/api/send'
     | '/api/sessions'
+    | '/api/skills'
     | '/api/stream'
     | '/api/stt'
     | '/api/tts'
@@ -361,6 +383,7 @@ export interface FileRouteTypes {
     | '/connect'
     | '/files'
     | '/new'
+    | '/skills'
     | '/api/agents'
     | '/api/cron'
     | '/api/follow-ups'
@@ -372,6 +395,7 @@ export interface FileRouteTypes {
     | '/api/ping'
     | '/api/send'
     | '/api/sessions'
+    | '/api/skills'
     | '/api/stream'
     | '/api/stt'
     | '/api/tts'
@@ -394,6 +418,7 @@ export interface RootRouteChildren {
   ConnectRoute: typeof ConnectRoute
   FilesRoute: typeof FilesRoute
   NewRoute: typeof NewRoute
+  SkillsRoute: typeof SkillsRoute
   ApiAgentsRoute: typeof ApiAgentsRoute
   ApiCronRoute: typeof ApiCronRoute
   ApiFollowUpsRoute: typeof ApiFollowUpsRoute
@@ -405,6 +430,7 @@ export interface RootRouteChildren {
   ApiPingRoute: typeof ApiPingRoute
   ApiSendRoute: typeof ApiSendRoute
   ApiSessionsRoute: typeof ApiSessionsRoute
+  ApiSkillsRoute: typeof ApiSkillsRoute
   ApiStreamRoute: typeof ApiStreamRoute
   ApiSttRoute: typeof ApiSttRoute
   ApiTtsRoute: typeof ApiTtsRoute
@@ -422,6 +448,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/skills': {
+      id: '/skills'
+      path: '/skills'
+      fullPath: '/skills'
+      preLoaderRoute: typeof SkillsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/new': {
       id: '/new'
       path: '/new'
@@ -490,6 +523,13 @@ declare module '@tanstack/react-router' {
       path: '/api/stream'
       fullPath: '/api/stream'
       preLoaderRoute: typeof ApiStreamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/skills': {
+      id: '/api/skills'
+      path: '/api/skills'
+      fullPath: '/api/skills'
+      preLoaderRoute: typeof ApiSkillsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/sessions': {
@@ -642,6 +682,7 @@ const rootRouteChildren: RootRouteChildren = {
   ConnectRoute: ConnectRoute,
   FilesRoute: FilesRoute,
   NewRoute: NewRoute,
+  SkillsRoute: SkillsRoute,
   ApiAgentsRoute: ApiAgentsRoute,
   ApiCronRoute: ApiCronRoute,
   ApiFollowUpsRoute: ApiFollowUpsRoute,
@@ -653,6 +694,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPingRoute: ApiPingRoute,
   ApiSendRoute: ApiSendRoute,
   ApiSessionsRoute: ApiSessionsRoute,
+  ApiSkillsRoute: ApiSkillsRoute,
   ApiStreamRoute: ApiStreamRoute,
   ApiSttRoute: ApiSttRoute,
   ApiTtsRoute: ApiTtsRoute,

@@ -937,6 +937,18 @@ export function SettingsDialog({
               />
             </SettingsRow>
             <SettingsRow inline
+              label="Skills Browser (Beta)"
+              description="Browse and install skills from ClawHub"
+            >
+              <Switch
+                checked={(() => { try { return localStorage.getItem('opencami-skills-browser') === 'true' } catch { return false } })()}
+                onCheckedChange={(checked) => {
+                  localStorage.setItem('opencami-skills-browser', String(checked))
+                  window.location.reload()
+                }}
+              />
+            </SettingsRow>
+            <SettingsRow inline
               label="Cron Jobs Panel (Beta)"
               description="Show Cron Jobs in sidebar for managing OpenClaw cron schedules"
             >
