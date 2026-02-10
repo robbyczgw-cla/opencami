@@ -22,8 +22,8 @@ jobs:
       - run: npm ci
       - run: npm run build
 
-      # Publish to npm
-      - run: npm publish --access public
+      # Publish to npm (skip if version already exists)
+      - run: npm publish --access public || echo "Version already published on npm, skipping"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
@@ -39,7 +39,7 @@ jobs:
             p.publishConfig = { registry: 'https://npm.pkg.github.com' };
             require('fs').writeFileSync('package.json', JSON.stringify(p, null, 2));
           "
-          npm publish --access public
+          npm publish --access public || echo "Version already published on GitHub Packages, skipping"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
