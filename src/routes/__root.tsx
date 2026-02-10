@@ -45,16 +45,22 @@ const themeScript = `
     if (stored) {
       const parsed = JSON.parse(stored)
       const storedTheme = parsed?.state?.settings?.theme
-      if (storedTheme === 'light' || storedTheme === 'dark' || storedTheme === 'system' || storedTheme === 'chameleon' || storedTheme === 'frost') {
+      if (storedTheme === 'light' || storedTheme === 'dark' || storedTheme === 'system' || storedTheme === 'chameleon' || storedTheme === 'frost-light' || storedTheme === 'frost-dark') {
         theme = storedTheme
       }
     }
     const root = document.documentElement
     const media = window.matchMedia('(prefers-color-scheme: dark)')
     const apply = () => {
-      root.classList.remove('light', 'dark', 'system', 'chameleon', 'frost')
+      root.classList.remove('light', 'dark', 'system', 'chameleon', 'frost', 'frost-light', 'frost-dark')
       root.classList.add(theme)
-      if ((theme === 'system' || theme === 'frost') && media.matches) {
+      if (theme === 'frost-light' || theme === 'frost-dark') {
+        root.classList.add('frost')
+      }
+      if (theme === 'frost-dark') {
+        root.classList.add('dark')
+      }
+      if (theme === 'system' && media.matches) {
         root.classList.add('dark')
       }
     }
