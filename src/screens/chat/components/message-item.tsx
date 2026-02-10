@@ -239,11 +239,11 @@ function MessageItemComponent({
           ))}
         </div>
       )}
-      <Message className={cn(isUser ? 'flex-row-reverse' : '')}>
+      <Message className={cn('min-w-0 max-w-full', isUser ? 'flex-row-reverse' : '')}>
         <MessageContent
           markdown={!isUser}
           className={cn(
-            'text-primary-900 opencami-text-size',
+            'text-primary-900 opencami-text-size min-w-0 max-w-full',
             !isUser
               ? 'bg-transparent w-full'
               : 'bg-primary-100 px-4 py-2.5 max-w-[85%]',
@@ -256,7 +256,7 @@ function MessageItemComponent({
 
       {/* Render tool calls with their results */}
       {hasToolCalls && settings.showToolMessages && (
-        <div className="w-full max-w-[900px] mt-2 flex flex-col gap-3">
+        <div className="mt-2 flex w-full min-w-0 max-w-[900px] flex-col gap-3 overflow-x-hidden">
           {toolCalls.map((toolCall) => {
             const resultMessage = toolCall.id
               ? toolResultsByCallId?.get(toolCall.id)

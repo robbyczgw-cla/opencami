@@ -6,6 +6,7 @@ import {
   Settings01Icon,
   SidebarLeft01Icon,
   Search01Icon,
+  SmartPhone01Icon,
 } from '@hugeicons/core-free-icons'
 import { AnimatePresence, motion } from 'motion/react'
 import { lazy, memo, Suspense, useState } from 'react'
@@ -309,45 +310,79 @@ function ChatSidebarComponent({
           </TooltipProvider>
 
           {(() => { try { return localStorage.getItem('opencami-agent-manager') === 'true' } catch { return false } })() && (
-          <TooltipProvider>
-            <TooltipRoot>
-              <TooltipTrigger asChild>
-                <Link
-                  to="/agents"
-                  className={cn(
-                    buttonVariants({ variant: 'ghost', size: 'sm' }),
-                    'w-full pl-1.5 justify-start',
-                  )}
-                  onClick={onSelectSession}
-                >
-                  <HugeiconsIcon
-                    icon={AiBrain01Icon}
-                    size={20}
-                    strokeWidth={1.5}
-                    className="min-w-5"
-                  />
-                  <AnimatePresence initial={false} mode="wait">
-                    {!isCollapsed && (
-                      <motion.span
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={transition}
-                        className="overflow-hidden whitespace-nowrap"
-                      >
-                        Agents
-                      </motion.span>
+            <TooltipProvider>
+              <TooltipRoot>
+                <TooltipTrigger asChild>
+                  <Link
+                    to="/agents"
+                    className={cn(
+                      buttonVariants({ variant: 'ghost', size: 'sm' }),
+                      'w-full pl-1.5 justify-start',
                     )}
-                  </AnimatePresence>
-                </Link>
-              </TooltipTrigger>
-              {isCollapsed && (
-                <TooltipContent side="right">
-                  Agents
-                </TooltipContent>
-              )}
-            </TooltipRoot>
-          </TooltipProvider>
+                    onClick={onSelectSession}
+                  >
+                    <HugeiconsIcon
+                      icon={AiBrain01Icon}
+                      size={20}
+                      strokeWidth={1.5}
+                      className="min-w-5"
+                    />
+                    <AnimatePresence initial={false} mode="wait">
+                      {!isCollapsed && (
+                        <motion.span
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          transition={transition}
+                          className="overflow-hidden whitespace-nowrap"
+                        >
+                          Agents
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
+                  </Link>
+                </TooltipTrigger>
+                {isCollapsed && <TooltipContent side="right">Agents</TooltipContent>}
+              </TooltipRoot>
+            </TooltipProvider>
+          )}
+
+          {(() => { try { return localStorage.getItem('opencami-cron-manager') === 'true' } catch { return false } })() && (
+            <TooltipProvider>
+              <TooltipRoot>
+                <TooltipTrigger asChild>
+                  <Link
+                    to="/bots"
+                    className={cn(
+                      buttonVariants({ variant: 'ghost', size: 'sm' }),
+                      'w-full pl-1.5 justify-start',
+                    )}
+                    onClick={onSelectSession}
+                  >
+                    <HugeiconsIcon
+                      icon={SmartPhone01Icon}
+                      size={20}
+                      strokeWidth={1.5}
+                      className="min-w-5"
+                    />
+                    <AnimatePresence initial={false} mode="wait">
+                      {!isCollapsed && (
+                        <motion.span
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          transition={transition}
+                          className="overflow-hidden whitespace-nowrap"
+                        >
+                          Cron Jobs
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
+                  </Link>
+                </TooltipTrigger>
+                {isCollapsed && <TooltipContent side="right">Cron Jobs</TooltipContent>}
+              </TooltipRoot>
+            </TooltipProvider>
           )}
         </motion.div>
         <motion.div

@@ -7,9 +7,12 @@ interface FileExplorerState {
   sortBy: SortBy
   sortAsc: boolean
   selectedFiles: Set<string>
+  editingFile: string | null
   
   // Actions
   navigateTo: (path: string) => void
+  openInEditor: (filePath: string) => void
+  closeEditor: () => void
   setViewMode: (mode: ViewMode) => void
   setSortBy: (sortBy: SortBy) => void
   toggleSort: () => void
@@ -25,6 +28,7 @@ export const useFileExplorerState = create<FileExplorerState>((set, get) => ({
   sortBy: 'name',
   sortAsc: true,
   selectedFiles: new Set(),
+  editingFile: null,
 
   navigateTo: (path: string) => {
     set({
@@ -68,6 +72,20 @@ export const useFileExplorerState = create<FileExplorerState>((set, get) => ({
 
   clearSelection: () => {
     set({ selectedFiles: new Set() })
+  },
+
+  openInEditor: (filePath: string) => {
+    // Navigate to the file's directory and open editor
+    const dir = filePath.includes('/') ? filePath.slice(0, filePath.lastIndexOf('/')) || '/' : '/'
+    set({
+      currentPath: dir,
+      editingFile: filePath,
+      selectedFiles: new Set(),
+    })
+  },
+
+  closeEditor: () => {
+    set({ editingFile: null })
   },
 
   toggleFileSelection: (path: string) => {

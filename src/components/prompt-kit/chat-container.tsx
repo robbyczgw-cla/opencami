@@ -46,11 +46,11 @@ function ChatContainerShell({
       className={cn('relative flex flex-1 min-h-0 flex-col', className)}
     >
       <ScrollAreaViewport
-        className="relative will-change-transform"
+        className="relative will-change-transform overflow-x-hidden"
         ref={viewportRef}
         {...viewportProps}
       />
-      <div className="relative mx-auto w-full max-w-full px-5 sm:max-w-[768px] sm:min-w-[400px] ">
+      <div className="relative mx-auto w-full min-w-0 max-w-full px-5 sm:max-w-[768px]">
         <div className="pointer-events-none absolute bottom-10 right-10 z-50">
           <ScrollButton scrollRef={scrollRef} />
         </div>
@@ -113,7 +113,7 @@ function ChatContainerPortal({
 }: ChatContainerPortalProps) {
   if (!viewportNode) return null
   return createPortal(
-    <div className="relative flex w-full flex-col">{children}</div>,
+    <div className="relative flex w-full min-w-0 max-w-full flex-col overflow-x-hidden">{children}</div>,
     viewportNode,
   )
 }
@@ -172,11 +172,11 @@ function ChatContainerContent({
 }: ChatContainerContentProps) {
   return (
     <div
-      className={cn('flex w-full flex-col min-h-full', className)}
+      className={cn('flex w-full min-w-0 max-w-full flex-col min-h-full overflow-x-hidden', className)}
       {...props}
     >
-      <div className="mx-auto w-full max-w-full px-2 md:px-5 sm:max-w-[768px] sm:min-w-[400px] flex flex-col flex-1 min-h-full">
-        <div className="flex flex-col space-y-3 md:space-y-6">{children}</div>
+      <div className="mx-auto w-full min-w-0 max-w-full px-2 md:px-5 sm:max-w-[768px] flex flex-col flex-1 min-h-full overflow-x-hidden">
+        <div className="flex min-w-0 max-w-full flex-col space-y-3 md:space-y-6">{children}</div>
       </div>
     </div>
   )

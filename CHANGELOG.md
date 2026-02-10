@@ -1,3 +1,26 @@
+## 1.4.0 (2026-02-10)
+
+### New Features
+- 🧩 **Code Block Enhancements** — Line numbers (multi-line only, non-selectable), filename header from fence metadata (e.g. ` ```python app.py `), and word wrap toggle with persistent preference
+- 🤖 **Cron Jobs Panel** (Beta) — Visual cron job manager: list, enable/disable, run-now, execution history. Enable via Settings → Beta Features. Based on [balin-ar/webclaw](https://github.com/balin-ar/webclaw) with bug fixes and hardening
+- 🔗 **Smart File Links** — Bare filenames (e.g. `SOUL.md`, `app.py`) are now clickable in chat messages, not just full paths. Supports 35+ file extensions
+- 📁 **Directory Navigation** — Clicking a directory path in chat navigates directly to the File Explorer
+- ✏️ **Open in Editor** — File preview dialog now has an "Open in Editor" button alongside "Open in Explorer"
+
+### Bug Fixes
+- 🐛 **Code block rendering restored** — Fixed `createDefaultComponents()` overriding code block routing, which caused Shiki syntax highlighting to never render (fenced blocks appeared as plain text)
+- 🐛 **Inline file preview restored** — Fixed `remarkFilePathLinks` plugin missing from markdown renderer after code block refactor
+- 🐛 **File link click crash** — Fixed nested `<button>` elements causing full page reload when clicking file links
+- 🐛 **Horizontal overflow** — Fixed long titles, code blocks, and messages pushing the entire page layout to the right
+
+### Improvements
+- 📐 **Overflow hardening** — Added defensive `overflow-x-hidden`, `min-w-0`, `max-w-full` across chat screen, header, sidebar, messages, code blocks, and chat container
+- 📝 **Sidebar title truncation** — Long session titles now properly truncate with ellipsis instead of overflowing
+- 🔍 **File path detection** — Improved regex to support dashed language names, directory paths, and bare filenames while avoiding false positives (version numbers, domains, IPs)
+
+### Attribution
+- Cron Jobs Panel inspired by and credited to [@balin-ar](https://github.com/balin-ar/webclaw) ([File Explorer PR #2](https://github.com/ibelick/webclaw/pull/2), Cron Dashboard from fork)
+
 ## 1.3.2 (2026-02-10)
 
 ### Performance
@@ -28,79 +51,3 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
-## [1.2.0] - 2026-02-09
-
-### Added
-- **Voice Input (STT)** — Microphone button in chat composer with recording UI (timer, pulse animation, stop button)
-  - **ElevenLabs Scribe v2** — highest quality transcription (if API key configured)
-  - **OpenAI Whisper** — reliable fallback (if API key configured)
-  - **Browser Web Speech API** — free client-side fallback, no server needed
-  - Auto-stop at 120 seconds, visual recording feedback
-  - Transcribed text inserted into composer for editing before send
-- **TTS Provider Selection** — Choose between Auto / ElevenLabs / OpenAI / Edge TTS (free) in Settings
-  - Voice selection dropdown for OpenAI (alloy/echo/fable/onyx/nova/shimmer)
-- **STT Provider Selection** — Choose between Auto / ElevenLabs / OpenAI / Browser (free) in Settings
-- **Search Sources Badge** — Expandable badge showing search sources with favicons, toggle in Settings
-- **Agent Manager** — Sidebar panel for managing agents (CRUD, config enrichment)
-
-### Changed
-- Removed thinking-content from search results
-
-### Fixed
-- Various UI and performance fixes
-
-## [1.1.0] - 2026-02-07
-
-### Added
-- Sidebar Swipe Gestures — swipe right from left edge to open, swipe left to close, dark backdrop overlay
-- Native Android APK — Capacitor-based native shell with app icons, splash screen, status bar integration
-- Performance Optimizations — lazy-loaded dialogs/routes, content-visibility for off-screen messages, ~16% bundle reduction
-- Context Window Meter — visual token usage bar in chat header (green/yellow/red, pulse at 95%+)
-
-### Fixed
-- Android status bar overlapping header/sidebar (safe-area insets)
-
-## [1.0.0] - 2026-02-06
-
-### Added
-- PWA Support — installable Progressive Web App with offline shell
-- Voice Playback (TTS) — ElevenLabs/OpenAI/Edge TTS fallback chain
-- Persona Picker — switch between 20 AI personalities
-- Model Selector — per-message model override
-- Image Attachments — upload and send images with compression
-- Conversation Search — local (⌘F) and global (⌘⇧F)
-- Smart Session Titles — LLM-generated titles
-- Smart Follow-ups — context-aware suggestions
-- Chameleon Theme
-- Keyboard Shortcuts
-- Conversation Export — Markdown/JSON/TXT
-- Real-Time Streaming — persistent WebSocket + SSE
-- File Explorer — browse and edit files in a jailed root
-- Session Folders, Pin Sessions, Text Size Control, Bulk Session Delete, Protected Sessions
-- Slash Command Help
-- CLI `opencami` command with `--port`, `--gateway`, `--host`, `--no-open` flags
-
-### Changed
-- Forked from [WebClaw](https://github.com/ibelick/webclaw) v0.1.0
-- Upgraded TanStack ecosystem (Router, Query, Start)
-- Enhanced mobile responsiveness
-
-### Security
-- Path jailing for file explorer with symlink escape protection
-- Token-based Gateway authentication (server-side)
-- Markdown sanitization (XSS prevention)
-
-## [Unreleased]
-
-### Planned
-- Push Notifications (PWA)
-- File Uploads (PDFs/docs/code)
-- Usage Dashboard
-- Official Docker image
-
----
-
-[1.2.0]: https://github.com/robbyczgw-cla/opencami/releases/tag/v1.2.0
-[1.1.0]: https://github.com/robbyczgw-cla/opencami/releases/tag/v1.1.0
-[1.0.0]: https://github.com/robbyczgw-cla/opencami/releases/tag/v1.0.0

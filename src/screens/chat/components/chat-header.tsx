@@ -24,7 +24,7 @@ function ChatHeaderComponent({
   return (
     <div
       ref={wrapperRef}
-      className="border-b border-primary-200 px-4 h-12 flex items-center bg-surface"
+      className="border-b border-primary-200 px-4 h-12 flex min-w-0 items-center overflow-x-hidden bg-surface"
     >
       {showSidebarButton ? (
         <Button
@@ -37,7 +37,9 @@ function ChatHeaderComponent({
           <HugeiconsIcon icon={Menu01Icon} size={18} strokeWidth={1.6} />
         </Button>
       ) : null}
-      <div className="text-sm font-medium truncate flex-1 min-w-0">{activeTitle}</div>
+      <div className="flex-1 min-w-0 overflow-hidden">
+        <div className="truncate text-sm font-medium">{activeTitle}</div>
+      </div>
       <ContextMeter
         totalTokens={totalTokens}
         contextTokens={contextTokens}

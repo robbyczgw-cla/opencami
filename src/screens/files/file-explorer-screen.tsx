@@ -14,10 +14,9 @@ import { cn } from '@/lib/utils'
 
 export function FileExplorerScreen() {
   const queryClient = useQueryClient()
-  const { currentPath } = useFileExplorerState()
+  const { currentPath, editingFile } = useFileExplorerState()
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false)
   const [createFolderDialogOpen, setCreateFolderDialogOpen] = useState(false)
-  const [editingFile, setEditingFile] = useState<string | null>(null)
 
   const listingQuery = useFileListing(currentPath)
 
@@ -49,11 +48,11 @@ export function FileExplorerScreen() {
   }, [])
 
   const handleOpenFile = useCallback((filePath: string) => {
-    setEditingFile(filePath)
+    useFileExplorerState.getState().openInEditor(filePath)
   }, [])
 
   const handleCloseEditor = useCallback(() => {
-    setEditingFile(null)
+    useFileExplorerState.getState().closeEditor()
   }, [])
 
   const mainStyles = useMemo(() => ({

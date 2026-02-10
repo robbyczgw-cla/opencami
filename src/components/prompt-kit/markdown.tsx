@@ -1,10 +1,15 @@
 import { marked } from 'marked'
-import { memo, useEffect, useId, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useId, useMemo, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkBreaks from 'remark-breaks'
 import remarkGfm from 'remark-gfm'
 import { CodeBlock } from './code-block'
-import { languageFromFilePath, markdownHrefToFilePath } from './file-paths'
+import {
+  isLikelyFilePath,
+  languageFromFilePath,
+  markdownHrefToFilePath,
+  remarkFilePathLinks,
+} from './file-paths'
 import {
   DialogClose,
   DialogContent,
@@ -15,8 +20,7 @@ import { Button } from '@/components/ui/button'
 import { useFileExplorerState } from '../../screens/files/hooks/use-file-explorer-state'
 import type { Components } from 'react-markdown'
 import { cn } from '@/lib/utils'
-import { Link } from '@tanstack/react-router'
-import { useChatSettingsStore } from '@/hooks/use-chat-settings'
+import { Link, useNavigate } from '@tanstack/react-router'
 
 export type MarkdownProps = {
   children: string
@@ -33,6 +37,45 @@ type FilePreviewState =
 
 const INLINE_PREVIEW_MAX_BYTES = 100 * 1024
 
+function normalizeClickedPath(path: string): string {
+  if (!path) return '/'
+  return path.includes('/') ? path : `/${path}`
+}
+
+function toWorkspacePath(path: string): string {
+  let p = normalizeClickedPath(path)
+  const prefixes = ['/root/clawd/', '/root/']
+  for (const prefix of prefixes) {
+    if (p.startsWith(prefix)) {
+      p = '/' + p.slice(prefix.length)
+      break
+    }
+  }
+  return p.startsWith('/') ? p : `/${p}`
+}
+
+function hasExtension(path: string): boolean {
+  const trimmed = path.replace(/\/+$/, '')
+  const name = trimmed.split('/').pop() || ''
+  if (!name || name.startsWith('.')) return false
+  return name.includes('.')
+}
+
+function isDirectoryPathHeuristic(path: string): boolean {
+  if (!path) return false
+  return path.endsWith('/') || !hasExtension(path)
+}
+
+function isDirectoryError(code?: string, message?: string): boolean {
+  const normalizedCode = String(code || '').toUpperCase()
+  const normalizedMessage = String(message || '').toLowerCase()
+  return (
+    normalizedCode.includes('DIRECTORY') ||
+    normalizedMessage.includes('is a directory') ||
+    normalizedMessage.includes('directory')
+  )
+}
+
 function parseMarkdownIntoBlocks(markdown: string): Array<string> {
   const tokens = marked.lexer(markdown)
   return tokens.map((token) => token.raw)
@@ -40,12 +83,19 @@ function parseMarkdownIntoBlocks(markdown: string): Array<string> {
 
 function extractLanguage(className?: string): string {
   if (!className) return 'text'
-  const match = className.match(/language-(\w+)/)
+  const match = className.match(/language-([\w-]+)/)
   return match ? match[1] : 'text'
 }
 
+function extractFilenameFromMeta(meta?: string): string | undefined {
+  const value = meta?.trim()
+  if (!value) return undefined
+  const firstToken = value.split(/\s+/)[0]
+  return firstToken || undefined
+}
+
 const BASE_COMPONENTS: Partial<Components> = {
-  code: function CodeComponent({ className, children }) {
+  code: function CodeComponent({ className, children, node }) {
     const isInline = !className?.includes('language-')
 
     if (isInline) {
@@ -57,10 +107,14 @@ const BASE_COMPONENTS: Partial<Components> = {
     }
 
     const language = extractLanguage(className)
+    const filename = extractFilenameFromMeta(
+      (node?.data as { meta?: string } | undefined)?.meta,
+    )
     return (
       <CodeBlock
         content={String(children ?? '')}
         language={language}
+        filename={filename}
         className="w-full"
       />
     )
@@ -151,15 +205,12 @@ const BASE_COMPONENTS: Partial<Components> = {
 
 function createDefaultComponents(
   onOpenFilePreview: (path: string) => void,
-  inlineFilePreviewEnabled: boolean,
 ): Partial<Components> {
-  const FILE_PATH_RE = /^(?:~\/[\w.\-\/]+|\/(?:[\w.\-]+\/)+[\w.\-]+)$/
-
   return {
     ...BASE_COMPONENTS,
     a: function AComponent({ children, href }) {
       const filePath = markdownHrefToFilePath(href)
-      if (inlineFilePreviewEnabled && filePath) {
+      if (filePath) {
         return (
           <button
             type="button"
@@ -174,6 +225,10 @@ function createDefaultComponents(
       return (
         <a
           href={href}
+          onClick={(event) => {
+            // Safety guard: never allow browser navigation for our internal file scheme.
+            if (href?.startsWith('openclaw-file://')) event.preventDefault()
+          }}
           className="text-primary-950 underline decoration-primary-300 underline-offset-4 transition-colors hover:text-primary-950 hover:decoration-primary-500"
           target="_blank"
           rel="noopener noreferrer"
@@ -182,9 +237,21 @@ function createDefaultComponents(
         </a>
       )
     },
-    code: function InlineCodeComponent({ children, className }) {
-      // If it has a language class, it's a code block (handled by CodeBlock)
-      if (className) return <code className={className}>{children}</code>
+    code: function InlineCodeComponent({ children, className, node }) {
+      if (className?.includes('language-')) {
+        const language = extractLanguage(className)
+        const filename = extractFilenameFromMeta(
+          (node?.data as { meta?: string } | undefined)?.meta,
+        )
+        return (
+          <CodeBlock
+            content={String(children ?? '')}
+            language={language}
+            filename={filename}
+            className="w-full"
+          />
+        )
+      }
 
       // Check if the inline code content looks like a file path
       const text = typeof children === 'string'
@@ -192,7 +259,7 @@ function createDefaultComponents(
         : Array.isArray(children)
           ? children.filter((c: unknown) => typeof c === 'string').join('')
           : String(children ?? '')
-      if (inlineFilePreviewEnabled && text && FILE_PATH_RE.test(text)) {
+      if (text && isLikelyFilePath(text)) {
         return (
           <button
             type="button"
@@ -223,7 +290,7 @@ const MemoizedMarkdownBlock = memo(
   }) {
     return (
       <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkBreaks]}
+        remarkPlugins={[remarkGfm, remarkBreaks, remarkFilePathLinks]}
         components={components}
       >
         {content}
@@ -254,17 +321,27 @@ function MarkdownComponent({
   const blockId = id ?? generatedId
   const blocks = useMemo(() => parseMarkdownIntoBlocks(children), [children])
   const [filePreview, setFilePreview] = useState<FilePreviewState>({ status: 'idle' })
-  const inlineFilePreviewEnabled = useChatSettingsStore(
-    (state) => state.settings.inlineFilePreview,
-  )
+  const navigate = useNavigate()
+
+  const openDirectoryInExplorer = useCallback((path: string) => {
+    const workspacePath = toWorkspacePath(path)
+    useFileExplorerState.getState().navigateTo(workspacePath)
+    setFilePreview({ status: 'idle' })
+    navigate({ to: '/files' })
+  }, [navigate])
+
+  const onOpenFilePreview = useCallback((path: string) => {
+    const resolvedPath = normalizeClickedPath(path)
+    if (isDirectoryPathHeuristic(resolvedPath)) {
+      openDirectoryInExplorer(resolvedPath)
+      return
+    }
+    setFilePreview({ status: 'loading', path: resolvedPath })
+  }, [openDirectoryInExplorer])
 
   const defaultComponents = useMemo(
-    () =>
-      createDefaultComponents(
-        (path) => setFilePreview({ status: 'loading', path }),
-        inlineFilePreviewEnabled,
-      ),
-    [inlineFilePreviewEnabled],
+    () => createDefaultComponents(onOpenFilePreview),
+    [onOpenFilePreview],
   )
 
   const mergedComponents = useMemo(
@@ -285,6 +362,10 @@ function MarkdownComponent({
         const payload = await response.json().catch(() => ({}))
 
         if (!response.ok) {
+          if (isDirectoryError(payload.code, payload.message)) {
+            openDirectoryInExplorer(path)
+            return
+          }
           const error = fileErrorMessageFromResponse(response.status, payload.code)
           setFilePreview({ status: 'error', path, message: error })
           return
@@ -310,13 +391,27 @@ function MarkdownComponent({
       })
 
     return () => controller.abort()
-  }, [filePreview])
+  }, [filePreview, openDirectoryInExplorer])
 
   const previewOpen = filePreview.status !== 'idle'
 
   return (
     <>
-      <div className={cn('flex flex-col gap-2', className)}>
+      <div
+        className={cn('flex min-w-0 max-w-full flex-col gap-2 overflow-x-hidden', className)}
+        onClickCapture={(event) => {
+          const target = event.target as HTMLElement | null
+          const anchor = target?.closest?.('a[href^="openclaw-file://"]') as HTMLAnchorElement | null
+          if (!anchor) return
+
+          const filePath = markdownHrefToFilePath(anchor.getAttribute('href') ?? undefined)
+          if (!filePath) return
+
+          event.preventDefault()
+          event.stopPropagation()
+          onOpenFilePreview(filePath)
+        }}
+      >
         {blocks.map((block, index) => (
           <MemoizedMarkdownBlock
             key={`${blockId}-block-${index}`}
@@ -346,21 +441,28 @@ function MarkdownComponent({
                   <Link
                     to="/files"
                     onClick={() => {
-                      let p = filePreview.status !== 'idle' ? filePreview.path : ''
+                      const p = filePreview.status !== 'idle' ? toWorkspacePath(filePreview.path) : ''
                       if (p) {
-                        const prefixes = ['/root/clawd/', '/root/']
-                        for (const prefix of prefixes) {
-                          if (p.startsWith(prefix)) {
-                            p = '/' + p.slice(prefix.length)
-                            break
-                          }
-                        }
                         const dir = p.includes('/') ? p.slice(0, p.lastIndexOf('/')) || '/' : '/'
                         useFileExplorerState.getState().navigateTo(dir)
                       }
                       setFilePreview({ status: 'idle' })
                     }}
-                  >Open in File Explorer</Link>
+                  >Open in Explorer</Link>
+                </Button>
+              )}
+              {filePreview.status !== 'idle' && (
+                <Button variant="ghost" size="sm" asChild>
+                  <Link
+                    to="/files"
+                    onClick={() => {
+                      const p = filePreview.status !== 'idle' ? toWorkspacePath(filePreview.path) : ''
+                      if (p) {
+                        useFileExplorerState.getState().openInEditor(p)
+                      }
+                      setFilePreview({ status: 'idle' })
+                    }}
+                  >Open in Editor</Link>
                 </Button>
               )}
               <DialogClose>Close</DialogClose>

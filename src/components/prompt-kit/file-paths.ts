@@ -5,13 +5,76 @@ export type FilePathSegment = {
   value: string
 }
 
-const FILE_PATH_REGEX = /(^|[\s"'(,;:])(\~\/[A-Za-z0-9._\-\/]+[A-Za-z0-9._\-]|\/(?:[\w.\-]+\/)+[\w.\-]+)(?=$|[\s"'),;:!?])/g
+const KNOWN_FILE_EXTENSIONS = [
+  'md',
+  'txt',
+  'json',
+  'yaml',
+  'yml',
+  'toml',
+  'py',
+  'js',
+  'ts',
+  'tsx',
+  'jsx',
+  'css',
+  'scss',
+  'html',
+  'xml',
+  'sh',
+  'bash',
+  'go',
+  'rs',
+  'rb',
+  'php',
+  'java',
+  'kt',
+  'swift',
+  'c',
+  'cpp',
+  'h',
+  'hpp',
+  'sql',
+  'graphql',
+  'dockerfile',
+  'env',
+  'conf',
+  'cfg',
+  'ini',
+  'log',
+  'csv',
+] as const
+
+const EXTENSION_PATTERN = KNOWN_FILE_EXTENSIONS.join('|')
+
+const ABSOLUTE_OR_HOME_PATH_PATTERN = '(?:~\\/[A-Za-z0-9._\\-\\/]*[A-Za-z0-9._\\-\\/]|\\/(?:[\\w.\\-]+\\/)*[\\w.\\-]+\\/?)'
+const RELATIVE_PATH_PATTERN = '(?:[A-Za-z0-9._\\-]+(?:\\/[A-Za-z0-9._\\-]+)+\\/?)'
+const BARE_FILENAME_PATTERN = `(?:[A-Za-z0-9_-][A-Za-z0-9._-]*[A-Za-z0-9_-]\\.(?:${EXTENSION_PATTERN})|dockerfile)`
+
+const FILE_PATH_REGEX = new RegExp(
+  `(^|[\\s"'(,;:])(${ABSOLUTE_OR_HOME_PATH_PATTERN}|${RELATIVE_PATH_PATTERN}|${BARE_FILENAME_PATTERN})(?=$|[\\s"'),;:!?])`,
+  'gi',
+)
 
 function trimTrailingPunctuation(path: string): { path: string; trailing: string } {
   if (!path) return { path: path ?? '', trailing: '' }
   const match = path.match(/^(.*?)([),.;:!?]+)?$/)
   if (!match) return { path, trailing: '' }
   return { path: match[1] || path, trailing: match[2] || '' }
+}
+
+export function isLikelyFilePath(text: string): boolean {
+  if (!text) return false
+  FILE_PATH_REGEX.lastIndex = 0
+  const match = FILE_PATH_REGEX.exec(text)
+  if (!match) return false
+
+  const prefix = match[1] || ''
+  const value = match[2] || ''
+  const matchStart = match.index + prefix.length
+  const matchEnd = matchStart + value.length
+
+  return matchStart === 0 && matchEnd === text.length
 }
 
 export function splitTextByFilePaths(text: string): FilePathSegment[] {
@@ -96,7 +159,7 @@ export function remarkFilePathLinks() {
           return {
             type: 'link',
             url: filePathToMarkdownHref(segment.value),
-            children: [{ type: 'inlineCode', value: segment.value }],
+            children: [{ type: 'text', value: segment.value }],
           }
         })
 
