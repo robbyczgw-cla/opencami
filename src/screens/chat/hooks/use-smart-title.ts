@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
-import { useLlmSettingsStore } from '@/hooks/use-llm-settings'
+import { getLlmHeaders, useLlmSettingsStore } from '@/hooks/use-llm-settings'
 
 type GenerateTitleResult = {
   title: string
@@ -42,11 +42,7 @@ export function useSmartTitle(): UseSmartTitleResult {
       try {
         const headers: Record<string, string> = {
           'Content-Type': 'application/json',
-        }
-
-        // Add API key if user has one
-        if (llmSettings.openaiApiKey) {
-          headers['X-OpenAI-API-Key'] = llmSettings.openaiApiKey
+          ...getLlmHeaders(),
         }
 
         const res = await fetch('/api/llm-features', {
@@ -107,7 +103,12 @@ export function useSmartTitle(): UseSmartTitleResult {
         }
       }
     },
-    [llmSettings.openaiApiKey],
+    [
+      llmSettings.llmApiKey,
+      llmSettings.llmBaseUrl,
+      llmSettings.llmModel,
+      llmSettings.llmProvider,
+    ],
   )
 
   return {

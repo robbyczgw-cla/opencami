@@ -21,6 +21,7 @@ import {
 } from '@/components/attachment-button'
 import { AttachmentPreviewList } from '@/components/attachment-preview'
 import { SlashCommandMenu, type SlashCommand } from './slash-command-menu'
+import { ThinkingLevelSelector } from './thinking-level-selector'
 
 type ChatComposerProps = {
   onSubmit: (value: string, helpers: ChatComposerHelpers) => void
@@ -490,6 +491,7 @@ function ChatComposerComponent({
         <PromptInputActions className="justify-between px-3">
           <div className="flex items-center gap-1">
             <ModelSelector onModelChange={setSelectedModel} />
+            <ThinkingLevelSelector />
             <PersonaPicker onSelect={handlePersonaSelect} />
             <CommandHelp onCommandSelect={(cmd) => handleValueChange(cmd + ' ')} />
           </div>

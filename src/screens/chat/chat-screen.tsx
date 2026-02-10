@@ -57,6 +57,7 @@ import { cn } from '@/lib/utils'
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
 import { useSwipeGesture } from './hooks/use-swipe-gesture'
 import type { SearchResult } from '@/hooks/use-search'
+import { useThinkingLevelStore } from '@/hooks/use-thinking-level'
 
 const KeyboardShortcutsDialog = lazy(() =>
   import('@/components/keyboard-shortcuts-dialog').then((m) => ({
@@ -103,6 +104,7 @@ export function ChatScreen({
   const [showSearchDialog, setShowSearchDialog] = useState(false)
   const [searchMode, setSearchMode] = useState<'global' | 'current'>('global')
   const [isStreaming, setIsStreaming] = useState(false)
+  const thinkingLevel = useThinkingLevelStore((state) => state.level)
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
   const streamTimer = useRef<number | null>(null)
   const streamIdleTimer = useRef<number | null>(null)
@@ -613,7 +615,7 @@ export function ChatScreen({
         sessionKey,
         friendlyId,
         message: body,
-        thinking: 'low',
+        thinking: thinkingLevel,
         idempotencyKey: crypto.randomUUID(),
         attachments: attachmentsPayload,
         model: model || undefined,

@@ -140,7 +140,7 @@ Rules:
       { role: 'system', content: systemPrompt },
       { role: 'user', content: message },
     ],
-    { ...options, maxTokens: 25 },
+    { ...options, maxTokens: 200 },
   )
 }
 
@@ -163,7 +163,7 @@ Rules:
       { role: 'system', content: systemPrompt },
       { role: 'user', content: conversationContext },
     ],
-    { ...options, maxTokens: 150 },
+    { ...options, maxTokens: 500 },
   )
 
   try {

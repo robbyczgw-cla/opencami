@@ -52,20 +52,31 @@ type TestKeyResponse = {
  * Get API key from request header or environment
  * Priority: Header (user-provided) > Environment variable
  */
-function getApiKey(request: Request): string | null {
-  // Check for user-provided key in header
+type LlmConfig = {
+  apiKey: string | null
+  baseUrl: string | null
+  model: string | null
+}
+
+function getLlmConfig(request: Request): LlmConfig {
+  // API key: header > env (check both OpenAI and OpenRouter env keys)
   const headerKey = request.headers.get('X-OpenAI-API-Key')
-  if (headerKey?.trim()) {
-    return headerKey.trim()
-  }
+  const baseUrl = request.headers.get('X-LLM-Base-URL')?.trim() || null
+  const isOpenRouter = baseUrl?.includes('openrouter.ai')
+  const envKey = isOpenRouter
+    ? (process.env.OPENROUTER_API_KEY?.trim() || process.env.OPENAI_API_KEY?.trim())
+    : process.env.OPENAI_API_KEY?.trim()
+  const apiKey = headerKey?.trim() || envKey || null
 
-  // Fall back to environment variable
-  const envKey = process.env.OPENAI_API_KEY?.trim()
-  if (envKey) {
-    return envKey
-  }
+  // Model from header
+  const model = request.headers.get('X-LLM-Model')?.trim() || null
 
-  return null
+  return { apiKey, baseUrl, model }
+}
+
+/** @deprecated Use getLlmConfig instead */
+function getApiKey(request: Request): string | null {
+  return getLlmConfig(request).apiKey
 }
 
 /**
@@ -119,10 +130,12 @@ export const Route = createFileRoute('/api/llm-features')({
       GET: async () => {
         try {
           const hasEnvKey = Boolean(process.env.OPENAI_API_KEY?.trim())
+          const hasOpenRouterKey = Boolean(process.env.OPENROUTER_API_KEY?.trim())
           
-          return json<StatusResponse>({
+          return json({
             ok: true,
             hasEnvKey,
+            hasOpenRouterKey,
           })
         } catch (err) {
           return json<StatusResponse>({
@@ -157,10 +170,10 @@ export const Route = createFileRoute('/api/llm-features')({
                 })
               }
 
-              const apiKey = getApiKey(request)
+              const llmConfig = getLlmConfig(request)
               
-              // If no API key, use heuristic
-              if (!apiKey) {
+              // If no API key and no Ollama-style local provider, use heuristic
+              if (!llmConfig.apiKey && !llmConfig.baseUrl?.includes('localhost')) {
                 const title = generateHeuristicTitle(message)
                 return json<TitleResponse>({
                   ok: true,
@@ -170,7 +183,11 @@ export const Route = createFileRoute('/api/llm-features')({
               }
 
               try {
-                const title = await generateSessionTitle(message, { apiKey })
+                const title = await generateSessionTitle(message, {
+                  apiKey: llmConfig.apiKey || '',
+                  ...(llmConfig.baseUrl ? { baseUrl: llmConfig.baseUrl } : {}),
+                  ...(llmConfig.model ? { model: llmConfig.model } : {}),
+                })
                 return json<TitleResponse>({
                   ok: true,
                   title,
@@ -200,10 +217,10 @@ export const Route = createFileRoute('/api/llm-features')({
                 })
               }
 
-              const apiKey = getApiKey(request)
+              const llmConfig = getLlmConfig(request)
               
-              // If no API key, return empty (caller will use heuristic)
-              if (!apiKey) {
+              // If no API key and no local provider, return empty
+              if (!llmConfig.apiKey && !llmConfig.baseUrl?.includes('localhost')) {
                 return json<FollowUpsResponse>({
                   ok: true,
                   suggestions: [],
@@ -212,7 +229,11 @@ export const Route = createFileRoute('/api/llm-features')({
               }
 
               try {
-                const suggestions = await generateFollowUps(conversationContext, { apiKey })
+                const suggestions = await generateFollowUps(conversationContext, {
+                  apiKey: llmConfig.apiKey || '',
+                  ...(llmConfig.baseUrl ? { baseUrl: llmConfig.baseUrl } : {}),
+                  ...(llmConfig.model ? { model: llmConfig.model } : {}),
+                })
                 return json<FollowUpsResponse>({
                   ok: true,
                   suggestions,
@@ -230,17 +251,17 @@ export const Route = createFileRoute('/api/llm-features')({
             }
 
             case 'test': {
-              const headerKey = request.headers.get('X-OpenAI-API-Key')?.trim()
+              const llmConfig = getLlmConfig(request)
               
-              if (!headerKey) {
+              if (!llmConfig.apiKey && !llmConfig.baseUrl?.includes('localhost')) {
                 return json<TestKeyResponse>({
                   ok: false,
-                  error: 'API key required in X-OpenAI-API-Key header',
+                  error: 'API key required (or use Ollama for keyless access)',
                 })
               }
 
               try {
-                const valid = await testApiKey(headerKey)
+                const valid = await testApiKey(llmConfig.apiKey || '')
                 return json<TestKeyResponse>({
                   ok: true,
                   valid,

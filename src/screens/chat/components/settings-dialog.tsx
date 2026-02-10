@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { cn } from '@/lib/utils'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
   Cancel01Icon,
@@ -9,6 +10,14 @@ import {
   Tick01Icon,
   Cancel02Icon,
   Loading02Icon,
+  PaintBoardIcon,
+  MessageEdit01Icon,
+  UserIcon,
+  VoiceIcon,
+  Mic02Icon,
+  AiBrain01Icon,
+  InformationCircleIcon,
+  Link01Icon,
 } from '@hugeicons/core-free-icons'
 import type { PathsPayload } from '../types'
 import {
@@ -23,16 +32,24 @@ import { Tabs, TabsList, TabsTab } from '@/components/ui/tabs'
 import { useChatSettings } from '@/hooks/use-chat-settings'
 import type { ThemeMode } from '@/hooks/use-chat-settings'
 import { Button } from '@/components/ui/button'
-import { useLlmSettings } from '@/hooks/use-llm-settings'
+import { useLlmSettings, getLlmProviderDefaults } from '@/hooks/use-llm-settings'
 
 type SettingsSectionProps = {
   title: string
+  tabId?: string
+  activeTab?: string
   children: React.ReactNode
 }
 
-function SettingsSection({ title, children }: SettingsSectionProps) {
+function SettingsSection({ title, tabId, activeTab, children }: SettingsSectionProps) {
+  // On desktop: hide if tabId doesn't match activeTab
+  // On mobile: always show (no sidebar)
+  const hiddenOnDesktop = tabId && activeTab && tabId !== activeTab
   return (
-    <div className="border-b border-primary-200 py-4 last:border-0">
+    <div className={cn(
+      'border-b border-primary-200 py-4 last:border-0',
+      hiddenOnDesktop && 'md:hidden',
+    )}>
       <h3 className="mb-3 text-sm font-medium text-primary-900">{title}</h3>
       <div className="space-y-3">{children}</div>
     </div>
@@ -96,7 +113,8 @@ export function SettingsDialog({
     testApiKey,
   } = useLlmSettings()
 
-  const [apiKeyInput, setApiKeyInput] = useState(llmSettings.openaiApiKey)
+  const [activeTab, setActiveTab] = useState('appearance')
+  const [apiKeyInput, setApiKeyInput] = useState(llmSettings.llmApiKey)
   const [testingKey, setTestingKey] = useState(false)
   const [testResult, setTestResult] = useState<{ valid: boolean; error?: string } | null>(null)
 
@@ -235,7 +253,7 @@ export function SettingsDialog({
       const result = await testApiKey(apiKeyInput.trim())
       setTestResult(result)
       if (result.valid) {
-        updateLlmSettings({ openaiApiKey: apiKeyInput.trim() })
+        updateLlmSettings({ llmApiKey: apiKeyInput.trim() })
       }
     } finally {
       setTestingKey(false)
@@ -243,13 +261,13 @@ export function SettingsDialog({
   }
 
   const handleSaveApiKey = () => {
-    updateLlmSettings({ openaiApiKey: apiKeyInput.trim() })
+    updateLlmSettings({ llmApiKey: apiKeyInput.trim() })
     setTestResult(null)
   }
 
   const handleClearApiKey = () => {
     setApiKeyInput('')
-    updateLlmSettings({ openaiApiKey: '' })
+    updateLlmSettings({ llmApiKey: '' })
     setTestResult(null)
   }
 
@@ -272,7 +290,7 @@ export function SettingsDialog({
 
   return (
     <DialogRoot open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[min(480px,92vw)] max-h-[80vh] overflow-auto">
+      <DialogContent className="w-[min(720px,92vw)] max-h-[80vh] overflow-hidden">
         <div className="p-4">
           <div className="flex items-start justify-between">
             <div>
@@ -299,7 +317,39 @@ export function SettingsDialog({
             />
           </div>
 
-          <SettingsSection title="Connection">
+          {/* Desktop: sidebar + content | Mobile: vertical scroll */}
+          <div className="mt-3 flex md:flex-row flex-col md:gap-4 gap-0 md:min-h-[400px]">
+            {/* Sidebar - desktop only */}
+            <nav className="hidden md:flex flex-col gap-0.5 min-w-[160px] border-r border-primary-200 pr-3">
+              {([
+                { id: 'connection', label: 'Connection', icon: Link01Icon },
+                { id: 'appearance', label: 'Appearance', icon: PaintBoardIcon },
+                { id: 'chat', label: 'Chat', icon: MessageEdit01Icon },
+                { id: 'personas', label: 'Personas', icon: UserIcon },
+                { id: 'voice', label: 'Voice', icon: VoiceIcon },
+                { id: 'llm', label: 'LLM Features', icon: AiBrain01Icon },
+                { id: 'about', label: 'About', icon: InformationCircleIcon },
+              ] as const).map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={cn(
+                    'flex items-center gap-2 px-2.5 py-1.5 rounded-md text-sm text-left transition-colors',
+                    activeTab === tab.id
+                      ? 'bg-primary-100 text-primary-900 font-medium'
+                      : 'text-primary-600 hover:text-primary-900 hover:bg-primary-50',
+                  )}
+                >
+                  <HugeiconsIcon icon={tab.icon} size={16} strokeWidth={1.5} />
+                  {tab.label}
+                </button>
+              ))}
+            </nav>
+
+            {/* Content area */}
+            <div className="flex-1 overflow-y-auto md:max-h-[calc(80vh-100px)] max-h-none">
+
+          <SettingsSection title="Connection" tabId="connection" activeTab={activeTab}>
             <SettingsRow label="Status">
               <span className="flex items-center gap-1.5 text-sm text-green-600">
                 <span className="size-2 rounded-full bg-green-500" />
@@ -308,7 +358,7 @@ export function SettingsDialog({
             </SettingsRow>
           </SettingsSection>
 
-          <SettingsSection title="Appearance">
+          <SettingsSection title="Appearance" tabId="appearance" activeTab={activeTab}>
             <SettingsRow label="Theme">
               <Tabs
                 value={settings.theme}
@@ -356,7 +406,7 @@ export function SettingsDialog({
             </SettingsRow>
           </SettingsSection>
 
-          <SettingsSection title="Chat">
+          <SettingsSection title="Chat" tabId="chat" activeTab={activeTab}>
             <SettingsRow label="Show tool messages">
               <Switch
                 checked={settings.showToolMessages}
@@ -406,7 +456,7 @@ export function SettingsDialog({
             </SettingsRow>
           </SettingsSection>
 
-          <SettingsSection title="Personas">
+          <SettingsSection title="Personas" tabId="personas" activeTab={activeTab}>
             {personasAvailable ? (
               <SettingsRow
                 label="Persona Picker"
@@ -439,7 +489,7 @@ export function SettingsDialog({
             )}
           </SettingsSection>
 
-          <SettingsSection title="Text-to-Speech">
+          <SettingsSection title="Text-to-Speech" tabId="voice" activeTab={activeTab}>
             <SettingsRow
               label="Voice Playback"
               description="Add a 🔊 button to AI messages for text-to-speech"
@@ -482,7 +532,7 @@ export function SettingsDialog({
             )}
           </SettingsSection>
 
-          <SettingsSection title="Speech-to-Text">
+          <SettingsSection title="Speech-to-Text" tabId="voice" activeTab={activeTab}>
             <SettingsRow
               label="STT Provider"
               description="Choose which service transcribes your voice"
@@ -500,15 +550,43 @@ export function SettingsDialog({
             </SettingsRow>
           </SettingsSection>
 
-          <SettingsSection title="LLM Features">
+          <SettingsSection title="LLM Features" tabId="llm" activeTab={activeTab}>
             <div className="text-xs text-primary-500 mb-3">
-              Enhance session titles and follow-up suggestions using OpenAI API.
-              {llmStatus.hasEnvKey && (
+              Enhance session titles and follow-up suggestions using an LLM provider.
+              {llmStatus.hasEnvKey && llmSettings.llmProvider === 'openai' && (
                 <span className="block mt-1 text-green-600">
                   ✓ Server has OPENAI_API_KEY configured
                 </span>
               )}
+              {llmStatus.hasOpenRouterKey && llmSettings.llmProvider === 'openrouter' && (
+                <span className="block mt-1 text-green-600">
+                  ✓ Server has OPENROUTER_API_KEY configured
+                </span>
+              )}
             </div>
+
+            <SettingsRow
+              label="Provider"
+              description="Choose LLM provider for titles & follow-ups"
+            >
+              <select
+                value={llmSettings.llmProvider}
+                onChange={(e) => {
+                  const provider = e.target.value as 'openai' | 'openrouter' | 'ollama' | 'custom'
+                  updateLlmSettings({
+                    llmProvider: provider,
+                    llmBaseUrl: '',
+                    llmModel: '',
+                  })
+                }}
+                className="px-2 py-1 text-sm rounded-md border border-primary-200 bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="openai">OpenAI</option>
+                <option value="openrouter">OpenRouter</option>
+                <option value="ollama">Ollama (local)</option>
+                <option value="custom">Custom</option>
+              </select>
+            </SettingsRow>
 
             <SettingsRow
               label="Smart session titles"
@@ -536,12 +614,41 @@ export function SettingsDialog({
               />
             </SettingsRow>
 
+            <div className="mt-2 space-y-2">
+              <div>
+                <div className="text-xs text-primary-500 mb-1">Model</div>
+                <input
+                  type="text"
+                  value={llmSettings.llmModel}
+                  onChange={(e) => updateLlmSettings({ llmModel: e.target.value })}
+                  placeholder={getLlmProviderDefaults(llmSettings.llmProvider).model || 'model-name'}
+                  className="w-full px-3 py-1.5 text-sm rounded-md border border-primary-200 bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
+              {(llmSettings.llmProvider === 'custom' || llmSettings.llmProvider === 'ollama') && (
+                <div>
+                  <div className="text-xs text-primary-500 mb-1">Base URL</div>
+                  <input
+                    type="text"
+                    value={llmSettings.llmBaseUrl}
+                    onChange={(e) => updateLlmSettings({ llmBaseUrl: e.target.value })}
+                    placeholder={getLlmProviderDefaults(llmSettings.llmProvider).baseUrl || 'https://...'}
+                    className="w-full px-3 py-1.5 text-sm rounded-md border border-primary-200 bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+              )}
+            </div>
+
             <div className="mt-4 pt-3 border-t border-primary-100">
-              <div className="text-sm text-primary-800 mb-2">OpenAI API Key</div>
+              <div className="text-sm text-primary-800 mb-2">
+                {llmSettings.llmProvider === 'ollama' ? 'API Key (optional)' : 'API Key'}
+              </div>
               <div className="text-xs text-primary-500 mb-2">
-                {llmStatus.hasEnvKey
-                  ? 'Optional: Override server key with your own'
-                  : 'Required for LLM features (stored locally)'}
+                {llmSettings.llmProvider === 'ollama'
+                  ? 'Not required for local Ollama'
+                  : llmStatus.hasEnvKey && llmSettings.llmProvider === 'openai'
+                    ? 'Optional: Override server key with your own'
+                    : `Required for ${llmSettings.llmProvider === 'openrouter' ? 'OpenRouter' : 'LLM features'} (stored locally)`}
               </div>
               <div className="flex gap-2">
                 <input
@@ -587,7 +694,7 @@ export function SettingsDialog({
                 </div>
               )}
 
-              {llmSettings.openaiApiKey && (
+              {llmSettings.llmApiKey && (
                 <div className="mt-2 flex items-center justify-between">
                   <span className="text-xs text-green-600 flex items-center gap-1">
                     <HugeiconsIcon icon={Tick01Icon} size={14} />
@@ -604,7 +711,7 @@ export function SettingsDialog({
                 </div>
               )}
 
-              {apiKeyInput && apiKeyInput !== llmSettings.openaiApiKey && !testResult?.valid && (
+              {apiKeyInput && apiKeyInput !== llmSettings.llmApiKey && !testResult?.valid && (
                 <Button
                   size="sm"
                   variant="outline"
@@ -617,7 +724,7 @@ export function SettingsDialog({
             </div>
           </SettingsSection>
 
-          <SettingsSection title="About">
+          <SettingsSection title="About" tabId="about" activeTab={activeTab}>
             <div className="text-sm text-primary-800">OpenCami</div>
             <div className="flex gap-4 pt-2">
               <a
@@ -639,7 +746,10 @@ export function SettingsDialog({
             </div>
           </SettingsSection>
 
-          <div className="mt-6 flex justify-end">
+            </div>{/* end content area */}
+          </div>{/* end flex sidebar+content */}
+
+          <div className="mt-4 flex justify-end">
             <DialogClose onClick={onClose}>Close</DialogClose>
           </div>
         </div>

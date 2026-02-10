@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { getHeuristicFollowUpTexts } from '../lib/follow-up-generator'
-import { useLlmSettingsStore } from '@/hooks/use-llm-settings'
+import { getLlmHeaders, useLlmSettingsStore } from '@/hooks/use-llm-settings'
 
 type UseFollowUpSuggestionsOptions = {
   /** Minimum response length to trigger suggestions */
@@ -20,18 +20,15 @@ type UseFollowUpSuggestionsResult = {
 }
 
 /**
- * Fetch LLM-generated follow-up suggestions from OpenAI API
+ * Fetch LLM-generated follow-up suggestions from the LLM API
  */
-async function fetchOpenAIFollowUps(
+async function fetchLlmFollowUps(
   conversationContext: string,
-  apiKey: string,
   signal?: AbortSignal,
 ): Promise<string[]> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-  }
-  if (apiKey) {
-    headers['X-OpenAI-API-Key'] = apiKey
+    ...getLlmHeaders(),
   }
 
   const res = await fetch('/api/llm-features', {
@@ -77,7 +74,6 @@ export function useFollowUpSuggestions(
   // Get LLM settings
   const llmSettings = useLlmSettingsStore((state) => state.settings)
   const useLlmFollowUps = llmSettings.useLlmFollowUps
-  const apiKey = llmSettings.openaiApiKey
 
   const {
     minResponseLength = 50,
@@ -149,7 +145,7 @@ export function useFollowUpSuggestions(
       : `Assistant's response:\n${responseText.slice(0, 2000)}`
 
     // Use OpenAI API via our endpoint
-    fetchOpenAIFollowUps(conversationContext, apiKey, controller.signal)
+    fetchLlmFollowUps(conversationContext, controller.signal)
       .then((llmSuggestions) => {
         if (controller.signal.aborted) {
           return
@@ -174,7 +170,17 @@ export function useFollowUpSuggestions(
       // Don't abort on re-render - let the request complete
       // Only abort gets called on unmount which is fine
     }
-  }, [responseText, contextSummary, minResponseLength, timeoutMs, heuristicsOnly, apiKey])
+  }, [
+    responseText,
+    contextSummary,
+    minResponseLength,
+    timeoutMs,
+    heuristicsOnly,
+    llmSettings.llmApiKey,
+    llmSettings.llmBaseUrl,
+    llmSettings.llmModel,
+    llmSettings.llmProvider,
+  ])
 
   return { suggestions, isLoading, error, source }
 }
