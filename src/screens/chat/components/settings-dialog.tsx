@@ -636,7 +636,7 @@ export function SettingsDialog({
 
   return (
     <DialogRoot open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[min(720px,92vw)] max-h-[80vh] overflow-hidden">
+      <DialogContent className="w-[min(860px,92vw)] max-h-[80vh] overflow-hidden">
         <div className="p-4">
           <div className="flex items-start justify-between">
             <div>
