@@ -67,7 +67,7 @@ function SessionItemComponent({
             }}
             className={cn(
               'ml-1 inline-flex size-7 items-center justify-center rounded-md text-primary-700',
-              'opacity-0 transition-opacity group-hover:opacity-100 hover:bg-primary-200',
+              'opacity-0 duration-0 group-hover:opacity-100 hover:bg-primary-200',
               'aria-expanded:opacity-100 aria-expanded:bg-primary-200',
             )}
           >
