@@ -55,11 +55,11 @@ function SettingsSection({ title, tabId, activeTab, children }: SettingsSectionP
   const hiddenOnDesktop = tabId && activeTab && tabId !== activeTab
   return (
     <div className={cn(
-      'border-b border-primary-200 py-4 last:border-0',
+      'border-b border-primary-200 py-3 last:border-0',
       hiddenOnDesktop && 'md:hidden',
     )}>
-      <h3 className="mb-3 text-sm font-medium text-primary-900">{title}</h3>
-      <div className="space-y-3">{children}</div>
+      <h3 className="mb-2 text-sm font-medium text-primary-900">{title}</h3>
+      <div className="space-y-2">{children}</div>
     </div>
   )
 }
@@ -723,14 +723,14 @@ export function SettingsDialog({
               >
                 <TabsList
                   variant="default"
-                  className="gap-2 *:data-[slot=tab-indicator]:duration-0"
+                  className="gap-1.5 flex-wrap *:data-[slot=tab-indicator]:duration-0"
                 >
                   {themeOptions.map((option) => (
-                    <TabsTab key={option.value} value={option.value} className="text-xs px-1.5 py-1.5">
+                    <TabsTab key={option.value} value={option.value} className="text-xs px-1.5 py-1">
                       {option.icon && (
                         <HugeiconsIcon
                           icon={option.icon}
-                          size={14}
+                          size={13}
                           strokeWidth={1.5}
                         />
                       )}
@@ -742,7 +742,6 @@ export function SettingsDialog({
             </SettingsRow>
             <SettingsRow
               label="Accent Color"
-              description="Personalize buttons, links, and highlights"
             >
               <div className="flex gap-1 flex-wrap">
                 {accentColorOptions.map((option) => {
@@ -772,7 +771,6 @@ export function SettingsDialog({
             </SettingsRow>
             <SettingsRow
               label="Text Size"
-              description="Adjust chat and composer text"
             >
               <Tabs value={textSize} onValueChange={handleTextSizeChange}>
                 <TabsList
@@ -791,30 +789,31 @@ export function SettingsDialog({
             </SettingsRow>
             <SettingsRow
               label="Font Family"
-              description="Choose your reading style"
             >
-              <select
-                value={settings.fontFamily}
-                onChange={(e) => handleFontFamilyChange(e.target.value)}
-                className={cn(
-                  'rounded-md border border-primary-200 bg-surface px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500',
-                  fontFamilyOptions.find((option) => option.value === settings.fontFamily)?.previewClass,
-                )}
-              >
-                {fontFamilyOptions.map((option) => (
-                  <option
-                    key={option.value}
-                    value={option.value}
-                    className={option.previewClass}
-                  >
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+              <div className="grid grid-cols-3 gap-1.5 w-full">
+                {fontFamilyOptions.map((option) => {
+                  const selected = settings.fontFamily === option.value
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => handleFontFamilyChange(option.value)}
+                      className={cn(
+                        'rounded-md border px-2 py-1.5 text-xs transition-colors text-center truncate',
+                        selected
+                          ? 'border-primary-900 bg-primary-100 text-primary-900 font-medium'
+                          : 'border-primary-200 bg-surface text-primary-600 hover:border-primary-400 hover:bg-primary-50',
+                      )}
+                      style={{ fontFamily: option.cssValue }}
+                    >
+                      {option.label}
+                    </button>
+                  )
+                })}
+              </div>
             </SettingsRow>
             <SettingsRow
               label="Message Density"
-              description="Control spacing between messages"
             >
               <Tabs value={settings.density} onValueChange={handleDensityChange}>
                 <TabsList
@@ -831,7 +830,6 @@ export function SettingsDialog({
             </SettingsRow>
             <SettingsRow
               label="Chat Width"
-              description="Control message column width"
             >
               <Tabs value={settings.chatWidth} onValueChange={handleChatWidthChange}>
                 <TabsList
@@ -848,7 +846,6 @@ export function SettingsDialog({
             </SettingsRow>
             <SettingsRow
               label="Sidebar Width"
-              description="Adjust desktop and mobile sidebar width"
             >
               <Tabs value={settings.sidebarWidth} onValueChange={handleSidebarWidthChange}>
                 <TabsList
@@ -865,7 +862,6 @@ export function SettingsDialog({
             </SettingsRow>
             <SettingsRow
               label="Chat Bubble Style"
-              description="Switch between default, bubble, and minimal layouts"
             >
               <Tabs value={settings.bubbleStyle} onValueChange={handleBubbleStyleChange}>
                 <TabsList
