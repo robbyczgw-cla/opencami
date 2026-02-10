@@ -143,6 +143,7 @@ Requires a display/GUI environment.
 - [Desktop App (Tauri)](docs/desktop-app.md)
 - [Architecture](docs/architecture.md)
 - [Deployment](docs/deployment.md)
+- [FAQ](docs/faq.md)
 - [Contributing](docs/contributing.md)
 - [Changelog](https://github.com/robbyczgw-cla/opencami/blob/main/CHANGELOG.md)
 
