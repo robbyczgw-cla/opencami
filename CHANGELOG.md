@@ -1,3 +1,12 @@
+## 1.3.2 (2026-02-10)
+
+### Performance
+- ⚡ **Search optimization** — Global search now uses batched requests (max 10 parallel), progressive results, and AbortController for cancellation
+- 🛡️ **AbortController cleanup** — All fetch calls (TTS, STT, Personas, Models, Files) now properly abort on unmount/navigation
+
+### CI/CD
+- 🚀 **Release automation** — Tag push triggers npm publish + GitHub Packages + GitHub Release with changelog
+
 ## 1.3.0 (2026-02-10)
 
 ### New Features

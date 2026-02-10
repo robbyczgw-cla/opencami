@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
@@ -14,7 +14,6 @@ import {
   MessageEdit01Icon,
   UserIcon,
   VoiceIcon,
-  Mic02Icon,
   AiBrain01Icon,
   InformationCircleIcon,
   Link01Icon,
@@ -203,6 +202,7 @@ export function SettingsDialog({
 
   // Personas state
   const [personasAvailable, setPersonasAvailable] = useState(false)
+  const personasAbortControllerRef = useRef<AbortController | null>(null)
   const [personasEnabled, setPersonasEnabled] = useState(() => {
     if (typeof window === 'undefined') return true
     try {
@@ -216,19 +216,27 @@ export function SettingsDialog({
   useEffect(() => {
     let mounted = true
     async function checkPersonas() {
+      personasAbortControllerRef.current?.abort()
+      const controller = new AbortController()
+      personasAbortControllerRef.current = controller
+
       try {
-        const res = await fetch('/api/personas')
+        const res = await fetch('/api/personas', { signal: controller.signal })
         if (!res.ok) return
         const data = (await res.json()) as { ok: boolean; available: boolean }
         if (mounted && data.ok) {
           setPersonasAvailable(data.available)
         }
-      } catch {
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') return
         // ignore
       }
     }
     checkPersonas()
-    return () => { mounted = false }
+    return () => {
+      mounted = false
+      personasAbortControllerRef.current?.abort()
+    }
   }, [])
 
   const handlePersonasToggle = (checked: boolean) => {

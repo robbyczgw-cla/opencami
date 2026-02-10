@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { ArtificialIntelligence02Icon, Tick02Icon } from '@hugeicons/core-free-icons'
 import { MenuRoot, MenuTrigger, MenuContent, MenuItem } from '@/components/ui/menu'
@@ -48,16 +48,21 @@ export function ModelSelector({ className, onModelChange }: ModelSelectorProps) 
   const [selectedModel, setSelectedModel] = useState<string>('')
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
     let mounted = true
 
     async function fetchModels() {
+      abortControllerRef.current?.abort()
+      const controller = new AbortController()
+      abortControllerRef.current = controller
+
       try {
         setIsLoading(true)
         setError(null)
 
-        const response = await fetch('/api/models')
+        const response = await fetch('/api/models', { signal: controller.signal })
         if (!response.ok) {
           throw new Error('Failed to fetch models')
         }
@@ -82,6 +87,7 @@ export function ModelSelector({ className, onModelChange }: ModelSelectorProps) 
           throw new Error('No models available')
         }
       } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') return
         if (!mounted) return
         console.error('[model-selector] Error fetching models:', err)
         setError(err instanceof Error ? err.message : 'Failed to load models')
@@ -99,6 +105,7 @@ export function ModelSelector({ className, onModelChange }: ModelSelectorProps) 
 
     return () => {
       mounted = false
+      abortControllerRef.current?.abort()
     }
   }, [onModelChange])
 

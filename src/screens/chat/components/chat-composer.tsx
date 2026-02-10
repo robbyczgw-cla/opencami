@@ -110,6 +110,7 @@ function ChatComposerComponent({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const recordingChunksRef = useRef<Blob[]>([])
   const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const sttAbortControllerRef = useRef<AbortController | null>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const webSpeechRef = useRef<any>(null)
   const promptRef = useRef<HTMLTextAreaElement | null>(null)
@@ -278,6 +279,7 @@ function ChatComposerComponent({
   // Cleanup recording timer on unmount
   useEffect(() => {
     return () => {
+      sttAbortControllerRef.current?.abort()
       if (recordingTimerRef.current) clearInterval(recordingTimerRef.current)
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         mediaRecorderRef.current.stop()
@@ -391,7 +393,11 @@ function ChatComposerComponent({
           formData.append('audio', audioBlob, `recording.${mimeType === 'audio/webm' ? 'webm' : 'mp4'}`)
           if (provider !== 'auto') formData.append('provider', provider)
 
-          const res = await fetch('/api/stt', { method: 'POST', body: formData })
+          sttAbortControllerRef.current?.abort()
+          const controller = new AbortController()
+          sttAbortControllerRef.current = controller
+
+          const res = await fetch('/api/stt', { method: 'POST', body: formData, signal: controller.signal })
           const data = (await res.json()) as { ok: boolean; text?: string; error?: string }
           if (data.ok && data.text) {
             setValue((prev) => prev + (prev ? ' ' : '') + data.text)
@@ -401,6 +407,7 @@ function ChatComposerComponent({
             alert(data.error || 'Speech-to-text failed. Try the Browser provider in Settings.')
           }
         } catch (err) {
+          if (err instanceof Error && err.name === 'AbortError') return
           console.warn('STT request failed:', err)
           alert('Could not reach speech-to-text service.')
         } finally {
