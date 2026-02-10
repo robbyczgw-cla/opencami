@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-export type ThemeMode = 'system' | 'light' | 'dark' | 'chameleon' | 'frost'
+export type ThemeMode = 'system' | 'light' | 'dark' | 'chameleon' | 'frost-light' | 'frost-dark'
 export type FontFamilyMode = 'system' | 'inter' | 'ibm-plex-sans' | 'jetbrains-mono' | 'merriweather' | 'roboto'
 export type DensityMode = 'compact' | 'comfortable' | 'spacious'
 export type AccentColorMode = 'green' | 'blue' | 'purple' | 'orange' | 'pink' | 'red' | 'cyan' | 'yellow'
@@ -95,7 +95,8 @@ export function useResolvedTheme() {
   return useMemo(() => {
     if (theme === 'dark') return 'dark'
     if (theme === 'light') return 'light'
-    if (theme === 'frost') return systemIsDark ? 'dark' : 'light'
+    if (theme === 'frost-light') return 'light'
+    if (theme === 'frost-dark') return 'dark'
     return systemIsDark ? 'dark' : 'light'
   }, [theme, systemIsDark])
 }

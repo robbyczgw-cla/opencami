@@ -621,15 +621,22 @@ export function SettingsDialog({
     { value: 'light', label: 'Light', icon: Sun01Icon },
     { value: 'dark', label: 'Dark', icon: Moon01Icon },
     { value: 'chameleon', label: 'Chameleon', icon: Leaf01Icon },
-    { value: 'frost', label: 'Frost', icon: DropletIcon },
+    { value: 'frost-light', label: 'Frost ☀️', icon: DropletIcon },
+    { value: 'frost-dark', label: 'Frost 🌙', icon: DropletIcon },
   ] as const
   function applyTheme(theme: ThemeMode) {
     if (typeof document === 'undefined') return
     const root = document.documentElement
     const media = window.matchMedia('(prefers-color-scheme: dark)')
-    root.classList.remove('light', 'dark', 'system', 'chameleon', 'frost')
+    root.classList.remove('light', 'dark', 'system', 'chameleon', 'frost', 'frost-light', 'frost-dark')
     root.classList.add(theme)
-    if ((theme === 'system' || theme === 'frost') && media.matches) {
+    if (theme === 'frost-light' || theme === 'frost-dark') {
+      root.classList.add('frost')
+    }
+    if (theme === 'frost-dark') {
+      root.classList.add('dark')
+    }
+    if (theme === 'system' && media.matches) {
       root.classList.add('dark')
     }
   }
@@ -719,10 +726,10 @@ export function SettingsDialog({
                   className="gap-2 *:data-[slot=tab-indicator]:duration-0"
                 >
                   {themeOptions.map((option) => (
-                    <TabsTab key={option.value} value={option.value}>
+                    <TabsTab key={option.value} value={option.value} className="text-xs px-2 py-1.5">
                       <HugeiconsIcon
                         icon={option.icon}
-                        size={20}
+                        size={14}
                         strokeWidth={1.5}
                       />
                       <span>{option.label}</span>
