@@ -1,4 +1,6 @@
-# Desktop App (Tauri)
+# Desktop App (Tauri) — ⚠️ Beta
+
+> **This is experimental.** The primary focus of OpenCami is the **web app**. The desktop wrapper is a convenience layer and under active development.
 
 OpenCami includes a native desktop wrapper for macOS, Windows, and Linux using Tauri v2. It loads your self-hosted OpenCami web instance.
 
