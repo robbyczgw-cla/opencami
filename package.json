@@ -18,7 +18,9 @@
     "lint": "eslint",
     "format": "prettier",
     "check": "prettier --write . && eslint --fix",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
   },
   "engines": {
     "node": ">=18"
@@ -74,6 +76,8 @@
   },
   "devDependencies": {
     "@tanstack/eslint-config": "^0.3.0",
+    "@tauri-apps/api": "^2.10.1",
+    "@tauri-apps/cli": "^2.10.0",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/react": "^16.2.0",
     "@types/node": "^22.10.2",

@@ -16,6 +16,7 @@ prettier.config.*
 vitest.config.*
 android/
 ios/
+src-tauri/
 capacitor.config.*
 public/
 *.bak
