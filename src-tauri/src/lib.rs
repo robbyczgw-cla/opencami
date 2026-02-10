@@ -27,7 +27,8 @@ fn show_and_focus(window: &tauri::WebviewWindow) {
 
 fn create_new_window(app: &tauri::AppHandle) -> tauri::Result<()> {
   let label = format!("window-{}", uuid::Uuid::new_v4().simple());
-  let window = WebviewWindowBuilder::new(app, label, WebviewUrl::App("index.html".into()))
+  let remote = resolved_remote_url();
+  let window = WebviewWindowBuilder::new(app, label, WebviewUrl::External(remote.parse().unwrap()))
     .title("OpenCami")
     .inner_size(1200.0, 800.0)
     .min_inner_size(800.0, 600.0)
@@ -88,9 +89,18 @@ pub fn run() {
 
       let remote_url = resolved_remote_url();
 
-      if let Some(window) = app.get_webview_window("main") {
-        apply_remote_url(&window, &remote_url)?;
-      }
+      // Create main window pointing directly to remote URL (no index.html needed)
+      let _main_window = WebviewWindowBuilder::new(
+        app,
+        "main",
+        WebviewUrl::External(remote_url.parse().map_err(|e| format!("Invalid URL: {e}"))?),
+      )
+        .title("OpenCami")
+        .inner_size(1200.0, 800.0)
+        .min_inner_size(800.0, 600.0)
+        .resizable(true)
+        .center()
+        .build()?;
 
       let show_item = MenuItem::with_id(app, "show", "Show", true, None::<&str>)?;
       let hide_item = MenuItem::with_id(app, "hide", "Hide", true, None::<&str>)?;
