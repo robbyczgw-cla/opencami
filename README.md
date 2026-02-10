@@ -51,6 +51,8 @@ docker run -p 3000:3000 opencami
 🤖 **Agent manager** — sidebar panel for managing agents\
 🎨 **Model selector** — switch models on the fly\
 🏷️ **Smart titles** — LLM-generated session titles\
+🧠 **Thinking level toggle** — Select reasoning depth (off/low/medium/high) per message\
+🔌 **Multi-provider LLM** — Smart features via OpenAI, OpenRouter, Ollama, or custom provider\
 💡 **Smart follow-ups** — contextual suggestions after each response\
 🖼️ **Image attachments** — with compression for the 512KB WS limit\
 🔎 **Search sources badge** — expandable badge with favicons for search results\
