@@ -72,14 +72,14 @@ type SettingsRowProps = {
 
 function SettingsRow({ label, description, children }: SettingsRowProps) {
   return (
-    <div className="flex items-center justify-between">
-      <div className="flex-1 select-none">
-        <div className="text-sm text-primary-800">{label}</div>
+    <div className="space-y-1.5">
+      <div className="select-none">
+        <div className="text-sm font-medium text-primary-800">{label}</div>
         {description && (
           <div className="text-xs text-primary-500">{description}</div>
         )}
       </div>
-      <div className="flex items-center gap-2">{children}</div>
+      <div className="flex items-center gap-2 flex-wrap">{children}</div>
     </div>
   )
 }
@@ -621,8 +621,8 @@ export function SettingsDialog({
     { value: 'light', label: 'Light', icon: Sun01Icon },
     { value: 'dark', label: 'Dark', icon: Moon01Icon },
     { value: 'chameleon', label: 'Chameleon', icon: Leaf01Icon },
-    { value: 'frost-light', label: 'Frost ☀️', icon: DropletIcon },
-    { value: 'frost-dark', label: 'Frost 🌙', icon: DropletIcon },
+    { value: 'frost-light', label: 'Frost ☀', icon: DropletIcon },
+    { value: 'frost-dark', label: 'Frost 🌑', icon: DropletIcon },
   ] as const
   function applyTheme(theme: ThemeMode) {
     if (typeof document === 'undefined') return
@@ -643,7 +643,7 @@ export function SettingsDialog({
 
   return (
     <DialogRoot open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[min(860px,92vw)] max-h-[80vh] overflow-hidden">
+      <DialogContent className="w-[min(680px,92vw)] max-h-[80vh] overflow-hidden">
         <div className="p-4">
           <div className="flex items-start justify-between">
             <div>
@@ -726,12 +726,14 @@ export function SettingsDialog({
                   className="gap-2 *:data-[slot=tab-indicator]:duration-0"
                 >
                   {themeOptions.map((option) => (
-                    <TabsTab key={option.value} value={option.value} className="text-xs px-2 py-1.5">
-                      <HugeiconsIcon
-                        icon={option.icon}
-                        size={14}
-                        strokeWidth={1.5}
-                      />
+                    <TabsTab key={option.value} value={option.value} className="text-xs px-1.5 py-1.5">
+                      {option.icon && (
+                        <HugeiconsIcon
+                          icon={option.icon}
+                          size={14}
+                          strokeWidth={1.5}
+                        />
+                      )}
                       <span>{option.label}</span>
                     </TabsTab>
                   ))}
