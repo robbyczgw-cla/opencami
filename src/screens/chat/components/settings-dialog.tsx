@@ -4,6 +4,7 @@ import { HugeiconsIcon } from '@hugeicons/react'
 import {
   Cancel01Icon,
   ComputerIcon,
+  DropletIcon,
   Moon01Icon,
   Sun01Icon,
   Leaf01Icon,
@@ -620,7 +621,7 @@ export function SettingsDialog({
     { value: 'light', label: 'Light', icon: Sun01Icon },
     { value: 'dark', label: 'Dark', icon: Moon01Icon },
     { value: 'chameleon', label: 'Chameleon', icon: Leaf01Icon },
-    { value: 'frost', label: '🧊 Frost', icon: ComputerIcon },
+    { value: 'frost', label: 'Frost', icon: DropletIcon },
   ] as const
   function applyTheme(theme: ThemeMode) {
     if (typeof document === 'undefined') return
