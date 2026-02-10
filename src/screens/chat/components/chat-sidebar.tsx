@@ -183,7 +183,7 @@ function ChatSidebarComponent({
   return (
     <motion.aside
       initial={false}
-      animate={{ width: isCollapsed ? 48 : 300 }}
+      animate={{ width: isCollapsed ? 48 : 'var(--opencami-sidebar-width)' }}
       transition={transition}
       className={asideProps.className}
     >

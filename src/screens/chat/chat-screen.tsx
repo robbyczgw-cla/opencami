@@ -928,7 +928,7 @@ export function ChatScreen({
             )}
             <div
               className={cn(
-                'fixed inset-y-0 left-0 z-50 w-[300px] transition-transform duration-150 safe-area-top',
+                'fixed inset-y-0 left-0 z-50 w-[var(--opencami-sidebar-width)] transition-transform duration-150 safe-area-top',
                 isSidebarCollapsed ? '-translate-x-full' : 'translate-x-0',
               )}
               {...sidebarCloseSwipeHandlers}

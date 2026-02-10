@@ -52,6 +52,11 @@ html {
   --opencami-msg-padding-y: 0.75rem;
   --opencami-msg-gap: 0.5rem;
   --opencami-user-bubble-py: 0.625rem;
+  --opencami-accent: #22c55e;
+  --opencami-accent-hover: #16a34a;
+  --opencami-accent-light: rgba(34, 197, 94, 0.1);
+  --opencami-chat-width: 1000px;
+  --opencami-sidebar-width: 260px;
 }
 
 .opencami-text-size {
@@ -217,4 +222,51 @@ code {
 /* Fallback: detect Tauri via window.__TAURI__ injected by runtime */
 html.tauri .tauri-drag-header {
   padding-left: 5rem;
+}
+
+::selection {
+  background: var(--opencami-accent-light);
+}
+
+.opencami-accent-text {
+  color: var(--opencami-accent);
+}
+
+.opencami-accent-bg {
+  background: var(--opencami-accent);
+  color: white;
+}
+
+.opencami-accent-bg-hover:hover {
+  background: var(--opencami-accent-hover);
+}
+
+.opencami-accent-soft {
+  background: var(--opencami-accent-light);
+  color: var(--opencami-accent);
+}
+
+[data-opencami-bubble-style='bubbles'] .opencami-message-assistant {
+  background: var(--color-primary-100);
+  padding: 0.75rem 1rem;
+  max-width: 80%;
+}
+
+[data-opencami-bubble-style='bubbles'] .opencami-message-user {
+  background: var(--opencami-accent);
+  color: white;
+  max-width: 80%;
+}
+
+[data-opencami-bubble-style='minimal'] .opencami-message-assistant,
+[data-opencami-bubble-style='minimal'] .opencami-message-user {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  max-width: 100%;
+}
+
+[data-opencami-bubble-style='minimal'] .opencami-message-item {
+  border-top: 1px solid var(--color-primary-200);
+  padding-top: 0.75rem;
 }

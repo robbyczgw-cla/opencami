@@ -5,6 +5,10 @@ import { persist } from 'zustand/middleware'
 export type ThemeMode = 'system' | 'light' | 'dark' | 'chameleon'
 export type FontFamilyMode = 'system' | 'inter' | 'ibm-plex-sans' | 'jetbrains-mono' | 'merriweather' | 'roboto'
 export type DensityMode = 'compact' | 'comfortable' | 'spacious'
+export type AccentColorMode = 'green' | 'blue' | 'purple' | 'orange' | 'pink' | 'red' | 'cyan' | 'yellow'
+export type ChatWidthMode = 'narrow' | 'medium' | 'wide' | 'full'
+export type SidebarWidthMode = 'compact' | 'normal' | 'wide' | 'xl'
+export type BubbleStyleMode = 'default' | 'bubbles' | 'minimal'
 
 export type ChatSettings = {
   showToolMessages: boolean
@@ -14,6 +18,10 @@ export type ChatSettings = {
   theme: ThemeMode
   fontFamily: FontFamilyMode
   density: DensityMode
+  accentColor: AccentColorMode
+  chatWidth: ChatWidthMode
+  sidebarWidth: SidebarWidthMode
+  bubbleStyle: BubbleStyleMode
 }
 
 type ChatSettingsState = {
@@ -32,6 +40,10 @@ export const useChatSettingsStore = create<ChatSettingsState>()(
         theme: 'system',
         fontFamily: 'system',
         density: 'comfortable',
+        accentColor: 'green',
+        chatWidth: 'wide',
+        sidebarWidth: 'normal',
+        bubbleStyle: 'default',
       },
       updateSettings: (updates) =>
         set((state) => ({

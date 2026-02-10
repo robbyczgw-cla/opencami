@@ -130,6 +130,73 @@ const densityScript = `
 })()
 `
 
+const accentColorScript = `
+(() => {
+  try {
+    const stored = localStorage.getItem('opencami-accent-color')
+    const map = {
+      green: { accent: '#22c55e', hover: '#16a34a', light: 'rgba(34, 197, 94, 0.10)' },
+      blue: { accent: '#3b82f6', hover: '#2563eb', light: 'rgba(59, 130, 246, 0.10)' },
+      purple: { accent: '#8b5cf6', hover: '#7c3aed', light: 'rgba(139, 92, 246, 0.10)' },
+      orange: { accent: '#f97316', hover: '#ea580c', light: 'rgba(249, 115, 22, 0.10)' },
+      pink: { accent: '#ec4899', hover: '#db2777', light: 'rgba(236, 72, 153, 0.10)' },
+      red: { accent: '#ef4444', hover: '#dc2626', light: 'rgba(239, 68, 68, 0.10)' },
+      cyan: { accent: '#06b6d4', hover: '#0891b2', light: 'rgba(6, 182, 212, 0.10)' },
+      yellow: { accent: '#eab308', hover: '#ca8a04', light: 'rgba(234, 179, 8, 0.10)' },
+    }
+    const selected = map[stored] || map.green
+    const root = document.documentElement
+    root.style.setProperty('--opencami-accent', selected.accent)
+    root.style.setProperty('--opencami-accent-hover', selected.hover)
+    root.style.setProperty('--opencami-accent-light', selected.light)
+  } catch {}
+})()
+`
+
+const chatWidthScript = `
+(() => {
+  try {
+    const stored = localStorage.getItem('opencami-chat-width')
+    const map = {
+      narrow: '640px',
+      medium: '800px',
+      wide: '1000px',
+      full: '100%',
+    }
+    const value = map[stored] || map.wide
+    document.documentElement.style.setProperty('--opencami-chat-width', value)
+  } catch {}
+})()
+`
+
+const sidebarWidthScript = `
+(() => {
+  try {
+    const stored = localStorage.getItem('opencami-sidebar-width')
+    const map = {
+      compact: '200px',
+      normal: '260px',
+      wide: '320px',
+      xl: '400px',
+    }
+    const value = map[stored] || map.normal
+    document.documentElement.style.setProperty('--opencami-sidebar-width', value)
+  } catch {}
+})()
+`
+
+const bubbleStyleScript = `
+(() => {
+  try {
+    const stored = localStorage.getItem('opencami-bubble-style')
+    const value = stored === 'bubbles' || stored === 'minimal' || stored === 'default'
+      ? stored
+      : 'default'
+    document.documentElement.setAttribute('data-opencami-bubble-style', value)
+  } catch {}
+})()
+`
+
 function NotFoundRedirect() {
   if (typeof window !== 'undefined') {
     window.location.href = '/chat/main'
@@ -241,6 +308,10 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <script dangerouslySetInnerHTML={{ __html: textSizeScript }} />
         <script dangerouslySetInnerHTML={{ __html: fontFamilyScript }} />
         <script dangerouslySetInnerHTML={{ __html: densityScript }} />
+        <script dangerouslySetInnerHTML={{ __html: accentColorScript }} />
+        <script dangerouslySetInnerHTML={{ __html: chatWidthScript }} />
+        <script dangerouslySetInnerHTML={{ __html: sidebarWidthScript }} />
+        <script dangerouslySetInnerHTML={{ __html: bubbleStyleScript }} />
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <script dangerouslySetInnerHTML={{ __html: swRegisterScript }} />
         <HeadContent />

@@ -45,8 +45,8 @@ function TabsList({
         className={cn(
           '-translate-y-(--active-tab-bottom) absolute bottom-0 left-0 h-(--active-tab-height) w-(--active-tab-width) translate-x-(--active-tab-left) transition-[width,translate] duration-200 ease-in-out',
           variant === 'underline'
-            ? 'data-[orientation=vertical]:-translate-x-px z-10 bg-primary-900 data-[orientation=horizontal]:h-0.5 data-[orientation=vertical]:w-0.5 data-[orientation=horizontal]:translate-y-px'
-            : 'z-0 rounded-md bg-primary-200',
+            ? 'data-[orientation=vertical]:-translate-x-px z-10 bg-[var(--opencami-accent)] data-[orientation=horizontal]:h-0.5 data-[orientation=vertical]:w-0.5 data-[orientation=horizontal]:translate-y-px'
+            : 'z-0 rounded-md bg-[var(--opencami-accent-light)]',
         )}
         data-slot="tab-indicator"
       />
@@ -58,7 +58,7 @@ function TabsTab({ className, ...props }: TabsPrimitive.Tab.Props) {
   return (
     <TabsPrimitive.Tab
       className={cn(
-        '[&_svg]:-mx-0.5 relative z-10 flex h-8 shrink-0 grow cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-3 text-sm font-medium outline-none transition-[color,background-color,box-shadow] hover:text-primary-900 focus-visible:ring-2 focus-visible:ring-primary-400 data-disabled:pointer-events-none data-[orientation=vertical]:w-full data-[orientation=vertical]:justify-start data-active:text-primary-900 data-disabled:opacity-64 [&_svg:not([class*="size-"])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0',
+        '[&_svg]:-mx-0.5 relative z-10 flex h-8 shrink-0 grow cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-3 text-sm font-medium outline-none transition-[color,background-color,box-shadow] hover:text-primary-900 focus-visible:ring-2 focus-visible:ring-[var(--opencami-accent)] data-disabled:pointer-events-none data-[orientation=vertical]:w-full data-[orientation=vertical]:justify-start data-active:text-primary-900 data-disabled:opacity-64 [&_svg:not([class*="size-"])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0',
         className,
       )}
       data-slot="tabs-tab"

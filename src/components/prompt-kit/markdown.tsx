@@ -215,7 +215,7 @@ function createDefaultComponents(
           <button
             type="button"
             onClick={() => onOpenFilePreview(filePath)}
-            className="font-mono text-primary-900 underline decoration-primary-300 underline-offset-4 hover:decoration-primary-600 cursor-pointer"
+            className="font-mono text-[var(--opencami-accent)] underline decoration-[var(--opencami-accent-light)] underline-offset-4 hover:opacity-90 cursor-pointer"
           >
             {children}
           </button>
@@ -229,7 +229,7 @@ function createDefaultComponents(
             // Safety guard: never allow browser navigation for our internal file scheme.
             if (href?.startsWith('openclaw-file://')) event.preventDefault()
           }}
-          className="text-primary-950 underline decoration-primary-300 underline-offset-4 transition-colors hover:text-primary-950 hover:decoration-primary-500"
+          className="text-[var(--opencami-accent)] underline decoration-[var(--opencami-accent-light)] underline-offset-4 transition-opacity hover:opacity-90"
           target="_blank"
           rel="noopener noreferrer"
         >

@@ -461,7 +461,7 @@ function ChatComposerComponent({
 
   return (
     <div
-      className="mx-auto w-full max-w-full px-2 md:px-5 sm:max-w-[768px] sm:min-w-[400px] relative pb-1 md:pb-3"
+      className="mx-auto w-full max-w-[var(--opencami-chat-width)] px-2 md:px-5 relative pb-1 md:pb-3"
       ref={wrapperRef}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}

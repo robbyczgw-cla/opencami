@@ -29,7 +29,15 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsList, TabsTab } from '@/components/ui/tabs'
 import { useChatSettings } from '@/hooks/use-chat-settings'
-import type { ThemeMode, FontFamilyMode, DensityMode } from '@/hooks/use-chat-settings'
+import type {
+  ThemeMode,
+  FontFamilyMode,
+  DensityMode,
+  AccentColorMode,
+  ChatWidthMode,
+  SidebarWidthMode,
+  BubbleStyleMode,
+} from '@/hooks/use-chat-settings'
 import { Button } from '@/components/ui/button'
 import { useLlmSettings, getLlmProviderDefaults } from '@/hooks/use-llm-settings'
 
@@ -140,8 +148,43 @@ const densityOptions = [
   { value: 'spacious', label: 'Spacious' },
 ] as const
 
+const accentColorOptions = [
+  { value: 'green', label: 'Green', accent: '#22c55e', hover: '#16a34a', light: 'rgba(34, 197, 94, 0.10)' },
+  { value: 'blue', label: 'Blue', accent: '#3b82f6', hover: '#2563eb', light: 'rgba(59, 130, 246, 0.10)' },
+  { value: 'purple', label: 'Purple', accent: '#8b5cf6', hover: '#7c3aed', light: 'rgba(139, 92, 246, 0.10)' },
+  { value: 'orange', label: 'Orange', accent: '#f97316', hover: '#ea580c', light: 'rgba(249, 115, 22, 0.10)' },
+  { value: 'pink', label: 'Pink', accent: '#ec4899', hover: '#db2777', light: 'rgba(236, 72, 153, 0.10)' },
+  { value: 'red', label: 'Red', accent: '#ef4444', hover: '#dc2626', light: 'rgba(239, 68, 68, 0.10)' },
+  { value: 'cyan', label: 'Cyan', accent: '#06b6d4', hover: '#0891b2', light: 'rgba(6, 182, 212, 0.10)' },
+  { value: 'yellow', label: 'Yellow', accent: '#eab308', hover: '#ca8a04', light: 'rgba(234, 179, 8, 0.10)' },
+] as const
+
+const chatWidthOptions = [
+  { value: 'narrow', label: 'Narrow', cssValue: '640px' },
+  { value: 'medium', label: 'Medium', cssValue: '800px' },
+  { value: 'wide', label: 'Wide', cssValue: '1000px' },
+  { value: 'full', label: 'Full', cssValue: '100%' },
+] as const
+
+const sidebarWidthOptions = [
+  { value: 'compact', label: 'Compact', cssValue: '200px' },
+  { value: 'normal', label: 'Normal', cssValue: '260px' },
+  { value: 'wide', label: 'Wide', cssValue: '320px' },
+  { value: 'xl', label: 'XL', cssValue: '400px' },
+] as const
+
+const bubbleStyleOptions = [
+  { value: 'default', label: 'Default' },
+  { value: 'bubbles', label: 'Bubbles' },
+  { value: 'minimal', label: 'Minimal' },
+] as const
+
 type FontFamilyValue = (typeof fontFamilyOptions)[number]['value']
 type DensityValue = (typeof densityOptions)[number]['value']
+type AccentColorValue = (typeof accentColorOptions)[number]['value']
+type ChatWidthValue = (typeof chatWidthOptions)[number]['value']
+type SidebarWidthValue = (typeof sidebarWidthOptions)[number]['value']
+type BubbleStyleValue = (typeof bubbleStyleOptions)[number]['value']
 
 function isTextSizeValue(value: string): value is TextSizeValue {
   return textSizeOptions.some((option) => option.value === value)
@@ -153,6 +196,22 @@ function isFontFamilyValue(value: string): value is FontFamilyValue {
 
 function isDensityValue(value: string): value is DensityValue {
   return densityOptions.some((option) => option.value === value)
+}
+
+function isAccentColorValue(value: string): value is AccentColorValue {
+  return accentColorOptions.some((option) => option.value === value)
+}
+
+function isChatWidthValue(value: string): value is ChatWidthValue {
+  return chatWidthOptions.some((option) => option.value === value)
+}
+
+function isSidebarWidthValue(value: string): value is SidebarWidthValue {
+  return sidebarWidthOptions.some((option) => option.value === value)
+}
+
+function isBubbleStyleValue(value: string): value is BubbleStyleValue {
+  return bubbleStyleOptions.some((option) => option.value === value)
 }
 
 export function SettingsDialog({
@@ -234,9 +293,53 @@ export function SettingsDialog({
       } else {
         applyDensity(settings.density)
       }
+
+      const storedAccentColor = localStorage.getItem('opencami-accent-color')
+      if (storedAccentColor && isAccentColorValue(storedAccentColor)) {
+        applyAccentColor(storedAccentColor)
+        if (settings.accentColor !== storedAccentColor) {
+          updateSettings({ accentColor: storedAccentColor as AccentColorMode })
+        }
+      } else {
+        applyAccentColor(settings.accentColor)
+      }
+
+      const storedChatWidth = localStorage.getItem('opencami-chat-width')
+      if (storedChatWidth && isChatWidthValue(storedChatWidth)) {
+        applyChatWidth(storedChatWidth)
+        if (settings.chatWidth !== storedChatWidth) {
+          updateSettings({ chatWidth: storedChatWidth as ChatWidthMode })
+        }
+      } else {
+        applyChatWidth(settings.chatWidth)
+      }
+
+      const storedSidebarWidth = localStorage.getItem('opencami-sidebar-width')
+      if (storedSidebarWidth && isSidebarWidthValue(storedSidebarWidth)) {
+        applySidebarWidth(storedSidebarWidth)
+        if (settings.sidebarWidth !== storedSidebarWidth) {
+          updateSettings({ sidebarWidth: storedSidebarWidth as SidebarWidthMode })
+        }
+      } else {
+        applySidebarWidth(settings.sidebarWidth)
+      }
+
+      const storedBubbleStyle = localStorage.getItem('opencami-bubble-style')
+      if (storedBubbleStyle && isBubbleStyleValue(storedBubbleStyle)) {
+        applyBubbleStyle(storedBubbleStyle)
+        if (settings.bubbleStyle !== storedBubbleStyle) {
+          updateSettings({ bubbleStyle: storedBubbleStyle as BubbleStyleMode })
+        }
+      } else {
+        applyBubbleStyle(settings.bubbleStyle)
+      }
     } catch {
       applyFontFamily(settings.fontFamily)
       applyDensity(settings.density)
+      applyAccentColor(settings.accentColor)
+      applyChatWidth(settings.chatWidth)
+      applySidebarWidth(settings.sidebarWidth)
+      applyBubbleStyle(settings.bubbleStyle)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -248,6 +351,22 @@ export function SettingsDialog({
   useEffect(() => {
     applyDensity(settings.density)
   }, [settings.density])
+
+  useEffect(() => {
+    applyAccentColor(settings.accentColor)
+  }, [settings.accentColor])
+
+  useEffect(() => {
+    applyChatWidth(settings.chatWidth)
+  }, [settings.chatWidth])
+
+  useEffect(() => {
+    applySidebarWidth(settings.sidebarWidth)
+  }, [settings.sidebarWidth])
+
+  useEffect(() => {
+    applyBubbleStyle(settings.bubbleStyle)
+  }, [settings.bubbleStyle])
 
   const handleTtsProviderChange = (value: string) => {
     setTtsProvider(value)
@@ -300,6 +419,32 @@ export function SettingsDialog({
     root.style.setProperty('--opencami-user-bubble-py', '0.625rem')
   }
 
+  function applyAccentColor(value: AccentColorValue) {
+    if (typeof document === 'undefined') return
+    const selected = accentColorOptions.find((option) => option.value === value) ?? accentColorOptions[0]
+    const root = document.documentElement
+    root.style.setProperty('--opencami-accent', selected.accent)
+    root.style.setProperty('--opencami-accent-hover', selected.hover)
+    root.style.setProperty('--opencami-accent-light', selected.light)
+  }
+
+  function applyChatWidth(value: ChatWidthValue) {
+    if (typeof document === 'undefined') return
+    const selected = chatWidthOptions.find((option) => option.value === value) ?? chatWidthOptions[2]
+    document.documentElement.style.setProperty('--opencami-chat-width', selected.cssValue)
+  }
+
+  function applySidebarWidth(value: SidebarWidthValue) {
+    if (typeof document === 'undefined') return
+    const selected = sidebarWidthOptions.find((option) => option.value === value) ?? sidebarWidthOptions[1]
+    document.documentElement.style.setProperty('--opencami-sidebar-width', selected.cssValue)
+  }
+
+  function applyBubbleStyle(value: BubbleStyleValue) {
+    if (typeof document === 'undefined') return
+    document.documentElement.setAttribute('data-opencami-bubble-style', value)
+  }
+
   const handleTextSizeChange = (value: string) => {
     if (!isTextSizeValue(value)) return
     setTextSize(value)
@@ -328,6 +473,50 @@ export function SettingsDialog({
     updateSettings({ density: value as DensityMode })
     try {
       localStorage.setItem('opencami-density', value)
+    } catch {
+      // ignore storage errors
+    }
+  }
+
+  const handleAccentColorChange = (value: string) => {
+    if (!isAccentColorValue(value)) return
+    applyAccentColor(value)
+    updateSettings({ accentColor: value as AccentColorMode })
+    try {
+      localStorage.setItem('opencami-accent-color', value)
+    } catch {
+      // ignore storage errors
+    }
+  }
+
+  const handleChatWidthChange = (value: string) => {
+    if (!isChatWidthValue(value)) return
+    applyChatWidth(value)
+    updateSettings({ chatWidth: value as ChatWidthMode })
+    try {
+      localStorage.setItem('opencami-chat-width', value)
+    } catch {
+      // ignore storage errors
+    }
+  }
+
+  const handleSidebarWidthChange = (value: string) => {
+    if (!isSidebarWidthValue(value)) return
+    applySidebarWidth(value)
+    updateSettings({ sidebarWidth: value as SidebarWidthMode })
+    try {
+      localStorage.setItem('opencami-sidebar-width', value)
+    } catch {
+      // ignore storage errors
+    }
+  }
+
+  const handleBubbleStyleChange = (value: string) => {
+    if (!isBubbleStyleValue(value)) return
+    applyBubbleStyle(value)
+    updateSettings({ bubbleStyle: value as BubbleStyleMode })
+    try {
+      localStorage.setItem('opencami-bubble-style', value)
     } catch {
       // ignore storage errors
     }
@@ -541,6 +730,36 @@ export function SettingsDialog({
               </Tabs>
             </SettingsRow>
             <SettingsRow
+              label="Accent Color"
+              description="Personalize buttons, links, and highlights"
+            >
+              <div className="grid grid-cols-4 gap-2">
+                {accentColorOptions.map((option) => {
+                  const selected = settings.accentColor === option.value
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => handleAccentColorChange(option.value)}
+                      className={cn(
+                        'flex flex-col items-center gap-1 rounded-lg px-2 py-1.5 transition-colors',
+                        selected ? 'bg-primary-100' : 'hover:bg-primary-50',
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          'size-6 rounded-full border-2',
+                          selected ? 'border-primary-900' : 'border-primary-300',
+                        )}
+                        style={{ backgroundColor: option.accent }}
+                      />
+                      <span className="text-[11px] text-primary-700">{option.label}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </SettingsRow>
+            <SettingsRow
               label="Text Size"
               description="Adjust chat and composer text"
             >
@@ -592,6 +811,57 @@ export function SettingsDialog({
                   className="gap-2 *:data-[slot=tab-indicator]:duration-0"
                 >
                   {densityOptions.map((option) => (
+                    <TabsTab key={option.value} value={option.value}>
+                      <span className="text-xs">{option.label}</span>
+                    </TabsTab>
+                  ))}
+                </TabsList>
+              </Tabs>
+            </SettingsRow>
+            <SettingsRow
+              label="Chat Width"
+              description="Control message column width"
+            >
+              <Tabs value={settings.chatWidth} onValueChange={handleChatWidthChange}>
+                <TabsList
+                  variant="default"
+                  className="gap-2 *:data-[slot=tab-indicator]:duration-0"
+                >
+                  {chatWidthOptions.map((option) => (
+                    <TabsTab key={option.value} value={option.value}>
+                      <span className="text-xs">{option.label}</span>
+                    </TabsTab>
+                  ))}
+                </TabsList>
+              </Tabs>
+            </SettingsRow>
+            <SettingsRow
+              label="Sidebar Width"
+              description="Adjust desktop and mobile sidebar width"
+            >
+              <Tabs value={settings.sidebarWidth} onValueChange={handleSidebarWidthChange}>
+                <TabsList
+                  variant="default"
+                  className="gap-2 *:data-[slot=tab-indicator]:duration-0"
+                >
+                  {sidebarWidthOptions.map((option) => (
+                    <TabsTab key={option.value} value={option.value}>
+                      <span className="text-xs">{option.label}</span>
+                    </TabsTab>
+                  ))}
+                </TabsList>
+              </Tabs>
+            </SettingsRow>
+            <SettingsRow
+              label="Chat Bubble Style"
+              description="Switch between default, bubble, and minimal layouts"
+            >
+              <Tabs value={settings.bubbleStyle} onValueChange={handleBubbleStyleChange}>
+                <TabsList
+                  variant="default"
+                  className="gap-2 *:data-[slot=tab-indicator]:duration-0"
+                >
+                  {bubbleStyleOptions.map((option) => (
                     <TabsTab key={option.value} value={option.value}>
                       <span className="text-xs">{option.label}</span>
                     </TabsTab>

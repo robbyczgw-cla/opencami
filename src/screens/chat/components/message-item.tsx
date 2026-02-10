@@ -211,13 +211,13 @@ function MessageItemComponent({
           : undefined),
       }}
       className={cn(
-        'group flex flex-col gap-1 py-[var(--opencami-msg-padding-y)]',
+        'opencami-message-item group mx-auto flex w-full max-w-[var(--opencami-chat-width)] flex-col gap-1 py-[var(--opencami-msg-padding-y)]',
         wrapperClassName,
         isUser ? 'items-end' : 'items-start',
       )}
     >
       {thinking && settings.showReasoningBlocks && (
-        <div className="w-full max-w-[900px]">
+        <div className="w-full max-w-[var(--opencami-chat-width)]">
           <Thinking content={thinking} />
         </div>
       )}
@@ -244,9 +244,9 @@ function MessageItemComponent({
           markdown={!isUser}
           className={cn(
             'text-primary-900 opencami-text-size min-w-0 max-w-full',
-            !isUser
-              ? 'bg-transparent w-full'
-              : 'bg-primary-100 px-4 py-[var(--opencami-user-bubble-py)] max-w-[85%]',
+            isUser
+              ? 'opencami-message-user bg-primary-100 px-4 py-[var(--opencami-user-bubble-py)] max-w-[85%]'
+              : 'opencami-message-assistant bg-transparent w-full',
             !isUser && isStreaming && 'stream-fade-in',
           )}
         >
@@ -256,7 +256,7 @@ function MessageItemComponent({
 
       {/* Render tool calls with their results */}
       {hasToolCalls && settings.showToolMessages && (
-        <div className="mt-2 flex w-full min-w-0 max-w-[900px] flex-col gap-3 overflow-x-hidden">
+        <div className="mt-2 flex w-full min-w-0 max-w-[var(--opencami-chat-width)] flex-col gap-3 overflow-x-hidden">
           {toolCalls.map((toolCall) => {
             const resultMessage = toolCall.id
               ? toolResultsByCallId?.get(toolCall.id)
@@ -275,7 +275,7 @@ function MessageItemComponent({
       )}
 
       {searchSources.length > 0 && (
-        <div className="w-full max-w-[900px]">
+        <div className="w-full max-w-[var(--opencami-chat-width)]">
           <SearchSourcesBadge sources={searchSources} />
         </div>
       )}

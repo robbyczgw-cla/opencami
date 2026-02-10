@@ -168,7 +168,7 @@ function SessionItemComponent({
         'w-full text-left pl-1.5 pr-0.5 min-h-8 py-1 rounded-lg transition-colors duration-0',
         'select-none',
         active
-          ? 'bg-primary-200 text-primary-950'
+          ? 'bg-[var(--opencami-accent-light)] text-[var(--opencami-accent)]'
           : 'bg-transparent text-primary-950 [&:hover:not(:has(button:hover))]:bg-primary-200',
       )}
     >
