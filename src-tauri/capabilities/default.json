@@ -1,11 +1,16 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "enables the default permissions",
+  "description": "enables desktop, plugin, and window permissions",
   "windows": [
-    "main"
+    "main",
+    "window-*"
   ],
   "permissions": [
-    "core:default"
+    "core:default",
+    "core:window:allow-create",
+    "notification:default",
+    "autostart:default",
+    "clipboard-manager:default"
   ]
 }

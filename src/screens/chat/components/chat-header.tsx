@@ -24,6 +24,7 @@ function ChatHeaderComponent({
   return (
     <div
       ref={wrapperRef}
+      data-tauri-drag-region
       className="border-b border-primary-200 px-4 h-12 flex min-w-0 items-center overflow-x-hidden bg-surface"
     >
       {showSidebarButton ? (
@@ -32,6 +33,7 @@ function ChatHeaderComponent({
           variant="ghost"
           onClick={onOpenSidebar}
           className="mr-2 text-primary-800 hover:bg-primary-100"
+          style={{ WebkitAppRegion: 'no-drag' }}
           aria-label="Open sidebar"
         >
           <HugeiconsIcon icon={Menu01Icon} size={18} strokeWidth={1.6} />
