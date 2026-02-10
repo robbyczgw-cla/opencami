@@ -10,7 +10,6 @@ import {
   ArrowLeft01Icon,
   ArrowUpRight01Icon,
   Calendar01Icon,
-  StarCircleIcon,
 } from '@hugeicons/core-free-icons'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTab } from '@/components/ui/tabs'
@@ -23,7 +22,7 @@ import {
 } from '@/hooks/use-skills'
 import type { ExploreSkill } from '@/hooks/use-skills'
 
-// Known trusted publishers (add more as needed)
+// Known trusted publishers
 const TRUSTED_PUBLISHERS = new Set([
   'openclaw',
   'clawhub',
@@ -31,39 +30,44 @@ const TRUSTED_PUBLISHERS = new Set([
   'robbyczgw-cla',
 ])
 
-// Minimum downloads to be considered "verified" by popularity
 const VERIFIED_DOWNLOAD_THRESHOLD = 100
 
-type SecurityBadgeType = 'verified' | 'community' | 'installed'
+type BadgeType = 'verified' | 'community' | 'installed'
 
-function getSecurityBadge(
+function getBadgeInfo(
   skill: ExploreSkill,
   isInstalled: boolean
-): { type: SecurityBadgeType; label: string; color: string } {
+): { type: BadgeType; label: string } {
   if (isInstalled) {
-    return { type: 'installed', label: 'Installed', color: 'text-blue-500' }
+    return { type: 'installed', label: 'Installed' }
   }
-
   const publisher = skill.publisher || skill.author || ''
   const downloads = skill.stats?.downloads || 0
-
   if (TRUSTED_PUBLISHERS.has(publisher.toLowerCase()) || downloads >= VERIFIED_DOWNLOAD_THRESHOLD) {
-    return { type: 'verified', label: 'Verified', color: 'text-green-500' }
+    return { type: 'verified', label: 'Verified' }
   }
-
-  return { type: 'community', label: 'Community', color: 'text-primary-400' }
+  return { type: 'community', label: 'Community' }
 }
 
-function SecurityBadge({ type, label, color }: { type: SecurityBadgeType; label: string; color: string }) {
+function TrustBadge({ type, label }: { type: BadgeType; label: string }) {
+  const styles = {
+    verified: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+    community: 'bg-primary-50 text-primary-500 border-primary-100',
+    installed: 'bg-sky-50 text-sky-600 border-sky-100',
+  }
+
   return (
-    <div className={`flex items-center gap-1 ${color}`} title={`${label} Skill`}>
+    <span
+      className={`inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium rounded-full border ${styles[type]}`}
+      title={`${label} Skill`}
+    >
       <HugeiconsIcon
         icon={type === 'installed' ? Tick01Icon : Shield01Icon}
-        size={12}
-        strokeWidth={1.5}
+        size={10}
+        strokeWidth={2}
       />
-      <span className="text-[10px] font-medium">{label}</span>
-    </div>
+      {label}
+    </span>
   )
 }
 
@@ -91,77 +95,74 @@ function SkillCard({
   const summary = skill.summary
   const version = skill.version || skill.latestVersion?.version || ''
   const downloads = skill.stats?.downloads
-
-  const badge = getSecurityBadge(skill, installed)
+  const badge = getBadgeInfo(skill, installed)
 
   return (
     <div
-      className={`rounded-lg border border-primary-200 bg-surface p-3 flex flex-col gap-2 ${onClick ? 'cursor-pointer hover:border-primary-400 hover:bg-primary-50 transition-colors' : ''}`}
+      className={`
+        group rounded-lg border border-primary-100 bg-surface p-4
+        transition-all duration-150 ease-out
+        ${onClick ? 'cursor-pointer hover:border-primary-200 hover:shadow-sm' : ''}
+      `}
       onClick={onClick}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <div className="text-sm font-medium text-primary-800 truncate">{name}</div>
-            <SecurityBadge {...badge} />
-          </div>
-          {summary && (
-            <div className="text-xs text-primary-500 mt-0.5 line-clamp-2">{summary}</div>
-          )}
-        </div>
+      {/* Header row */}
+      <div className="flex items-start justify-between gap-3 mb-2">
+        <h4 className="text-[13px] font-semibold text-primary-900 leading-tight truncate">
+          {name}
+        </h4>
         {version && (
-          <span className="shrink-0 text-[10px] font-mono bg-primary-100 text-primary-600 px-1.5 py-0.5 rounded">
-            v{version}
+          <span className="shrink-0 text-[10px] font-mono text-primary-400">
+            {version}
           </span>
         )}
       </div>
-      <div className="flex items-center justify-between">
-        {downloads !== undefined ? (
-          <span className="text-[11px] text-primary-400 flex items-center gap-1">
-            <HugeiconsIcon icon={Download04Icon} size={12} strokeWidth={1.5} />
-            {downloads.toLocaleString()}
-          </span>
-        ) : (
-          <span />
-        )}
-        <div className="flex gap-1.5" onClick={(e) => e.stopPropagation()}>
+
+      {/* Summary */}
+      {summary && (
+        <p className="text-xs text-primary-500 leading-relaxed line-clamp-2 mb-3">
+          {summary}
+        </p>
+      )}
+
+      {/* Footer row */}
+      <div className="flex items-center justify-between pt-2 border-t border-primary-50">
+        <div className="flex items-center gap-2">
+          <TrustBadge {...badge} />
+          {downloads !== undefined && downloads > 0 && (
+            <span className="text-[11px] text-primary-400 flex items-center gap-1">
+              <HugeiconsIcon icon={Download04Icon} size={11} strokeWidth={1.5} />
+              {downloads.toLocaleString()}
+            </span>
+          )}
+        </div>
+
+        <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
           {showUpdate && onUpdate && (
-            <Button
-              size="sm"
-              variant="outline"
+            <button
               onClick={onUpdate}
               disabled={!!updating}
-              className="text-xs h-7 px-2"
+              className="text-[11px] font-medium text-primary-500 hover:text-primary-700 transition-colors duration-150 disabled:opacity-50"
             >
               {updating ? (
-                <HugeiconsIcon icon={Loading02Icon} size={14} className="animate-spin" />
+                <HugeiconsIcon icon={Loading02Icon} size={12} className="animate-spin" />
               ) : (
-                <>
-                  <HugeiconsIcon icon={RefreshIcon} size={14} strokeWidth={1.5} />
-                  Update
-                </>
+                'Update'
               )}
-            </Button>
+            </button>
           )}
-          {installed ? (
-            <span className="text-xs text-green-600 flex items-center gap-1 px-2 h-7">
-              <HugeiconsIcon icon={Tick01Icon} size={14} />
-              Installed
-            </span>
-          ) : (
-            <Button
-              size="sm"
-              variant="outline"
+          {!installed && (
+            <button
               onClick={onInstall}
               disabled={installing}
-              className="text-xs h-7 px-2"
+              className="text-[11px] font-medium text-primary-600 hover:text-primary-800 transition-colors duration-150 disabled:opacity-50"
             >
               {installing ? (
-                <HugeiconsIcon icon={Loading02Icon} size={14} className="animate-spin" />
+                <HugeiconsIcon icon={Loading02Icon} size={12} className="animate-spin" />
               ) : (
                 'Install'
               )}
-            </Button>
+            </button>
           )}
         </div>
       </div>
@@ -170,12 +171,17 @@ function SkillCard({
 }
 
 function formatDate(timestamp?: number): string {
-  if (!timestamp) return 'Unknown'
+  if (!timestamp) return ''
   return new Date(timestamp).toLocaleDateString(undefined, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
   })
+}
+
+function formatNumber(n: number): string {
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`
+  return n.toString()
 }
 
 function SkillDetailView({
@@ -194,7 +200,8 @@ function SkillDetailView({
   const slug = skill.slug || ''
   const name = skill.displayName || slug
   const version = skill.version || skill.latestVersion?.version || ''
-  const badge = getSecurityBadge(skill, installed)
+  const badge = getBadgeInfo(skill, installed)
+  const downloads = skill.stats?.downloads || 0
 
   const tags = skill.tags
     ? Array.isArray(skill.tags)
@@ -203,90 +210,90 @@ function SkillDetailView({
     : []
 
   return (
-    <div className="space-y-4">
-      {/* Header with back button */}
-      <div className="flex items-center gap-2">
-        <button
-          onClick={onBack}
-          className="p-1 rounded hover:bg-primary-100 transition-colors text-primary-600"
-          aria-label="Back to browse"
-        >
-          <HugeiconsIcon icon={ArrowLeft01Icon} size={20} strokeWidth={1.5} />
-        </button>
-        <h3 className="text-lg font-semibold text-primary-800 flex-1 truncate">{name}</h3>
-        <SecurityBadge {...badge} />
+    <div className="space-y-6">
+      {/* Navigation */}
+      <button
+        onClick={onBack}
+        className="inline-flex items-center gap-1.5 text-xs font-medium text-primary-500 hover:text-primary-700 transition-colors duration-150"
+      >
+        <HugeiconsIcon icon={ArrowLeft01Icon} size={14} strokeWidth={2} />
+        Back to browse
+      </button>
+
+      {/* Header */}
+      <div className="space-y-3">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-1">
+            <h3 className="text-lg font-semibold text-primary-900 leading-tight">
+              {name}
+            </h3>
+            {version && (
+              <span className="text-xs font-mono text-primary-400">
+                v{version}
+              </span>
+            )}
+          </div>
+          <TrustBadge {...badge} />
+        </div>
+
+        {skill.summary && (
+          <p className="text-sm text-primary-600 leading-relaxed">
+            {skill.summary}
+          </p>
+        )}
       </div>
 
-      {/* Version badge */}
-      {version && (
-        <span className="inline-block text-xs font-mono bg-primary-100 text-primary-600 px-2 py-1 rounded">
-          v{version}
-        </span>
-      )}
-
-      {/* Summary/Description */}
-      {skill.summary && (
-        <div className="text-sm text-primary-600 leading-relaxed">
-          {skill.summary}
-        </div>
-      )}
-
-      {/* Stats grid */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-lg bg-primary-50 p-3">
-          <div className="flex items-center gap-1.5 text-primary-400 mb-1">
-            <HugeiconsIcon icon={Download04Icon} size={14} strokeWidth={1.5} />
-            <span className="text-xs">Downloads</span>
+      {/* Stats row */}
+      <div className="flex items-center gap-6 py-4 border-y border-primary-100">
+        <div>
+          <div className="text-lg font-semibold text-primary-900">
+            {formatNumber(downloads)}
           </div>
-          <div className="text-lg font-semibold text-primary-800">
-            {(skill.stats?.downloads || 0).toLocaleString()}
+          <div className="text-[11px] text-primary-400 uppercase tracking-wide">
+            Downloads
           </div>
         </div>
-        <div className="rounded-lg bg-primary-50 p-3">
-          <div className="flex items-center gap-1.5 text-primary-400 mb-1">
-            <HugeiconsIcon icon={StarCircleIcon} size={14} strokeWidth={1.5} />
-            <span className="text-xs">Stars</span>
+        {skill.stats?.versions !== undefined && (
+          <div>
+            <div className="text-lg font-semibold text-primary-900">
+              {skill.stats.versions}
+            </div>
+            <div className="text-[11px] text-primary-400 uppercase tracking-wide">
+              Versions
+            </div>
           </div>
-          <div className="text-lg font-semibold text-primary-800">
-            {(skill.stats?.stars || 0).toLocaleString()}
+        )}
+        {skill.stats?.stars !== undefined && skill.stats.stars > 0 && (
+          <div>
+            <div className="text-lg font-semibold text-primary-900">
+              {skill.stats.stars}
+            </div>
+            <div className="text-[11px] text-primary-400 uppercase tracking-wide">
+              Stars
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Version info */}
-      {skill.latestVersion && (
-        <div className="rounded-lg border border-primary-200 p-3 space-y-2">
+      {skill.latestVersion?.changelog && (
+        <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-primary-600">Latest Version</span>
-            <span className="text-xs font-mono text-primary-500">v{skill.latestVersion.version}</span>
+            <h4 className="text-xs font-semibold text-primary-700 uppercase tracking-wide">
+              Latest Release
+            </h4>
+            {skill.latestVersion.createdAt && (
+              <span className="text-[11px] text-primary-400 flex items-center gap-1">
+                <HugeiconsIcon icon={Calendar01Icon} size={11} strokeWidth={1.5} />
+                {formatDate(skill.latestVersion.createdAt)}
+              </span>
+            )}
           </div>
-          {skill.latestVersion.createdAt && (
-            <div className="flex items-center gap-1.5 text-xs text-primary-400">
-              <HugeiconsIcon icon={Calendar01Icon} size={12} strokeWidth={1.5} />
-              Released {formatDate(skill.latestVersion.createdAt)}
-            </div>
-          )}
-          {skill.latestVersion.changelog && (
-            <div className="text-xs text-primary-500 border-t border-primary-100 pt-2 mt-2">
-              <span className="font-medium text-primary-600">Changelog:</span>
-              <p className="mt-1 whitespace-pre-wrap">{skill.latestVersion.changelog}</p>
-            </div>
-          )}
+          <p className="text-sm text-primary-600 leading-relaxed">
+            {skill.latestVersion.changelog}
+          </p>
         </div>
       )}
-
-      {/* Additional stats */}
-      <div className="text-xs text-primary-400 space-y-1">
-        {skill.stats?.versions !== undefined && (
-          <div>Total versions: {skill.stats.versions}</div>
-        )}
-        {skill.createdAt && (
-          <div>Created: {formatDate(skill.createdAt)}</div>
-        )}
-        {skill.updatedAt && (
-          <div>Updated: {formatDate(skill.updatedAt)}</div>
-        )}
-      </div>
 
       {/* Tags */}
       {tags.length > 0 && (
@@ -294,7 +301,7 @@ function SkillDetailView({
           {tags.map((tag) => (
             <span
               key={tag}
-              className="text-[10px] bg-primary-100 text-primary-600 px-2 py-0.5 rounded-full"
+              className="text-[10px] font-medium text-primary-500 bg-primary-50 px-2 py-1 rounded"
             >
               {tag}
             </span>
@@ -302,11 +309,19 @@ function SkillDetailView({
         </div>
       )}
 
-      {/* Action buttons */}
-      <div className="flex gap-2 pt-2">
+      {/* Metadata */}
+      {(skill.createdAt || skill.updatedAt) && (
+        <div className="text-[11px] text-primary-400 space-y-0.5">
+          {skill.createdAt && <div>Published {formatDate(skill.createdAt)}</div>}
+          {skill.updatedAt && <div>Last updated {formatDate(skill.updatedAt)}</div>}
+        </div>
+      )}
+
+      {/* Actions */}
+      <div className="flex gap-3 pt-2">
         {installed ? (
-          <div className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-green-50 text-green-600 text-sm font-medium">
-            <HugeiconsIcon icon={Tick01Icon} size={16} />
+          <div className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg bg-emerald-50 text-emerald-600 text-sm font-medium border border-emerald-100">
+            <HugeiconsIcon icon={Tick01Icon} size={15} strokeWidth={2} />
             Installed
           </div>
         ) : (
@@ -314,17 +329,15 @@ function SkillDetailView({
             onClick={onInstall}
             disabled={installing}
             className="flex-1"
+            size="sm"
           >
             {installing ? (
               <>
-                <HugeiconsIcon icon={Loading02Icon} size={16} className="animate-spin mr-2" />
-                Installing...
+                <HugeiconsIcon icon={Loading02Icon} size={14} className="animate-spin mr-1.5" />
+                Installing…
               </>
             ) : (
-              <>
-                <HugeiconsIcon icon={Download04Icon} size={16} strokeWidth={1.5} className="mr-2" />
-                Install
-              </>
+              'Install Skill'
             )}
           </Button>
         )}
@@ -332,10 +345,10 @@ function SkillDetailView({
           href={`https://www.clawhub.ai/${slug}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="shrink-0 inline-flex items-center justify-center gap-1 px-3 py-2 text-sm font-medium rounded-md border border-primary-200 bg-surface text-primary-700 hover:bg-primary-50 transition-colors"
+          className="inline-flex items-center gap-1 px-4 py-2 text-sm font-medium text-primary-600 hover:text-primary-800 transition-colors duration-150"
         >
-          <HugeiconsIcon icon={ArrowUpRight01Icon} size={16} strokeWidth={1.5} />
-          ClawHub
+          View on ClawHub
+          <HugeiconsIcon icon={ArrowUpRight01Icon} size={14} strokeWidth={1.5} />
         </a>
       </div>
     </div>
@@ -351,32 +364,35 @@ function InstalledTab() {
       await update(name)
       void refresh()
     } catch {
-      // error is in hook
+      // handled in hook
     }
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-8 text-primary-400">
-        <HugeiconsIcon icon={Loading02Icon} size={20} className="animate-spin" />
+      <div className="flex items-center justify-center py-12">
+        <HugeiconsIcon icon={Loading02Icon} size={18} className="animate-spin text-primary-300" />
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="text-sm text-red-500 p-4 text-center">{error}</div>
+      <div className="text-sm text-red-500 py-8 text-center">{error}</div>
     )
   }
 
   if (skills.length === 0) {
     return (
-      <div className="text-sm text-primary-400 p-4 text-center">No skills installed</div>
+      <div className="py-12 text-center">
+        <p className="text-sm text-primary-400">No skills installed</p>
+        <p className="text-xs text-primary-300 mt-1">Browse the catalog to get started</p>
+      </div>
     )
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {skills.map((skill) => (
         <SkillCard
           key={skill.name}
@@ -414,7 +430,7 @@ function BrowseTab() {
       await install(slug)
       void refreshInstalled()
     } catch {
-      // error in hook
+      // handled in hook
     }
   }
 
@@ -422,7 +438,6 @@ function BrowseTab() {
   const skills = isSearching ? searchResults : exploreSkills
   const loading = isSearching ? searchLoading : exploreLoading
 
-  // Show detail view if a skill is selected
   if (selectedSkill) {
     const slug = selectedSkill.slug || ''
     const name = selectedSkill.displayName || slug
@@ -440,49 +455,52 @@ function BrowseTab() {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
+      {/* Search */}
       <div className="relative">
         <HugeiconsIcon
           icon={Search01Icon}
-          size={16}
+          size={15}
           strokeWidth={1.5}
-          className="absolute left-2.5 top-1/2 -translate-y-1/2 text-primary-400"
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-primary-300"
         />
         <input
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search ClawHub..."
-          className="w-full pl-8 pr-3 py-1.5 text-sm rounded-md border border-primary-200 bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500"
+          placeholder="Search skills…"
+          className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-primary-100 bg-surface placeholder:text-primary-300 focus:outline-none focus:border-primary-300 transition-colors duration-150"
         />
       </div>
 
+      {/* Sort dropdown */}
       {!isSearching && (
-        <div className="flex items-center gap-2">
-          <select
-            value={sort}
-            onChange={(e) => setSort(e.target.value)}
-            className="text-xs rounded-md border border-primary-200 bg-surface px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary-500"
-          >
-            <option value="trending">Trending</option>
-            <option value="newest">Newest</option>
-            <option value="downloads">Most Downloads</option>
-          </select>
-        </div>
+        <select
+          value={sort}
+          onChange={(e) => setSort(e.target.value)}
+          className="text-xs text-primary-600 rounded-md border border-primary-100 bg-surface px-2 py-1.5 focus:outline-none focus:border-primary-300 transition-colors duration-150"
+        >
+          <option value="trending">Trending</option>
+          <option value="newest">Newest</option>
+          <option value="downloads">Most Downloads</option>
+        </select>
       )}
 
+      {/* Content */}
       {loading ? (
-        <div className="flex items-center justify-center py-8 text-primary-400">
-          <HugeiconsIcon icon={Loading02Icon} size={20} className="animate-spin" />
+        <div className="flex items-center justify-center py-12">
+          <HugeiconsIcon icon={Loading02Icon} size={18} className="animate-spin text-primary-300" />
         </div>
       ) : exploreError && !isSearching ? (
-        <div className="text-sm text-red-500 p-4 text-center">{exploreError}</div>
+        <div className="text-sm text-red-500 py-8 text-center">{exploreError}</div>
       ) : skills.length === 0 ? (
-        <div className="text-sm text-primary-400 p-4 text-center">
-          {isSearching ? 'No skills found' : 'No skills available'}
+        <div className="py-12 text-center">
+          <p className="text-sm text-primary-400">
+            {isSearching ? 'No skills found' : 'No skills available'}
+          </p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-3">
           {skills.map((skill: ExploreSkill) => {
             const slug = skill.slug || (skill as { name?: string }).name || ''
             const name = skill.displayName || slug
@@ -508,8 +526,8 @@ export function SkillsPanel() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="px-4 pt-4 pb-2">
-        <h2 className="text-lg font-semibold text-primary-800 mb-3">Skills</h2>
+      <div className="px-4 pt-4 pb-3">
+        <h2 className="text-base font-semibold text-primary-900 mb-4">Skills</h2>
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList variant="default" className="gap-2 *:data-[slot=tab-indicator]:duration-0">
             <TabsTab value="installed">
