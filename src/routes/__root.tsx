@@ -66,6 +66,14 @@ const themeScript = `
 })()
 `
 
+const tauriDetectScript = `
+(() => {
+  if (window.__TAURI_INTERNALS__ || window.__TAURI__) {
+    document.documentElement.classList.add('tauri')
+  }
+})()
+`
+
 const textSizeScript = `
 (() => {
   try {
@@ -184,6 +192,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: tauriDetectScript }} />
         <script dangerouslySetInnerHTML={{ __html: textSizeScript }} />
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <script dangerouslySetInnerHTML={{ __html: swRegisterScript }} />

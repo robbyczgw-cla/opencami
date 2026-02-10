@@ -25,7 +25,7 @@ function ChatHeaderComponent({
     <div
       ref={wrapperRef}
       data-tauri-drag-region
-      className="border-b border-primary-200 px-4 h-12 flex min-w-0 items-center overflow-x-hidden bg-surface"
+      className="border-b border-primary-200 px-4 h-12 flex min-w-0 items-center overflow-x-hidden bg-surface tauri-drag-header"
     >
       {showSidebarButton ? (
         <Button
