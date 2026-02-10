@@ -620,14 +620,15 @@ export function SettingsDialog({
     { value: 'light', label: 'Light', icon: Sun01Icon },
     { value: 'dark', label: 'Dark', icon: Moon01Icon },
     { value: 'chameleon', label: 'Chameleon', icon: Leaf01Icon },
+    { value: 'frost', label: '🧊 Frost', icon: ComputerIcon },
   ] as const
   function applyTheme(theme: ThemeMode) {
     if (typeof document === 'undefined') return
     const root = document.documentElement
     const media = window.matchMedia('(prefers-color-scheme: dark)')
-    root.classList.remove('light', 'dark', 'system', 'chameleon')
+    root.classList.remove('light', 'dark', 'system', 'chameleon', 'frost')
     root.classList.add(theme)
-    if (theme === 'system' && media.matches) {
+    if ((theme === 'system' || theme === 'frost') && media.matches) {
       root.classList.add('dark')
     }
   }

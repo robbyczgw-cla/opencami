@@ -129,6 +129,159 @@ html {
   --color-ink: oklch(0.25 0.025 155);           /* Deep forest green text */
 }
 
+
+/* Frost theme - glassmorphism (light + auto dark variant) */
+.frost {
+  color-scheme: light;
+  --color-primary-50: oklch(0.985 0.008 250);
+  --color-primary-100: oklch(0.96 0.01 250);
+  --color-primary-200: oklch(0.905 0.015 250);
+  --color-primary-300: oklch(0.84 0.018 250);
+  --color-primary-400: oklch(0.73 0.02 250);
+  --color-primary-500: oklch(0.60 0.02 250);
+  --color-primary-600: oklch(0.50 0.018 250);
+  --color-primary-700: oklch(0.40 0.015 250);
+  --color-primary-800: oklch(0.30 0.012 250);
+  --color-primary-900: oklch(0.24 0.01 250);
+  --color-primary-950: oklch(0.18 0.008 250);
+
+  --color-surface: oklch(0.99 0.005 250);
+  --color-ink: oklch(0.24 0.01 250);
+}
+
+@media (prefers-color-scheme: dark) {
+  .frost {
+    color-scheme: dark;
+    --color-primary-50: oklch(0.16 0.01 250);
+    --color-primary-100: oklch(0.20 0.012 250);
+    --color-primary-200: oklch(0.25 0.014 250);
+    --color-primary-300: oklch(0.33 0.016 250);
+    --color-primary-400: oklch(0.44 0.016 250);
+    --color-primary-500: oklch(0.56 0.015 250);
+    --color-primary-600: oklch(0.67 0.014 250);
+    --color-primary-700: oklch(0.76 0.012 250);
+    --color-primary-800: oklch(0.84 0.01 250);
+    --color-primary-900: oklch(0.90 0.008 250);
+    --color-primary-950: oklch(0.95 0.006 250);
+    --color-surface: oklch(0.11 0.008 250);
+    --color-ink: oklch(0.95 0.006 250);
+  }
+}
+
+html.frost body {
+  background:
+    radial-gradient(1200px 700px at -10% -10%, color-mix(in srgb, var(--opencami-accent) 14%, transparent), transparent 60%),
+    radial-gradient(900px 500px at 110% -5%, color-mix(in srgb, var(--opencami-accent) 10%, transparent), transparent 65%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0.2));
+}
+
+@media (prefers-color-scheme: dark) {
+  html.frost body {
+    background:
+      radial-gradient(1200px 700px at -10% -10%, color-mix(in srgb, var(--opencami-accent) 18%, transparent), transparent 62%),
+      radial-gradient(900px 500px at 110% -5%, color-mix(in srgb, var(--opencami-accent) 14%, transparent), transparent 68%),
+      linear-gradient(180deg, rgba(10, 12, 18, 0.92), rgba(10, 12, 18, 0.86));
+  }
+}
+
+/* Structural glass panels only (avoid blurring every message for performance) */
+.frost aside,
+.frost .tauri-drag-header,
+.frost .DialogPopup,
+.frost [role='dialog'],
+.frost .opencami-frost-panel,
+.frost .bg-surface.cursor-text {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.frost aside,
+.frost .tauri-drag-header,
+.frost .bg-surface.cursor-text {
+  background: rgba(255, 255, 255, 0.6) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+}
+
+@media (prefers-color-scheme: dark) {
+  .frost aside,
+  .frost .tauri-drag-header,
+  .frost .bg-surface.cursor-text {
+    background: rgba(15, 15, 15, 0.7) !important;
+    border-color: rgba(255, 255, 255, 0.16) !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+  }
+}
+
+/* Session list + action surfaces */
+.frost .group.inline-flex.items-center.justify-between {
+  border: 1px solid transparent;
+}
+
+.frost .group.inline-flex.items-center.justify-between:hover {
+  background: rgba(255, 255, 255, 0.4);
+  border-color: rgba(255, 255, 255, 0.32);
+}
+
+.frost .group.inline-flex.items-center.justify-between.bg-\[var\(--opencami-accent-light\)\] {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--opencami-accent) 38%, transparent), 0 8px 24px color-mix(in srgb, var(--opencami-accent) 22%, transparent);
+}
+
+/* Message bubbles: subtle translucency, no backdrop blur */
+.frost .opencami-message-user {
+  background: color-mix(in srgb, var(--opencami-accent) 18%, rgba(255, 255, 255, 0.5));
+  border: 1px solid color-mix(in srgb, var(--opencami-accent) 28%, rgba(255, 255, 255, 0.4));
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.frost .opencami-message-assistant {
+  background: rgba(255, 255, 255, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 14px;
+  padding: 0.5rem 0.75rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .frost .opencami-message-assistant {
+    background: rgba(22, 24, 30, 0.5);
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+}
+
+/* Dialogs + menus + popovers as glass */
+.frost [data-slot='tabs-list'],
+.frost [role='menu'],
+.frost [data-slot='button'][class*='outline'],
+.frost [role='dialog'] {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.frost [role='dialog'],
+.frost [role='menu'] {
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+  .frost [role='dialog'],
+  .frost [role='menu'] {
+    background: rgba(15, 15, 15, 0.72);
+    border-color: rgba(255, 255, 255, 0.18);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+  }
+}
+
+/* Accent glow through glass */
+.frost .opencami-accent-bg,
+.frost .opencami-accent-bg-hover:hover,
+.frost [data-slot='button']:focus-visible {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--opencami-accent) 42%, transparent),
+    0 8px 24px color-mix(in srgb, var(--opencami-accent) 24%, transparent);
+}
+
 html,
 body {
   @apply m-0;
