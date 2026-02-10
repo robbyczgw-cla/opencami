@@ -1,6 +1,23 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
 import { execSync } from 'node:child_process'
+import { readFileSync, existsSync } from 'node:fs'
+import { resolve } from 'node:path'
+
+const MY_SKILLS_CONFIG = resolve(process.cwd(), '.clawhub-my-skills.json')
+
+const RECOMMENDED_SKILLS = [
+  'web-search-plus',
+  'elevenlabs-voices',
+  'sports-ticker',
+  'personas',
+  'agent-chronicle',
+  'summarize',
+  'weather',
+  'muninn',
+  'clawd-docs-v2',
+  'therapy-mode',
+]
 
 function runCmd(cmd: string): string {
   try {
@@ -8,6 +25,16 @@ function runCmd(cmd: string): string {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     throw new Error(`Command failed: ${msg}`)
+  }
+}
+
+function loadMySkillsSlugs(): string[] {
+  try {
+    if (!existsSync(MY_SKILLS_CONFIG)) return []
+    const data = JSON.parse(readFileSync(MY_SKILLS_CONFIG, 'utf-8'))
+    return Array.isArray(data.slugs) ? data.slugs : []
+  } catch {
+    return []
   }
 }
 
@@ -82,24 +109,36 @@ export const Route = createFileRoute('/api/skills')({
             return json({ ok: true, skills: parseSearchResults(output) })
           }
 
-          if (action === 'published') {
-            const PUBLISHED_SKILLS = [
-              'web-search-plus',
-              'elevenlabs-voices',
-              'sports-ticker',
-              'smart-followups',
-              'agent-chronicle',
-              'topic-monitor',
-              'personas',
-              'youtube-apify-transcript',
-            ]
+          if (action === 'my-skills') {
+            const mySlugs = loadMySkillsSlugs()
+            if (mySlugs.length === 0) {
+              return json({ ok: true, skills: [] })
+            }
             const raw = runCmd('clawhub explore --json --limit 200 --sort downloads')
             const output = raw.substring(raw.indexOf('{'))
             try {
               const data = JSON.parse(output)
               const all = Array.isArray(data) ? data : data.items || data.skills || data.results || []
-              const slugSet = new Set(PUBLISHED_SKILLS)
+              const slugSet = new Set(mySlugs)
               const filtered = all.filter((s: { slug?: string }) => s.slug && slugSet.has(s.slug))
+              return json({ ok: true, skills: filtered })
+            } catch {
+              return json({ ok: true, skills: [] })
+            }
+          }
+
+          if (action === 'recommended') {
+            const raw = runCmd('clawhub explore --json --limit 200 --sort downloads')
+            const output = raw.substring(raw.indexOf('{'))
+            try {
+              const data = JSON.parse(output)
+              const all = Array.isArray(data) ? data : data.items || data.skills || data.results || []
+              const slugSet = new Set(RECOMMENDED_SKILLS)
+              const filtered = all.filter((s: { slug?: string }) => s.slug && slugSet.has(s.slug))
+              // Sort by downloads (already sorted by API, but ensure order)
+              filtered.sort((a: { stats?: { downloads?: number } }, b: { stats?: { downloads?: number } }) =>
+                (b.stats?.downloads || 0) - (a.stats?.downloads || 0)
+              )
               return json({ ok: true, skills: filtered })
             } catch {
               return json({ ok: true, skills: [] })

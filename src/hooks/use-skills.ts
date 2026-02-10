@@ -117,7 +117,7 @@ export function useSearchSkills(query: string) {
   return { skills, loading, error }
 }
 
-export function usePublishedSkills() {
+export function useMySkills() {
   const [skills, setSkills] = useState<ExploreSkill[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -126,7 +126,30 @@ export function usePublishedSkills() {
     setLoading(true)
     setError(null)
     try {
-      const data = await fetchApi<ExploreSkill>('/api/skills?action=published')
+      const data = await fetchApi<ExploreSkill>('/api/skills?action=my-skills')
+      setSkills(data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { void refresh() }, [refresh])
+
+  return { skills, loading, error, refresh }
+}
+
+export function useRecommendedSkills() {
+  const [skills, setSkills] = useState<ExploreSkill[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const refresh = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const data = await fetchApi<ExploreSkill>('/api/skills?action=recommended')
       setSkills(data)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
