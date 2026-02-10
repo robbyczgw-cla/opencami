@@ -5,7 +5,7 @@ use tauri::{
 };
 use tauri_plugin_autostart::MacosLauncher;
 
-const DEFAULT_REMOTE_URL: &str = "https://openclaw-server.tail8a9ea9.ts.net:3001";
+const DEFAULT_REMOTE_URL: &str = "http://localhost:3003";
 
 fn resolved_remote_url() -> String {
   std::env::var("OPENCAMI_REMOTE_URL")
