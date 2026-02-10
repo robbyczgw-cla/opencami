@@ -6,11 +6,10 @@ import { HugeiconsIcon } from '@hugeicons/react'
 import {
   ArrowLeft01Icon,
   Clock01Icon,
-  Loading01Icon,
+  Loading02Icon,
   SmartPhone01Icon,
 } from '@hugeicons/core-free-icons'
 import { Link } from '@tanstack/react-router'
-import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { CronJobTable } from './components/cron-job-table'
 import { BotCard, groupJobsIntoBots } from './components/bot-card'
@@ -23,42 +22,58 @@ export function BotsScreen() {
 
   return (
     <div className="flex h-screen flex-col bg-surface text-primary-900">
-      <header className="border-b border-primary-200 bg-primary-100 px-6 py-4">
-        <div className="flex items-center gap-3">
-          <Link to="/new" className={cn(buttonVariants({ variant: 'ghost', size: 'icon-sm' }))}>
-            <HugeiconsIcon icon={ArrowLeft01Icon} size={20} strokeWidth={1.5} />
+      {/* Header with back button — consistent with Skills Browser */}
+      <div className="px-4 pt-4 pb-3 border-b border-primary-100">
+        <div className="flex items-center gap-3 mb-2">
+          <Link
+            to="/chat/$sessionKey"
+            params={{ sessionKey: 'main' }}
+            className="p-1.5 -ml-1.5 rounded-md text-primary-500 hover:text-primary-700 hover:bg-primary-50 transition-colors duration-150"
+            aria-label="Back to Chat"
+          >
+            <HugeiconsIcon icon={ArrowLeft01Icon} size={18} strokeWidth={2} />
           </Link>
-          <HugeiconsIcon icon={SmartPhone01Icon} size={24} strokeWidth={1.5} className="text-primary-600" />
-          <h1 className="text-lg font-semibold text-primary-900">Cron Jobs</h1>
+          <h2 className="text-base font-semibold text-primary-900">Cron Jobs</h2>
         </div>
-      </header>
+        <p className="text-xs text-primary-500">
+          {jobs.length} job{jobs.length !== 1 ? 's' : ''} configured
+        </p>
+      </div>
 
-      <div className="min-h-0 flex-1 overflow-auto">
+      <div className="min-h-0 flex-1 overflow-auto px-4 pb-4 pt-4">
         {cronJobsQuery.isLoading ? (
-          <div className="flex h-full items-center justify-center">
-            <HugeiconsIcon icon={Loading01Icon} size={24} className="animate-spin text-primary-400" />
+          <div className="flex items-center justify-center py-12">
+            <HugeiconsIcon icon={Loading02Icon} size={18} className="animate-spin text-primary-300" />
           </div>
         ) : cronJobsQuery.isError ? (
-          <div className="p-6 text-center">
-            <p className="text-sm text-red-600">
+          <div className="py-12 text-center">
+            <p className="text-sm text-red-500">
               {cronJobsQuery.error instanceof Error ? cronJobsQuery.error.message : 'Failed to load cron jobs'}
             </p>
             <button
               onClick={() => void cronJobsQuery.refetch()}
-              className="mt-2 text-sm text-primary-600 underline hover:text-primary-900"
+              className="mt-2 text-xs font-medium text-primary-500 hover:text-primary-700 transition-colors duration-150"
             >
               Retry
             </button>
           </div>
+        ) : jobs.length === 0 ? (
+          <div className="py-12 text-center">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-primary-50 mb-3">
+              <HugeiconsIcon icon={Clock01Icon} size={24} className="text-primary-400" />
+            </div>
+            <p className="text-sm text-primary-500">No cron jobs configured</p>
+            <p className="text-xs text-primary-400 mt-1">Jobs will appear here once created</p>
+          </div>
         ) : (
-          <div className="mx-auto max-w-6xl space-y-6 p-6">
+          <div className="space-y-6">
             {bots.length > 0 && (
               <section>
-                <h2 className="mb-3 flex items-center gap-2 text-sm font-medium text-primary-500">
-                  <HugeiconsIcon icon={SmartPhone01Icon} size={16} />
+                <h3 className="text-xs font-medium text-primary-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                  <HugeiconsIcon icon={SmartPhone01Icon} size={14} strokeWidth={1.5} />
                   Bots ({bots.length})
-                </h2>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                </h3>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {bots.map((bot) => (
                     <BotCard key={bot.name} bot={bot} />
                   ))}
@@ -67,11 +82,11 @@ export function BotsScreen() {
             )}
 
             <section>
-              <h2 className="mb-3 flex items-center gap-2 text-sm font-medium text-primary-500">
-                <HugeiconsIcon icon={Clock01Icon} size={16} />
-                All Cron Jobs ({jobs.length})
-              </h2>
-              <div className="overflow-hidden rounded-lg border border-primary-200 bg-white">
+              <h3 className="text-xs font-medium text-primary-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                <HugeiconsIcon icon={Clock01Icon} size={14} strokeWidth={1.5} />
+                All Jobs ({jobs.length})
+              </h3>
+              <div className="space-y-2">
                 <CronJobTable jobs={jobs} />
               </div>
             </section>

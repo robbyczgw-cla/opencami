@@ -57,50 +57,56 @@ function AgentCard({
   // Extract short model name (last segment after /)
   const shortModel = agent.model ? agent.model.split('/').pop() : undefined
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-primary-200 bg-surface p-3">
-      <div className="relative flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-lg">
-        {agent.emoji || '🤖'}
-        {isMain && (
-          <span className="absolute -top-1 -right-1 size-2.5 rounded-full bg-green-500 ring-2 ring-surface" />
-        )}
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-primary-900 truncate">{displayName}</span>
-          {displayName !== agent.id && (
-            <span className="text-xs text-primary-400 font-mono">{agent.id}</span>
-          )}
+    <div className="group rounded-lg border border-primary-100 bg-surface p-4 transition-all duration-150 ease-out hover:border-primary-200 hover:shadow-sm">
+      <div className="flex items-start gap-3">
+        <div className="relative flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-lg">
+          {agent.emoji || '🤖'}
           {isMain && (
-            <span className="rounded bg-green-500/15 px-1.5 py-0.5 text-[10px] font-medium text-green-600 dark:text-green-400">
-              PRIMARY
-            </span>
+            <span className="absolute -top-1 -right-1 size-2.5 rounded-full bg-emerald-500 ring-2 ring-surface" />
           )}
         </div>
-        <div className="flex items-center gap-2 text-xs text-primary-500 mt-0.5">
-          {shortModel && (
-            <span className="inline-flex items-center rounded bg-primary-100 px-1.5 py-0.5 font-mono text-[11px] text-primary-600 truncate max-w-[200px]">
-              {shortModel}
-            </span>
-          )}
-          {agent.workspace && (
-            <span className="truncate font-mono text-primary-400 max-w-[180px]" title={agent.workspace}>
-              {agent.workspace}
-            </span>
-          )}
-          {!shortModel && !agent.workspace && (
-            <span className="text-primary-300 italic">no config</span>
-          )}
+        <div className="min-w-0 flex-1">
+          {/* Header row */}
+          <div className="flex items-start justify-between gap-2 mb-1">
+            <div className="flex items-center gap-2 min-w-0">
+              <h4 className="text-[13px] font-semibold text-primary-900 leading-tight truncate">{displayName}</h4>
+              {displayName !== agent.id && (
+                <span className="text-[10px] text-primary-400 font-mono shrink-0">{agent.id}</span>
+              )}
+            </div>
+            {isMain && (
+              <span className="inline-flex items-center px-2 py-0.5 text-[11px] font-medium rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 shrink-0">
+                Primary
+              </span>
+            )}
+          </div>
+          {/* Meta info */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            {shortModel && (
+              <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-mono rounded-full bg-primary-50 text-primary-600 border border-primary-100 truncate max-w-[180px]">
+                {shortModel}
+              </span>
+            )}
+            {agent.workspace && (
+              <span className="text-[11px] font-mono text-primary-400 truncate max-w-[160px]" title={agent.workspace}>
+                {agent.workspace}
+              </span>
+            )}
+            {!shortModel && !agent.workspace && (
+              <span className="text-[11px] text-primary-300 italic">no config</span>
+            )}
+          </div>
         </div>
-      </div>
-      <div className="flex items-center gap-1 shrink-0">
-        <Button size="icon-sm" variant="ghost" onClick={onEdit} aria-label="Edit agent">
-          <HugeiconsIcon icon={PencilEdit01Icon} size={16} strokeWidth={1.5} />
-        </Button>
-        {!isMain && (
-          <Button size="icon-sm" variant="ghost" onClick={onDelete} aria-label="Delete agent" className="text-red-500 hover:text-red-600">
-            <HugeiconsIcon icon={Delete01Icon} size={16} strokeWidth={1.5} />
+        <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+          <Button size="icon-sm" variant="ghost" onClick={onEdit} aria-label="Edit agent">
+            <HugeiconsIcon icon={PencilEdit01Icon} size={16} strokeWidth={1.5} />
           </Button>
-        )}
+          {!isMain && (
+            <Button size="icon-sm" variant="ghost" onClick={onDelete} aria-label="Delete agent" className="text-red-500 hover:text-red-600">
+              <HugeiconsIcon icon={Delete01Icon} size={16} strokeWidth={1.5} />
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -354,7 +360,13 @@ export function AgentsPanel() {
           />
         ))}
         {agents.length === 0 && (
-          <div className="text-center py-8 text-sm text-primary-400">No agents found</div>
+          <div className="py-12 text-center">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-primary-50 mb-3">
+              <span className="text-2xl">🤖</span>
+            </div>
+            <p className="text-sm text-primary-500">No agents found</p>
+            <p className="text-xs text-primary-400 mt-1">Create one to get started</p>
+          </div>
         )}
       </div>
 

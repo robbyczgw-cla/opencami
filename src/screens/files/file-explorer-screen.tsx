@@ -76,9 +76,9 @@ export function FileExplorerScreen() {
         {sidebar}
 
         <main aria-label="File explorer" style={mainStyles}>
-          {/* Header */}
-          <header className="border-b border-primary-200 px-4 py-3">
-            <div className="flex items-center justify-between mb-2">
+          {/* Header — consistent with Skills Browser */}
+          <header className="border-b border-primary-100 px-4 py-3">
+            <div className="flex items-center justify-between mb-3">
               <FileBreadcrumb path={currentPath} />
             </div>
             <FileToolbar

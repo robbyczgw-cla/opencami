@@ -77,45 +77,51 @@ function AgentCard({
   const shortModel = agent.model ? agent.model.split('/').pop() : undefined
 
   return (
-    <div className="rounded-xl border border-primary-200 bg-surface p-4 hover:border-primary-300 transition-colors">
+    <div className="group rounded-lg border border-primary-100 bg-surface p-4 transition-all duration-150 ease-out hover:border-primary-200 hover:shadow-sm">
       <div className="flex items-start gap-4">
-        <div className="relative flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-xl">
+        <div className="relative flex size-12 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-xl">
           {agent.emoji || '🤖'}
           {isMain && (
-            <span className="absolute -top-1 -right-1 size-3 rounded-full bg-green-500 ring-2 ring-surface" />
+            <span className="absolute -top-1 -right-1 size-3 rounded-full bg-emerald-500 ring-2 ring-surface" />
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-sm font-semibold text-primary-900 truncate">{displayName}</span>
-            {displayName !== agent.id && (
-              <span className="text-xs text-primary-400 font-mono">{agent.id}</span>
-            )}
+          {/* Header row */}
+          <div className="flex items-start justify-between gap-3 mb-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <h4 className="text-[13px] font-semibold text-primary-900 leading-tight truncate">
+                {displayName}
+              </h4>
+              {displayName !== agent.id && (
+                <span className="text-[10px] font-mono text-primary-400 shrink-0">{agent.id}</span>
+              )}
+            </div>
             {isMain && (
-              <span className="rounded bg-green-500/15 px-1.5 py-0.5 text-[10px] font-medium text-green-600 dark:text-green-400">
-                PRIMARY
+              <span className="inline-flex items-center px-2 py-0.5 text-[11px] font-medium rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 shrink-0">
+                Primary
               </span>
             )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 text-xs text-primary-500 mb-2">
+          {/* Model & status badges */}
+          <div className="flex flex-wrap items-center gap-1.5 mb-3">
             {shortModel && (
-              <span className="inline-flex items-center rounded-md bg-primary-100 px-2 py-0.5 font-mono text-[11px] text-primary-600 truncate max-w-[250px]">
+              <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-mono rounded-full bg-primary-50 text-primary-600 border border-primary-100 truncate max-w-[200px]">
                 {shortModel}
               </span>
             )}
             {agent.sandbox !== undefined && (
               <span className={cn(
-                'inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium',
+                'inline-flex items-center px-2 py-0.5 text-[10px] font-medium rounded-full border',
                 agent.sandbox
-                  ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
-                  : 'bg-primary-100 text-primary-500'
+                  ? 'bg-amber-50 text-amber-600 border-amber-100'
+                  : 'bg-primary-50 text-primary-500 border-primary-100'
               )}>
-                {agent.sandbox ? '🔒 Sandbox' : '🔓 No sandbox'}
+                {agent.sandbox ? '🔒 Sandbox' : '🔓 Open'}
               </span>
             )}
             {agent.sessionScope && (
-              <span className="inline-flex items-center rounded-md bg-primary-100 px-2 py-0.5 text-[11px] text-primary-500">
+              <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-medium rounded-full bg-primary-50 text-primary-500 border border-primary-100">
                 {agent.sessionScope === 'per-sender' ? '👤 Per-sender' : '🌐 Global'}
               </span>
             )}
@@ -124,13 +130,13 @@ function AgentCard({
           {/* Tools */}
           {agent.tools && agent.tools.length > 0 && (
             <div className="flex flex-wrap gap-1 mb-2">
-              {agent.tools.slice(0, 8).map((tool) => (
-                <span key={tool} className="inline-flex items-center rounded bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-mono text-blue-600 dark:text-blue-400">
+              {agent.tools.slice(0, 6).map((tool) => (
+                <span key={tool} className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono rounded bg-sky-50 text-sky-600 border border-sky-100">
                   {tool}
                 </span>
               ))}
-              {agent.tools.length > 8 && (
-                <span className="text-[10px] text-primary-400">+{agent.tools.length - 8} more</span>
+              {agent.tools.length > 6 && (
+                <span className="text-[10px] text-primary-400">+{agent.tools.length - 6} more</span>
               )}
             </div>
           )}
@@ -139,26 +145,28 @@ function AgentCard({
           {agent.channelBindings && agent.channelBindings.length > 0 && (
             <div className="flex flex-wrap gap-1 mb-2">
               {agent.channelBindings.map((ch) => (
-                <span key={ch} className="inline-flex items-center rounded bg-purple-500/10 px-1.5 py-0.5 text-[10px] text-purple-600 dark:text-purple-400">
+                <span key={ch} className="inline-flex items-center px-1.5 py-0.5 text-[10px] rounded bg-violet-50 text-violet-600 border border-violet-100">
                   #{ch}
                 </span>
               ))}
             </div>
           )}
 
-          {agent.workspace && (
-            <div className="text-[11px] font-mono text-primary-400 truncate" title={agent.workspace}>
-              {agent.workspace}
-            </div>
-          )}
-
-          {agent.activeSessions !== undefined && agent.activeSessions > 0 && (
-            <div className="text-[11px] text-primary-400 mt-1">
-              {agent.activeSessions} active session{agent.activeSessions !== 1 ? 's' : ''}
-            </div>
-          )}
+          {/* Footer info */}
+          <div className="flex items-center gap-3 pt-2 border-t border-primary-50">
+            {agent.workspace && (
+              <span className="text-[11px] font-mono text-primary-400 truncate" title={agent.workspace}>
+                {agent.workspace}
+              </span>
+            )}
+            {agent.activeSessions !== undefined && agent.activeSessions > 0 && (
+              <span className="text-[11px] text-primary-400">
+                {agent.activeSessions} active session{agent.activeSessions !== 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
           <Button size="icon-sm" variant="ghost" onClick={onEdit} aria-label="Edit agent">
             <HugeiconsIcon icon={PencilEdit01Icon} size={16} strokeWidth={1.5} />
           </Button>
@@ -273,8 +281,8 @@ function AgentForm({
 
       <div className="space-y-6">
         {/* Basic Info */}
-        <div className="rounded-xl border border-primary-200 bg-surface p-4">
-          <h3 className="text-xs font-medium text-primary-500 uppercase tracking-wider mb-3">Basic Info</h3>
+        <div className="rounded-lg border border-primary-100 bg-surface p-4">
+          <h3 className="text-xs font-medium text-primary-400 uppercase tracking-wider mb-3">Basic Info</h3>
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2 sm:col-span-1">
               <label className="block text-xs text-primary-600 mb-1">Name</label>
@@ -307,8 +315,8 @@ function AgentForm({
         </div>
 
         {/* Model & Config */}
-        <div className="rounded-xl border border-primary-200 bg-surface p-4">
-          <h3 className="text-xs font-medium text-primary-500 uppercase tracking-wider mb-3">Model & Config</h3>
+        <div className="rounded-lg border border-primary-100 bg-surface p-4">
+          <h3 className="text-xs font-medium text-primary-400 uppercase tracking-wider mb-3">Model & Config</h3>
           <div className="space-y-3">
             <div>
               <label className="block text-xs text-primary-600 mb-1">Model</label>
@@ -350,8 +358,8 @@ function AgentForm({
         </div>
 
         {/* Tools */}
-        <div className="rounded-xl border border-primary-200 bg-surface p-4">
-          <h3 className="text-xs font-medium text-primary-500 uppercase tracking-wider mb-3">Tools</h3>
+        <div className="rounded-lg border border-primary-100 bg-surface p-4">
+          <h3 className="text-xs font-medium text-primary-400 uppercase tracking-wider mb-3">Tools</h3>
           <div className="space-y-3">
             <TagInput
               label="Allowed Tools"
@@ -369,8 +377,8 @@ function AgentForm({
         </div>
 
         {/* Channel Bindings */}
-        <div className="rounded-xl border border-primary-200 bg-surface p-4">
-          <h3 className="text-xs font-medium text-primary-500 uppercase tracking-wider mb-3">Channel Bindings</h3>
+        <div className="rounded-lg border border-primary-100 bg-surface p-4">
+          <h3 className="text-xs font-medium text-primary-400 uppercase tracking-wider mb-3">Channel Bindings</h3>
           <TagInput
             label="Bound Channels"
             placeholder="Type channel name and press Enter"
@@ -684,8 +692,12 @@ export function AgentsScreen() {
                   />
                 ))}
                 {agents.length === 0 && (
-                  <div className="text-center py-16 text-sm text-primary-400">
-                    No agents found. Create one to get started.
+                  <div className="py-12 text-center">
+                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-primary-50 mb-3">
+                      <span className="text-2xl">🤖</span>
+                    </div>
+                    <p className="text-sm text-primary-500">No agents found</p>
+                    <p className="text-xs text-primary-400 mt-1">Create one to get started</p>
                   </div>
                 )}
               </div>

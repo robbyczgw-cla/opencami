@@ -46,29 +46,52 @@ export function groupJobsIntoBots(jobs: CronJob[]): BotGroup[] {
 export function BotCard({ bot }: { bot: BotGroup }) {
   const lastActivity = bot.jobs.reduce((max, job) => Math.max(max, job.state?.lastRunAtMs ?? 0), 0)
   const hasErrors = bot.jobs.some((job) => job.state?.lastStatus === 'error')
+  const enabledCount = bot.jobs.filter((job) => job.enabled).length
 
   return (
-    <div className="rounded-lg border border-primary-200 bg-primary-50 p-4">
-      <div className="flex items-start gap-3">
-        <div className={cn('rounded-lg p-2', hasErrors ? 'bg-red-100' : 'bg-primary-100')}>
-          <HugeiconsIcon
-            icon={SmartPhone01Icon}
-            size={24}
-            strokeWidth={1.5}
-            className={hasErrors ? 'text-red-600' : 'text-primary-600'}
-          />
+    <div className="group rounded-lg border border-primary-100 bg-surface p-4 transition-all duration-150 ease-out hover:border-primary-200 hover:shadow-sm">
+      {/* Header row */}
+      <div className="flex items-start justify-between gap-3 mb-2">
+        <div className="flex items-center gap-3">
+          <div className={cn(
+            'flex items-center justify-center w-10 h-10 rounded-lg',
+            hasErrors ? 'bg-red-50' : 'bg-primary-50'
+          )}>
+            <HugeiconsIcon
+              icon={SmartPhone01Icon}
+              size={20}
+              strokeWidth={1.5}
+              className={hasErrors ? 'text-red-500' : 'text-primary-500'}
+            />
+          </div>
+          <h4 className="text-[13px] font-semibold text-primary-900 leading-tight truncate">
+            {bot.name}
+          </h4>
         </div>
-        <div className="min-w-0 flex-1">
-          <h3 className="truncate font-medium text-primary-900">{bot.name}</h3>
-          <div className="mt-1 flex items-center gap-2 text-xs text-primary-500">
-            <HugeiconsIcon icon={Clock01Icon} size={12} />
-            <span>Last active: {formatRelativeMs(lastActivity || undefined)}</span>
-          </div>
-          <div className="mt-2">
-            <span className="rounded-full bg-primary-100 px-2 py-0.5 text-xs text-primary-600">
-              {bot.jobs.length} job{bot.jobs.length !== 1 ? 's' : ''}
+        {hasErrors && (
+          <span className="inline-flex items-center px-2 py-0.5 text-[11px] font-medium rounded-full bg-red-50 text-red-600 border border-red-100 shrink-0">
+            Error
+          </span>
+        )}
+      </div>
+
+      {/* Footer row */}
+      <div className="flex items-center justify-between pt-2 border-t border-primary-50">
+        <div className="flex items-center gap-3">
+          <span className="text-[11px] text-primary-400 flex items-center gap-1">
+            <HugeiconsIcon icon={Clock01Icon} size={11} strokeWidth={1.5} />
+            {formatRelativeMs(lastActivity || undefined)}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-medium rounded-full bg-primary-50 text-primary-500 border border-primary-100">
+            {bot.jobs.length} job{bot.jobs.length !== 1 ? 's' : ''}
+          </span>
+          {enabledCount < bot.jobs.length && (
+            <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-medium rounded-full bg-amber-50 text-amber-600 border border-amber-100">
+              {bot.jobs.length - enabledCount} disabled
             </span>
-          </div>
+          )}
         </div>
       </div>
     </div>

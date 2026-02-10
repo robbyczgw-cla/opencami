@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
-import { PlayIcon, Loading01Icon } from '@hugeicons/core-free-icons'
+import { PlayIcon, Loading02Icon, Clock01Icon, Calendar01Icon } from '@hugeicons/core-free-icons'
 import { AnimatePresence } from 'motion/react'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
@@ -64,6 +64,28 @@ function formatFutureMs(ms?: number): string {
   return new Date(ms).toLocaleDateString()
 }
 
+function StatusBadge({ status }: { status?: 'ok' | 'error' | null }) {
+  if (status === 'ok') {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 text-[11px] font-medium rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100">
+        ok
+      </span>
+    )
+  }
+  if (status === 'error') {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 text-[11px] font-medium rounded-full bg-red-50 text-red-600 border border-red-100">
+        error
+      </span>
+    )
+  }
+  return (
+    <span className="inline-flex items-center px-2 py-0.5 text-[11px] font-medium rounded-full bg-primary-50 text-primary-400 border border-primary-100">
+      —
+    </span>
+  )
+}
+
 export function CronJobTable({ jobs }: { jobs: CronJob[] }) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const runMutation = useRunCronJob()
@@ -84,88 +106,93 @@ export function CronJobTable({ jobs }: { jobs: CronJob[] }) {
   )
 
   if (jobs.length === 0) {
-    return <div className="py-8 text-center text-sm text-primary-500">No cron jobs configured</div>
+    return null
   }
 
   return (
-    <div className="divide-y divide-primary-200">
-      <div className="grid grid-cols-[1fr_auto_auto_auto_auto_auto] gap-3 bg-primary-50 px-4 py-2 text-xs font-medium text-primary-500">
-        <div>Name</div>
-        <div className="w-44">Schedule</div>
-        <div className="w-20 text-center">Last Run</div>
-        <div className="w-16 text-center">Status</div>
-        <div className="w-20 text-center">Next Run</div>
-        <div className="w-24 text-right">Actions</div>
-      </div>
-
+    <div className="space-y-2">
       {jobs.map((job) => {
         const isExpanded = expandedId === job.id
         const isRunning = runMutation.isPending && runMutation.variables === job.id
 
         return (
-          <div key={job.id}>
+          <div
+            key={job.id}
+            className={cn(
+              'group rounded-lg border border-primary-100 bg-surface transition-all duration-150 ease-out',
+              isExpanded ? 'border-primary-200 shadow-sm' : 'hover:border-primary-200 hover:shadow-sm',
+            )}
+          >
             <button
               type="button"
               onClick={() => setExpandedId(isExpanded ? null : job.id)}
               className={cn(
-                'grid w-full grid-cols-[1fr_auto_auto_auto_auto_auto] gap-3 px-4 py-3 text-left text-sm',
-                'transition-colors duration-100 hover:bg-primary-100',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300',
-                isExpanded && 'bg-primary-100',
+                'w-full p-4 text-left',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:rounded-lg',
               )}
             >
-              <div className="min-w-0">
-                <span className={cn('block truncate font-medium', !job.enabled && 'text-primary-400')}>
+              {/* Header row */}
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <h4 className={cn(
+                  'text-[13px] font-semibold leading-tight truncate',
+                  job.enabled ? 'text-primary-900' : 'text-primary-400'
+                )}>
                   {job.name ?? job.id}
-                </span>
+                </h4>
+                <div className="flex items-center gap-2 shrink-0">
+                  {!job.enabled && (
+                    <span className="inline-flex items-center px-2 py-0.5 text-[11px] font-medium rounded-full bg-primary-50 text-primary-400 border border-primary-100">
+                      Disabled
+                    </span>
+                  )}
+                  <StatusBadge status={job.state?.lastStatus} />
+                </div>
               </div>
-              <div className="w-44 truncate text-primary-600">{humanSchedule(job)}</div>
-              <div className="w-20 text-center tabular-nums text-primary-500">
-                {formatRelativeMs(job.state?.lastRunAtMs)}
-              </div>
-              <div className="flex w-16 justify-center">
-                {job.state?.lastStatus === 'ok' && (
-                  <span className="inline-flex items-center rounded-full bg-green-100 px-1.5 py-0.5 text-xs font-medium text-green-700">
-                    ok
+
+              {/* Schedule info */}
+              <p className="text-xs text-primary-500 leading-relaxed mb-3">
+                {humanSchedule(job)}
+              </p>
+
+              {/* Footer row */}
+              <div className="flex items-center justify-between pt-2 border-t border-primary-50">
+                <div className="flex items-center gap-4">
+                  <span className="text-[11px] text-primary-400 flex items-center gap-1">
+                    <HugeiconsIcon icon={Clock01Icon} size={11} strokeWidth={1.5} />
+                    Last: {formatRelativeMs(job.state?.lastRunAtMs)}
                   </span>
-                )}
-                {job.state?.lastStatus === 'error' && (
-                  <span className="inline-flex items-center rounded-full bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-700">
-                    error
+                  <span className="text-[11px] text-primary-400 flex items-center gap-1">
+                    <HugeiconsIcon icon={Calendar01Icon} size={11} strokeWidth={1.5} />
+                    Next: {formatFutureMs(job.state?.nextRunAtMs)}
                   </span>
-                )}
-                {!job.state?.lastStatus && (
-                  <span className="inline-flex items-center rounded-full bg-primary-100 px-1.5 py-0.5 text-xs font-medium text-primary-400">
-                    —
-                  </span>
-                )}
-              </div>
-              <div className="w-20 text-center tabular-nums text-primary-500">
-                {formatFutureMs(job.state?.nextRunAtMs)}
-              </div>
-              <div
-                className="flex w-24 items-center justify-end gap-2"
-                onClick={(event) => event.stopPropagation()}
-              >
-                <Switch
-                  checked={job.enabled}
-                  onCheckedChange={() => handleToggle(job)}
-                  aria-label={`${job.enabled ? 'Disable' : 'Enable'} ${job.name ?? job.id}`}
-                  disabled={toggleMutation.isPending}
-                />
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => handleRun(job.id)}
-                  disabled={isRunning}
-                  aria-label={`Run ${job.name ?? job.id} now`}
+                </div>
+
+                <div
+                  className="flex items-center gap-2"
+                  onClick={(event) => event.stopPropagation()}
                 >
-                  <HugeiconsIcon
-                    icon={isRunning ? Loading01Icon : PlayIcon}
-                    size={16}
-                    className={cn(isRunning && 'animate-spin')}
+                  <Switch
+                    checked={job.enabled}
+                    onCheckedChange={() => handleToggle(job)}
+                    aria-label={`${job.enabled ? 'Disable' : 'Enable'} ${job.name ?? job.id}`}
+                    disabled={toggleMutation.isPending}
                   />
-                </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => handleRun(job.id)}
+                    disabled={isRunning}
+                    aria-label={`Run ${job.name ?? job.id} now`}
+                    className="text-primary-500 hover:text-primary-700"
+                  >
+                    <HugeiconsIcon
+                      icon={isRunning ? Loading02Icon : PlayIcon}
+                      size={16}
+                      strokeWidth={1.5}
+                      className={cn(isRunning && 'animate-spin')}
+                    />
+                  </Button>
+                </div>
               </div>
             </button>
 

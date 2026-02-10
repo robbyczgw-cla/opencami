@@ -1,5 +1,5 @@
 import { HugeiconsIcon } from '@hugeicons/react'
-import { Clock01Icon, Loading01Icon } from '@hugeicons/core-free-icons'
+import { Clock01Icon, Loading02Icon } from '@hugeicons/core-free-icons'
 import { motion } from 'motion/react'
 import { cn } from '@/lib/utils'
 import { useCronJobRuns, type CronJob, type CronJobRun } from '../hooks/use-cron-jobs'
@@ -28,11 +28,11 @@ export function CronJobDetail({ job }: { job: CronJob }) {
       transition={{ duration: 0.15 }}
       className="overflow-hidden"
     >
-      <div className="space-y-3 border-t border-primary-200 bg-primary-50 px-4 py-3">
+      <div className="space-y-4 border-t border-primary-100 bg-primary-50/50 px-4 py-4">
         {(job.payload.message || job.payload.prompt) && (
           <div>
-            <p className="mb-1 text-xs font-medium text-primary-500">Prompt / Message</p>
-            <p className="whitespace-pre-wrap break-words rounded bg-primary-100 p-2 text-sm text-primary-800">
+            <h5 className="text-xs font-medium text-primary-400 uppercase tracking-wider mb-2">Prompt / Message</h5>
+            <p className="whitespace-pre-wrap break-words rounded-lg bg-surface border border-primary-100 p-3 text-sm text-primary-700 leading-relaxed">
               {(job.payload.message ?? job.payload.prompt) as string}
             </p>
           </div>
@@ -40,21 +40,21 @@ export function CronJobDetail({ job }: { job: CronJob }) {
 
         {job.delivery && (
           <div>
-            <p className="mb-1 text-xs font-medium text-primary-500">Delivery</p>
-            <div className="flex flex-wrap gap-3 text-sm text-primary-700">
+            <h5 className="text-xs font-medium text-primary-400 uppercase tracking-wider mb-2">Delivery</h5>
+            <div className="flex flex-wrap gap-2">
               {job.delivery.mode && (
-                <span>
-                  Mode: <strong>{job.delivery.mode}</strong>
+                <span className="inline-flex items-center px-2 py-0.5 text-[11px] font-medium rounded-full bg-surface text-primary-600 border border-primary-100">
+                  Mode: {job.delivery.mode}
                 </span>
               )}
               {job.delivery.channel && (
-                <span>
-                  Channel: <strong>{job.delivery.channel}</strong>
+                <span className="inline-flex items-center px-2 py-0.5 text-[11px] font-medium rounded-full bg-surface text-primary-600 border border-primary-100">
+                  Channel: {job.delivery.channel}
                 </span>
               )}
               {job.delivery.to && (
-                <span>
-                  To: <strong>{job.delivery.to}</strong>
+                <span className="inline-flex items-center px-2 py-0.5 text-[11px] font-medium rounded-full bg-surface text-primary-600 border border-primary-100">
+                  To: {job.delivery.to}
                 </span>
               )}
             </div>
@@ -63,43 +63,45 @@ export function CronJobDetail({ job }: { job: CronJob }) {
 
         {job.payload.model && (
           <div>
-            <p className="mb-1 text-xs font-medium text-primary-500">Model</p>
-            <p className="text-xs text-primary-700 font-mono">{job.payload.model}</p>
+            <h5 className="text-xs font-medium text-primary-400 uppercase tracking-wider mb-2">Model</h5>
+            <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-mono rounded-full bg-surface text-primary-600 border border-primary-100">
+              {job.payload.model}
+            </span>
           </div>
         )}
 
         {job.state?.lastError && (
           <div>
-            <p className="mb-1 text-xs font-medium text-red-500">Last Error</p>
-            <p className="rounded bg-red-50 p-2 font-mono text-xs text-red-700">
+            <h5 className="text-xs font-medium text-red-500 uppercase tracking-wider mb-2">Last Error</h5>
+            <p className="rounded-lg bg-red-50 border border-red-100 p-3 font-mono text-xs text-red-600 leading-relaxed">
               {job.state.lastError}
             </p>
           </div>
         )}
 
         <div>
-          <p className="mb-1 text-xs font-medium text-primary-500">Recent Runs</p>
+          <h5 className="text-xs font-medium text-primary-400 uppercase tracking-wider mb-2">Recent Runs</h5>
           {runsQuery.isLoading ? (
-            <div className="flex items-center gap-2 text-sm text-primary-500">
-              <HugeiconsIcon icon={Loading01Icon} size={14} className="animate-spin" />
+            <div className="flex items-center gap-2 text-xs text-primary-500">
+              <HugeiconsIcon icon={Loading02Icon} size={12} className="animate-spin" />
               Loading...
             </div>
           ) : runs.length === 0 ? (
-            <p className="text-sm text-primary-400">No run history available</p>
+            <p className="text-xs text-primary-400">No run history available</p>
           ) : (
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               {runs.slice(0, 5).map((run) => (
-                <div key={run.id} className="flex items-center gap-3 py-1 text-sm">
+                <div key={run.id} className="flex items-center gap-3 py-1.5 px-2 rounded-md bg-surface border border-primary-50">
                   <span
                     className={cn(
                       'inline-block h-2 w-2 shrink-0 rounded-full',
-                      run.status === 'ok' ? 'bg-green-500' : 'bg-red-500',
+                      run.status === 'ok' ? 'bg-emerald-500' : 'bg-red-500',
                     )}
                   />
-                  <HugeiconsIcon icon={Clock01Icon} size={12} className="text-primary-500" />
-                  <span className="tabular-nums text-xs text-primary-600">{formatTime(run.ranAt)}</span>
-                  <span className="tabular-nums text-xs text-primary-500">{formatDuration(run.durationMs)}</span>
-                  {run.error && <span className="truncate text-xs text-red-500">{run.error}</span>}
+                  <HugeiconsIcon icon={Clock01Icon} size={11} strokeWidth={1.5} className="text-primary-400" />
+                  <span className="tabular-nums text-[11px] text-primary-600">{formatTime(run.ranAt)}</span>
+                  <span className="tabular-nums text-[11px] text-primary-400">{formatDuration(run.durationMs)}</span>
+                  {run.error && <span className="truncate text-[11px] text-red-500 ml-auto">{run.error}</span>}
                 </div>
               ))}
             </div>

@@ -222,35 +222,35 @@ const GridItem = memo(function GridItem({
       type="button"
       whileHover={reduceMotion ? {} : { scale: 1.02 }}
       whileTap={reduceMotion ? {} : { scale: 0.98 }}
-      transition={{ duration: reduceMotion ? 0 : 0.1 }}
+      transition={{ duration: reduceMotion ? 0 : 0.15 }}
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
       onKeyDown={handleKeyDown}
       aria-label={getItemAriaLabel()}
       className={cn(
-        'flex flex-col items-center p-3 rounded-lg w-full',
-        'transition-colors duration-150 ease-out',
-        'hover:bg-primary-100 focus-visible:bg-primary-100',
+        'flex flex-col items-center p-3 rounded-lg w-full border border-transparent',
+        'transition-all duration-150 ease-out',
+        'hover:bg-primary-50 hover:border-primary-100 focus-visible:bg-primary-50',
         'focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:outline-none',
         'touch-manipulation',
-        isSelected && 'bg-primary-200'
+        isSelected && 'bg-primary-100 border-primary-200'
       )}
     >
       <HugeiconsIcon
         icon={getFileIcon(item)}
-        size={48}
+        size={40}
         strokeWidth={1}
         className={cn(
           'mb-2',
-          item.isDir ? 'text-blue-500' : 'text-primary-600'
+          item.isDir ? 'text-sky-500' : 'text-primary-500'
         )}
         aria-hidden="true"
       />
-      <span className="text-xs text-center text-primary-900 font-medium truncate w-full min-w-0">
+      <span className="text-[11px] text-center text-primary-900 font-medium truncate w-full min-w-0">
         {item.name}
       </span>
       {!item.isDir ? (
-        <span className="text-xs text-primary-500 mt-1 tabular-nums">
+        <span className="text-[10px] text-primary-400 mt-0.5 tabular-nums">
           {formatFileSize(item.size)}
         </span>
       ) : null}
@@ -307,39 +307,39 @@ const ListItem = memo(function ListItem({
     <motion.button
       type="button"
       whileHover={reduceMotion ? {} : { backgroundColor: 'rgb(248 250 252)' }}
-      transition={{ duration: reduceMotion ? 0 : 0.1 }}
+      transition={{ duration: reduceMotion ? 0 : 0.15 }}
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
       onKeyDown={handleKeyDown}
       aria-label={getItemAriaLabel()}
       className={cn(
-        'w-full grid grid-cols-[auto_1fr_auto_auto] gap-4 px-4 py-3 text-left',
-        'transition-colors duration-150 ease-out',
-        'hover:bg-primary-100 focus-visible:bg-primary-100',
+        'w-full grid grid-cols-[auto_1fr_auto_auto] gap-4 px-4 py-2.5 text-left',
+        'transition-all duration-150 ease-out',
+        'hover:bg-primary-50 focus-visible:bg-primary-50',
         'focus-visible:ring-2 focus-visible:ring-primary-300 focus-visible:outline-none',
         'touch-manipulation',
-        isSelected && 'bg-primary-200'
+        isSelected && 'bg-primary-100'
       )}
     >
       <HugeiconsIcon
         icon={getFileIcon(item)}
-        size={20}
+        size={18}
         strokeWidth={1.5}
         className={cn(
           'mt-0.5 shrink-0',
-          item.isDir ? 'text-blue-500' : 'text-primary-600'
+          item.isDir ? 'text-sky-500' : 'text-primary-500'
         )}
         aria-hidden="true"
       />
       <div className="min-w-0 flex-1">
-        <span className="text-primary-900 font-medium truncate block">
+        <span className="text-[13px] text-primary-900 font-medium truncate block">
           {item.name}
         </span>
       </div>
-      <div className="text-sm text-primary-600 text-right w-16 tabular-nums shrink-0">
+      <div className="text-xs text-primary-500 text-right w-16 tabular-nums shrink-0">
         {item.isDir ? '—' : formatFileSize(item.size)}
       </div>
-      <div className="text-sm text-primary-600 text-right w-20 tabular-nums shrink-0">
+      <div className="text-xs text-primary-500 text-right w-20 tabular-nums shrink-0">
         {formatRelativeTime(item.modified)}
       </div>
     </motion.button>
@@ -352,19 +352,21 @@ const ListItem = memo(function ListItem({
   )
 })
 
-// Static empty state JSX
+// Static empty state JSX — consistent with Skills Browser
 const emptyState = (
-  <div className="flex items-center justify-center h-full">
+  <div className="flex items-center justify-center h-full py-12">
     <div className="text-center">
-      <HugeiconsIcon
-        icon={Folder01Icon}
-        size={48}
-        strokeWidth={1}
-        className="mx-auto text-primary-400 mb-3"
-        aria-hidden="true"
-      />
-      <p className="text-primary-600 font-medium">This folder is empty</p>
-      <p className="text-sm text-primary-500 mt-1">
+      <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-primary-50 mb-3">
+        <HugeiconsIcon
+          icon={Folder01Icon}
+          size={24}
+          strokeWidth={1.5}
+          className="text-primary-400"
+          aria-hidden="true"
+        />
+      </div>
+      <p className="text-sm text-primary-500">This folder is empty</p>
+      <p className="text-xs text-primary-400 mt-1">
         Upload files or create a new folder to get started
       </p>
     </div>
@@ -497,16 +499,16 @@ export function FileList({ listing, loading, onOpenFile }: FileListProps) {
       aria-label="Files list"
       tabIndex={0}
     >
-      <div className="divide-y divide-primary-200">
+      <div className="divide-y divide-primary-100">
         {/* Header */}
         <div 
-          className="grid grid-cols-[auto_1fr_auto_auto] gap-4 px-4 py-2 text-sm font-medium text-primary-600 bg-primary-50"
+          className="grid grid-cols-[auto_1fr_auto_auto] gap-4 px-4 py-2 text-xs font-medium text-primary-400 uppercase tracking-wider bg-primary-50/50"
           role="row"
         >
           <div className="w-6" role="columnheader" aria-label="File type" />
           <div role="columnheader">Name</div>
-          <div className="w-16 text-right tabular-nums" role="columnheader">Size</div>
-          <div className="w-20 text-right tabular-nums" role="columnheader">Modified</div>
+          <div className="w-16 text-right" role="columnheader">Size</div>
+          <div className="w-20 text-right" role="columnheader">Modified</div>
         </div>
         
         {/* Items */}
