@@ -257,11 +257,10 @@ function ChatMessageListComponent({
                   />
                 )
               })}
-            {/* // Keep the last exchange pinned without extra tail gap. // Account
-            for space-y-6 (24px) when pinning. */}
+            {/* Keep the last exchange pinned while honoring current message density. */}
             <div
-              className="flex flex-col space-y-3 md:space-y-6"
-              style={{ minHeight: `${Math.max(0, pinGroupMinHeight - 24)}px` }}
+              className="flex flex-col gap-[var(--opencami-msg-gap)]"
+              style={{ minHeight: `${Math.max(0, pinGroupMinHeight)}px` }}
             >
               {displayMessages
                 .slice(groupStartIndex)
