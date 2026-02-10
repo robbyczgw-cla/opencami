@@ -452,6 +452,18 @@ export function SettingsDialog({
               />
             </SettingsRow>
             <SettingsRow
+              label="Cron Jobs Panel (Beta)"
+              description="Show Cron Jobs in sidebar for managing OpenClaw cron schedules"
+            >
+              <Switch
+                checked={(() => { try { return localStorage.getItem('opencami-cron-manager') === 'true' } catch { return false } })()}
+                onCheckedChange={(checked) => {
+                  localStorage.setItem('opencami-cron-manager', String(checked))
+                  window.location.reload()
+                }}
+              />
+            </SettingsRow>
+            <SettingsRow
               label="Inline File Preview"
               description="Make file paths in messages clickable to preview file contents"
             >

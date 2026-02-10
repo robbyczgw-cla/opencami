@@ -198,7 +198,7 @@ function SessionItemComponent({
               strokeWidth={1.75}
               className="text-primary-500/70 shrink-0"
             />
-            <div className="text-sm font-[450] line-clamp-1 min-w-0">
+            <div className="min-w-0 truncate text-sm font-[450]" title={label}>
               {isPinned ? (
                 <span className="mr-1 text-xs text-primary-700" aria-hidden="true">
                   📌

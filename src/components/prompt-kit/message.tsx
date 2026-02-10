@@ -60,7 +60,7 @@ function MessageContent({
   ...props
 }: MessageContentProps) {
   const classNames = cn(
-    'rounded-[12px] break-words whitespace-normal min-w-0',
+    'rounded-[12px] break-words whitespace-normal min-w-0 max-w-full overflow-x-hidden',
     className,
   )
 

@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as NewRouteImport } from './routes/new'
 import { Route as FilesRouteImport } from './routes/files'
 import { Route as ConnectRouteImport } from './routes/connect'
+import { Route as BotsRouteImport } from './routes/bots'
 import { Route as AgentsRouteImport } from './routes/agents'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ChatSessionKeyRouteImport } from './routes/chat/$sessionKey'
@@ -27,6 +28,7 @@ import { Route as ApiModelsRouteImport } from './routes/api/models'
 import { Route as ApiLlmFeaturesRouteImport } from './routes/api/llm-features'
 import { Route as ApiHistoryRouteImport } from './routes/api/history'
 import { Route as ApiFollowUpsRouteImport } from './routes/api/follow-ups'
+import { Route as ApiCronRouteImport } from './routes/api/cron'
 import { Route as ApiAgentsRouteImport } from './routes/api/agents'
 import { Route as ApiFilesUploadRouteImport } from './routes/api/files/upload'
 import { Route as ApiFilesSaveRouteImport } from './routes/api/files/save'
@@ -51,6 +53,11 @@ const FilesRoute = FilesRouteImport.update({
 const ConnectRoute = ConnectRouteImport.update({
   id: '/connect',
   path: '/connect',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BotsRoute = BotsRouteImport.update({
+  id: '/bots',
+  path: '/bots',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AgentsRoute = AgentsRouteImport.update({
@@ -128,6 +135,11 @@ const ApiFollowUpsRoute = ApiFollowUpsRouteImport.update({
   path: '/api/follow-ups',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCronRoute = ApiCronRouteImport.update({
+  id: '/api/cron',
+  path: '/api/cron',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAgentsRoute = ApiAgentsRouteImport.update({
   id: '/api/agents',
   path: '/api/agents',
@@ -182,10 +194,12 @@ const ApiFilesDeleteRoute = ApiFilesDeleteRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/agents': typeof AgentsRoute
+  '/bots': typeof BotsRoute
   '/connect': typeof ConnectRoute
   '/files': typeof FilesRoute
   '/new': typeof NewRoute
   '/api/agents': typeof ApiAgentsRoute
+  '/api/cron': typeof ApiCronRoute
   '/api/follow-ups': typeof ApiFollowUpsRoute
   '/api/history': typeof ApiHistoryRoute
   '/api/llm-features': typeof ApiLlmFeaturesRoute
@@ -212,10 +226,12 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/agents': typeof AgentsRoute
+  '/bots': typeof BotsRoute
   '/connect': typeof ConnectRoute
   '/files': typeof FilesRoute
   '/new': typeof NewRoute
   '/api/agents': typeof ApiAgentsRoute
+  '/api/cron': typeof ApiCronRoute
   '/api/follow-ups': typeof ApiFollowUpsRoute
   '/api/history': typeof ApiHistoryRoute
   '/api/llm-features': typeof ApiLlmFeaturesRoute
@@ -243,10 +259,12 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/agents': typeof AgentsRoute
+  '/bots': typeof BotsRoute
   '/connect': typeof ConnectRoute
   '/files': typeof FilesRoute
   '/new': typeof NewRoute
   '/api/agents': typeof ApiAgentsRoute
+  '/api/cron': typeof ApiCronRoute
   '/api/follow-ups': typeof ApiFollowUpsRoute
   '/api/history': typeof ApiHistoryRoute
   '/api/llm-features': typeof ApiLlmFeaturesRoute
@@ -275,10 +293,12 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/agents'
+    | '/bots'
     | '/connect'
     | '/files'
     | '/new'
     | '/api/agents'
+    | '/api/cron'
     | '/api/follow-ups'
     | '/api/history'
     | '/api/llm-features'
@@ -305,10 +325,12 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/agents'
+    | '/bots'
     | '/connect'
     | '/files'
     | '/new'
     | '/api/agents'
+    | '/api/cron'
     | '/api/follow-ups'
     | '/api/history'
     | '/api/llm-features'
@@ -335,10 +357,12 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/agents'
+    | '/bots'
     | '/connect'
     | '/files'
     | '/new'
     | '/api/agents'
+    | '/api/cron'
     | '/api/follow-ups'
     | '/api/history'
     | '/api/llm-features'
@@ -366,10 +390,12 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AgentsRoute: typeof AgentsRoute
+  BotsRoute: typeof BotsRoute
   ConnectRoute: typeof ConnectRoute
   FilesRoute: typeof FilesRoute
   NewRoute: typeof NewRoute
   ApiAgentsRoute: typeof ApiAgentsRoute
+  ApiCronRoute: typeof ApiCronRoute
   ApiFollowUpsRoute: typeof ApiFollowUpsRoute
   ApiHistoryRoute: typeof ApiHistoryRoute
   ApiLlmFeaturesRoute: typeof ApiLlmFeaturesRoute
@@ -415,6 +441,13 @@ declare module '@tanstack/react-router' {
       path: '/connect'
       fullPath: '/connect'
       preLoaderRoute: typeof ConnectRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/bots': {
+      id: '/bots'
+      path: '/bots'
+      fullPath: '/bots'
+      preLoaderRoute: typeof BotsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/agents': {
@@ -522,6 +555,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiFollowUpsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/cron': {
+      id: '/api/cron'
+      path: '/api/cron'
+      fullPath: '/api/cron'
+      preLoaderRoute: typeof ApiCronRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/agents': {
       id: '/api/agents'
       path: '/api/agents'
@@ -598,10 +638,12 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AgentsRoute: AgentsRoute,
+  BotsRoute: BotsRoute,
   ConnectRoute: ConnectRoute,
   FilesRoute: FilesRoute,
   NewRoute: NewRoute,
   ApiAgentsRoute: ApiAgentsRoute,
+  ApiCronRoute: ApiCronRoute,
   ApiFollowUpsRoute: ApiFollowUpsRoute,
   ApiHistoryRoute: ApiHistoryRoute,
   ApiLlmFeaturesRoute: ApiLlmFeaturesRoute,

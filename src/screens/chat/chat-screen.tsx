@@ -908,7 +908,7 @@ export function ChatScreen({
       <div
         className={cn(
           'h-full overflow-hidden',
-          isMobile ? 'relative' : 'grid grid-cols-[auto_1fr]',
+          isMobile ? 'relative' : 'grid grid-cols-[auto_minmax(0,1fr)]',
         )}
       >
         {hideUi ? null : isMobile ? (
@@ -941,7 +941,7 @@ export function ChatScreen({
         )}
 
         <main
-          className="flex flex-col h-full min-h-0"
+          className="flex flex-col h-full min-h-0 min-w-0 overflow-x-hidden"
           ref={mainRef}
           {...sidebarSwipeHandlers}
         >
