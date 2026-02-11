@@ -8,6 +8,7 @@ export type SearchResult = {
   friendlyId: string
   sessionTitle: string
   messageIndex: number
+  messageId?: string
   messageRole: string
   messageText: string
   matchStart: number
@@ -93,6 +94,7 @@ export function useSearch({ sessions, currentFriendlyId, currentSessionKey }: Us
             friendlyId: currentFriendlyId,
             sessionTitle,
             messageIndex: index,
+            messageId: typeof message.id === 'string' ? message.id : undefined,
             messageRole: message.role || 'unknown',
             messageText: text,
             matchStart: matchIndex,
@@ -181,6 +183,7 @@ export function useSearch({ sessions, currentFriendlyId, currentSessionKey }: Us
                       friendlyId: session.friendlyId,
                       sessionTitle,
                       messageIndex: index,
+                      messageId: typeof message.id === 'string' ? message.id : undefined,
                       messageRole: message.role || 'unknown',
                       messageText: text,
                       matchStart: matchIndex,

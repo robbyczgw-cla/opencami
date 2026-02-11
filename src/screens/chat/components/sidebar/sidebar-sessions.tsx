@@ -275,14 +275,29 @@ export const SidebarSessions = memo(function SidebarSessions({
     )
     if (!confirmed) return
 
-    const errors = await runWithConcurrency(
-      selectedSessions.map((session) => session.key),
+    // Keep track of exactly which sessions fail so we can show actionable feedback.
+    const failedSessionLabels: Array<string> = []
+
+    await runWithConcurrency(
+      selectedSessions,
       10,
-      deleteSessionRequest,
+      async (session) => {
+        try {
+          await deleteSessionRequest(session.key)
+        } catch (err) {
+          failedSessionLabels.push(
+            session.label || session.title || session.derivedTitle || session.friendlyId,
+          )
+          throw err
+        }
+      },
     )
 
-    if (errors.length > 0) {
-      console.error('[sidebar] Bulk delete failed for some sessions', errors)
+    if (failedSessionLabels.length > 0) {
+      console.error('[sidebar] Bulk delete failed for some sessions', failedSessionLabels)
+      window.alert(
+        `Could not delete ${failedSessionLabels.length} session${failedSessionLabels.length !== 1 ? 's' : ''}:\n\n${failedSessionLabels.join('\n')}`,
+      )
     }
 
     setSelectionMode(false)

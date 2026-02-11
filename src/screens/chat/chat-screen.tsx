@@ -70,6 +70,8 @@ const SearchDialog = lazy(() =>
   })),
 )
 
+const SEARCH_JUMP_TARGET_KEY = 'opencami-search-jump-target'
+
 type ChatScreenProps = {
   activeFriendlyId: string
   isNewChat?: boolean
@@ -103,6 +105,7 @@ export function ChatScreen({
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false)
   const [showSearchDialog, setShowSearchDialog] = useState(false)
   const [searchMode, setSearchMode] = useState<'global' | 'current'>('global')
+  const [searchJumpMessageId, setSearchJumpMessageId] = useState<string | null>(null)
   const [isStreaming, setIsStreaming] = useState(false)
   const thinkingLevel = useThinkingLevelStore((state) => state.level)
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
@@ -499,6 +502,14 @@ export function ChatScreen({
   useEffect(() => {
     const resetKey = isNewChat ? 'new' : activeFriendlyId
     if (!resetKey) return
+
+    // Session changed: always clear any previous stream payload first
+    // (especially tool indicators) to avoid cross-session leakage.
+    streamStop()
+    stopStream()
+    lastAssistantSignature.current = ''
+    setIsStreaming(false)
+
     if (pendingStartRef.current) {
       pendingStartRef.current = false
       return
@@ -508,13 +519,45 @@ export function ChatScreen({
       setPinToTop(true)
       return
     }
-    streamStop()
-    stopStream()
-    lastAssistantSignature.current = ''
+
     setWaitingForResponse(false)
     setPinToTop(false)
-    setIsStreaming(false)
   }, [activeFriendlyId, isNewChat, streamStop, stopStream])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const raw = sessionStorage.getItem(SEARCH_JUMP_TARGET_KEY)
+      if (!raw) {
+        setSearchJumpMessageId(null)
+        return
+      }
+      const parsed = JSON.parse(raw) as {
+        friendlyId?: string
+        messageId?: string
+        at?: number
+      }
+      const isStale =
+        typeof parsed.at === 'number' && Date.now() - parsed.at > 5 * 60 * 1000
+      if (isStale) {
+        sessionStorage.removeItem(SEARCH_JUMP_TARGET_KEY)
+        setSearchJumpMessageId(null)
+        return
+      }
+      if (
+        parsed.friendlyId === activeFriendlyId &&
+        typeof parsed.messageId === 'string' &&
+        parsed.messageId.length > 0
+      ) {
+        setSearchJumpMessageId(parsed.messageId)
+        sessionStorage.removeItem(SEARCH_JUMP_TARGET_KEY)
+        return
+      }
+      setSearchJumpMessageId(null)
+    } catch {
+      setSearchJumpMessageId(null)
+    }
+  }, [activeFriendlyId])
 
   useLayoutEffect(() => {
     if (isNewChat) return
@@ -970,6 +1013,7 @@ export function ChatScreen({
                 headerHeight={headerHeight}
                 contentStyle={stableContentStyle}
                 onFollowUpClick={handleFollowUpClick}
+                jumpToMessageId={searchJumpMessageId}
               />
               <ChatComposer
                 onSubmit={send}
@@ -1002,9 +1046,30 @@ export function ChatScreen({
             mode={searchMode}
             onJumpToMessage={(result: SearchResult) => {
               setShowSearchDialog(false)
-              if (result.friendlyId) {
-                navigate({ to: '/chat/$sessionKey', params: { sessionKey: result.friendlyId } })
+
+              if (!result.friendlyId) return
+
+              if (result.messageId && result.friendlyId === activeFriendlyId) {
+                setSearchJumpMessageId(result.messageId)
+                return
               }
+
+              if (result.messageId && typeof window !== 'undefined') {
+                try {
+                  sessionStorage.setItem(
+                    SEARCH_JUMP_TARGET_KEY,
+                    JSON.stringify({
+                      friendlyId: result.friendlyId,
+                      messageId: result.messageId,
+                      at: Date.now(),
+                    }),
+                  )
+                } catch {
+                  // Ignore storage errors.
+                }
+              }
+
+              navigate({ to: '/chat/$sessionKey', params: { sessionKey: result.friendlyId } })
             }}
           />
         </Suspense>
