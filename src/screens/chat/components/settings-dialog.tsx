@@ -132,24 +132,6 @@ const fontFamilyOptions = [
     previewClass: 'font-["Inter",sans-serif]',
   },
   {
-    value: 'ibm-plex-sans',
-    label: 'IBM Plex Sans',
-    cssValue: '"IBM Plex Sans", sans-serif',
-    previewClass: 'font-["IBM Plex Sans",sans-serif]',
-  },
-  {
-    value: 'jetbrains-mono',
-    label: 'JetBrains Mono',
-    cssValue: '"JetBrains Mono", monospace',
-    previewClass: 'font-["JetBrains Mono",monospace]',
-  },
-  {
-    value: 'merriweather',
-    label: 'Merriweather',
-    cssValue: '"Merriweather", serif',
-    previewClass: 'font-["Merriweather",serif]',
-  },
-  {
     value: 'roboto',
     label: 'Roboto',
     cssValue: '"Roboto", sans-serif',
