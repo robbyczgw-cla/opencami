@@ -833,14 +833,9 @@ export function SettingsDialog({
                 })}
               </div>
             </SettingsRow>
-            <SettingsRow
-              label="Message Density"
-            >
+            <SettingsRow inline label="Density">
               <Tabs value={settings.density} onValueChange={handleDensityChange}>
-                <TabsList
-                  variant="default"
-                  className="gap-2 *:data-[slot=tab-indicator]:duration-0"
-                >
+                <TabsList variant="default" className="gap-1 *:data-[slot=tab-indicator]:duration-0">
                   {densityOptions.map((option) => (
                     <TabsTab key={option.value} value={option.value}>
                       <span className="text-xs">{option.label}</span>
@@ -849,14 +844,20 @@ export function SettingsDialog({
                 </TabsList>
               </Tabs>
             </SettingsRow>
-            <SettingsRow
-              label="Chat Width"
-            >
+            <SettingsRow inline label="Bubbles">
+              <Tabs value={settings.bubbleStyle} onValueChange={handleBubbleStyleChange}>
+                <TabsList variant="default" className="gap-1 *:data-[slot=tab-indicator]:duration-0">
+                  {bubbleStyleOptions.map((option) => (
+                    <TabsTab key={option.value} value={option.value}>
+                      <span className="text-xs">{option.label}</span>
+                    </TabsTab>
+                  ))}
+                </TabsList>
+              </Tabs>
+            </SettingsRow>
+            <SettingsRow inline label="Chat Width">
               <Tabs value={settings.chatWidth} onValueChange={handleChatWidthChange}>
-                <TabsList
-                  variant="default"
-                  className="gap-2 *:data-[slot=tab-indicator]:duration-0"
-                >
+                <TabsList variant="default" className="gap-1 *:data-[slot=tab-indicator]:duration-0">
                   {chatWidthOptions.map((option) => (
                     <TabsTab key={option.value} value={option.value}>
                       <span className="text-xs">{option.label}</span>
@@ -865,31 +866,10 @@ export function SettingsDialog({
                 </TabsList>
               </Tabs>
             </SettingsRow>
-            <SettingsRow
-              label="Sidebar Width"
-            >
+            <SettingsRow inline label="Sidebar">
               <Tabs value={settings.sidebarWidth} onValueChange={handleSidebarWidthChange}>
-                <TabsList
-                  variant="default"
-                  className="gap-2 *:data-[slot=tab-indicator]:duration-0"
-                >
+                <TabsList variant="default" className="gap-1 *:data-[slot=tab-indicator]:duration-0">
                   {sidebarWidthOptions.map((option) => (
-                    <TabsTab key={option.value} value={option.value}>
-                      <span className="text-xs">{option.label}</span>
-                    </TabsTab>
-                  ))}
-                </TabsList>
-              </Tabs>
-            </SettingsRow>
-            <SettingsRow
-              label="Chat Bubble Style"
-            >
-              <Tabs value={settings.bubbleStyle} onValueChange={handleBubbleStyleChange}>
-                <TabsList
-                  variant="default"
-                  className="gap-2 *:data-[slot=tab-indicator]:duration-0"
-                >
-                  {bubbleStyleOptions.map((option) => (
                     <TabsTab key={option.value} value={option.value}>
                       <span className="text-xs">{option.label}</span>
                     </TabsTab>
