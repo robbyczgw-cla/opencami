@@ -1,3 +1,25 @@
+## 1.5.0 (2026-02-11)
+
+### New Features
+- 🖥️ **Tauri Desktop App** (Beta) — Native desktop wrapper with tray icon, notifications, auto-start, custom titlebar, multi-window support, and clipboard integration
+- 🎨 **Appearance Overhaul** — Frost Light/Dark themes (glassmorphism), accent colors (7 options), font family selection, message density, chat width, sidebar width, and chat bubble style settings
+- 📦 **ClawHub Skills Browser** (Beta) — Browse, search, and discover skills from ClawHub directly in the app. Includes skill detail view, security badges, Published/My Skills/Recommended tabs
+- 📄 **FAQ** — Built-in FAQ page covering common questions
+
+### Improvements
+- ⚡ **Compact Settings** — Appearance tab uses inline layout for density/bubbles/width/sidebar/font, shorter labels
+- 🎯 **Theme Labels** — System→Auto, Chameleon→Cham, Frost Light→Ice, Frost Dark→Noir
+- 🔤 **Reduced Fonts** — Removed IBM Plex Sans, JetBrains Mono, Merriweather; kept System/Inter/Roboto/Garamond
+- 📱 **Mobile Settings** — Fixed scroll (overflow-y-auto instead of hidden)
+- 🎨 **Settings Polish** — Accent rings, font preview in tabs, hover effects, no emoji clutter
+
+### Bug Fixes
+- 🔧 **Streaming Race Condition** — Fixed crash when switching sessions during active stream
+- 🗑️ **Bulk Delete Feedback** — Shows alert with failed sessions instead of silent failure
+- 🔍 **Search Jump to Message** — Clicking search result scrolls to and highlights the message (1.8s animation)
+- 🌙 **Frost Dark Theme** — Fixed CSS selectors (was only using media query, not .dark class), improved color palette contrast
+- 📐 **Settings Dialog** — Wider dialog (860px), no horizontal scroll, consistent layout across all tabs
+
 ## 1.4.0 (2026-02-10)
 
 ### New Features
