@@ -27,6 +27,8 @@ type MessageItemProps = {
   wrapperRef?: React.RefObject<HTMLDivElement | null>
   wrapperClassName?: string
   wrapperScrollMarginTop?: number
+  messageDomId?: string
+  highlighted?: boolean
 }
 
 function mapToolCallToToolPart(
@@ -185,6 +187,8 @@ function MessageItemComponent({
   wrapperRef,
   wrapperClassName,
   wrapperScrollMarginTop,
+  messageDomId,
+  highlighted = false,
 }: MessageItemProps) {
   const { settings } = useChatSettings()
   const role = message.role || 'assistant'
@@ -203,6 +207,8 @@ function MessageItemComponent({
   return (
     <div
       ref={wrapperRef}
+      id={messageDomId}
+      data-message-id={messageDomId}
       style={{
         contentVisibility: 'auto',
         containIntrinsicSize: 'auto 120px',
@@ -213,6 +219,7 @@ function MessageItemComponent({
       className={cn(
         'opencami-message-item group mx-auto flex w-full max-w-[var(--opencami-chat-width)] flex-col gap-1 py-[var(--opencami-msg-padding-y)]',
         wrapperClassName,
+        highlighted && 'opencami-message-highlight',
         isUser ? 'items-end' : 'items-start',
       )}
     >
@@ -307,6 +314,8 @@ function areMessagesEqual(
   if (prevProps.wrapperScrollMarginTop !== nextProps.wrapperScrollMarginTop) {
     return false
   }
+  if (prevProps.messageDomId !== nextProps.messageDomId) return false
+  if (prevProps.highlighted !== nextProps.highlighted) return false
   if (
     (prevProps.message.role || 'assistant') !==
     (nextProps.message.role || 'assistant')

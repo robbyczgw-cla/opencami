@@ -22,6 +22,8 @@ type SearchDialogProps = {
   onJumpToMessage?: (result: SearchResult) => void
 }
 
+const SEARCH_JUMP_TARGET_KEY = 'opencami-search-jump-target'
+
 export function SearchDialog({
   open,
   onOpenChange,
@@ -109,6 +111,22 @@ export function SearchDialog({
       if (mode === 'current' && onJumpToMessage) {
         onJumpToMessage(result)
       } else {
+        // Persist jump target so chat screen can scroll/highlight after navigation.
+        if (result.messageId && typeof window !== 'undefined') {
+          try {
+            sessionStorage.setItem(
+              SEARCH_JUMP_TARGET_KEY,
+              JSON.stringify({
+                friendlyId: result.friendlyId,
+                messageId: result.messageId,
+                at: Date.now(),
+              }),
+            )
+          } catch {
+            // Ignore storage errors.
+          }
+        }
+
         // Navigate to the conversation
         navigate({
           to: '/chat/$sessionKey',

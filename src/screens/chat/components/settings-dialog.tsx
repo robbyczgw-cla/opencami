@@ -631,12 +631,12 @@ export function SettingsDialog({
   }
 
   const themeOptions = [
-    { value: 'system', label: 'System', icon: ComputerIcon },
+    { value: 'system', label: 'Auto', icon: ComputerIcon },
     { value: 'light', label: 'Light', icon: Sun01Icon },
     { value: 'dark', label: 'Dark', icon: Moon01Icon },
-    { value: 'chameleon', label: 'Chameleon', icon: Leaf01Icon },
-    { value: 'frost-light', label: 'Frost Light', icon: DropletIcon },
-    { value: 'frost-dark', label: 'Frost Dark', icon: DropletIcon },
+    { value: 'chameleon', label: 'Cham', icon: Leaf01Icon },
+    { value: 'frost-light', label: 'Ice', icon: DropletIcon },
+    { value: 'frost-dark', label: 'Noir', icon: DropletIcon },
   ] as const
   function applyTheme(theme: ThemeMode) {
     if (typeof document === 'undefined') return
@@ -741,7 +741,7 @@ export function SettingsDialog({
                   className="gap-1.5 flex-wrap *:data-[slot=tab-indicator]:duration-0"
                 >
                   {themeOptions.map((option) => (
-                    <TabsTab key={option.value} value={option.value} className="text-xs px-1.5 py-1">
+                    <TabsTab key={option.value} value={option.value} className="text-[11px] px-1 py-0.5 gap-0.5">
                       {option.icon && (
                         <HugeiconsIcon
                           icon={option.icon}

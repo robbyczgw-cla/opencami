@@ -1,4 +1,4 @@
-import { memo, useLayoutEffect, useMemo, useRef } from 'react'
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { getToolCallsFromMessage, textFromMessage } from '../utils'
 import { MessageItem } from './message-item'
 import type { SearchSource } from '@/components/search-sources-badge'
@@ -28,6 +28,8 @@ type ChatMessageListProps = {
   contentStyle?: React.CSSProperties
   /** Callback when a follow-up suggestion is clicked */
   onFollowUpClick?: (suggestion: string) => void
+  /** Message id to scroll to and briefly highlight */
+  jumpToMessageId?: string | null
 }
 
 function ChatMessageListComponent({
@@ -45,12 +47,14 @@ function ChatMessageListComponent({
   headerHeight,
   contentStyle,
   onFollowUpClick,
+  jumpToMessageId,
 }: ChatMessageListProps) {
   const anchorRef = useRef<HTMLDivElement | null>(null)
   const lastUserRef = useRef<HTMLDivElement | null>(null)
   const programmaticScroll = useRef(false)
   const prevPinRef = useRef(pinToTop)
   const prevUserIndexRef = useRef<number | undefined>(undefined)
+  const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null)
 
   // Filter out toolResult messages - they'll be displayed inside their associated tool calls
   const displayMessages = useMemo(() => {
@@ -220,6 +224,22 @@ function ChatMessageListComponent({
     }
   }, [loading, displayMessages.length, sessionKey, pinToTop, lastUserIndex])
 
+  useEffect(() => {
+    if (!jumpToMessageId || loading) return
+
+    const target = document.getElementById(`message-${jumpToMessageId}`)
+    if (!target) return
+
+    // Search jump: bring the message into view and briefly highlight it.
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    setHighlightedMessageId(jumpToMessageId)
+    const timer = window.setTimeout(() => {
+      setHighlightedMessageId((prev) => (prev === jumpToMessageId ? null : prev))
+    }, 1800)
+
+    return () => window.clearTimeout(timer)
+  }, [jumpToMessageId, loading, displayMessages])
+
   return (
     // mt-2 is to fix the prompt-input cut off
     <ChatContainerRoot className="flex-1 min-h-0 -mb-4">
@@ -232,8 +252,9 @@ function ChatMessageListComponent({
             {displayMessages
               .slice(0, groupStartIndex)
               .map((chatMessage, index) => {
-                const messageKey =
-                  index
+                const messageId =
+                  typeof chatMessage.id === 'string' ? chatMessage.id : undefined
+                const messageKey = messageId || index
                 const forceActionsVisible =
                   typeof lastAssistantIndex === 'number' &&
                   index === lastAssistantIndex
@@ -254,6 +275,8 @@ function ChatMessageListComponent({
                     isStreaming={isLastAssistant && isStreaming}
                     isLastAssistant={isLastAssistant}
                     aggregatedSearchSources={isLastAssistant ? aggregatedSearchSources : undefined}
+                    messageDomId={messageId ? `message-${messageId}` : undefined}
+                    highlighted={highlightedMessageId === messageId}
                   />
                 )
               })}
@@ -266,7 +289,9 @@ function ChatMessageListComponent({
                 .slice(groupStartIndex)
                 .map((chatMessage, index) => {
                   const realIndex = groupStartIndex + index
-                  const messageKey = realIndex
+                  const messageId =
+                    typeof chatMessage.id === 'string' ? chatMessage.id : undefined
+                  const messageKey = messageId || realIndex
                   const forceActionsVisible =
                     typeof lastAssistantIndex === 'number' &&
                     realIndex === lastAssistantIndex
@@ -296,6 +321,8 @@ function ChatMessageListComponent({
                       wrapperRef={wrapperRef}
                       wrapperClassName={wrapperClassName}
                       wrapperScrollMarginTop={wrapperScrollMarginTop}
+                      messageDomId={messageId ? `message-${messageId}` : undefined}
+                      highlighted={highlightedMessageId === messageId}
                     />
                   )
                 })}
@@ -316,8 +343,9 @@ function ChatMessageListComponent({
         ) : (
           <>
             {displayMessages.map((chatMessage, index) => {
-              const messageKey =
-                index
+              const messageId =
+                typeof chatMessage.id === 'string' ? chatMessage.id : undefined
+              const messageKey = messageId || index
               const forceActionsVisible =
                 typeof lastAssistantIndex === 'number' &&
                 index === lastAssistantIndex
@@ -338,6 +366,8 @@ function ChatMessageListComponent({
                   isStreaming={isLastAssistant && isStreaming}
                     isLastAssistant={isLastAssistant}
                     aggregatedSearchSources={isLastAssistant ? aggregatedSearchSources : undefined}
+                    messageDomId={messageId ? `message-${messageId}` : undefined}
+                    highlighted={highlightedMessageId === messageId}
                 />
               )
             })}
@@ -377,7 +407,8 @@ function areChatMessageListEqual(
     prev.pinGroupMinHeight === next.pinGroupMinHeight &&
     prev.headerHeight === next.headerHeight &&
     prev.contentStyle === next.contentStyle &&
-    prev.onFollowUpClick === next.onFollowUpClick
+    prev.onFollowUpClick === next.onFollowUpClick &&
+    prev.jumpToMessageId === next.jumpToMessageId
   )
 }
 

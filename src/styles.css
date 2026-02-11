@@ -149,8 +149,27 @@ html {
   --color-ink: oklch(0.24 0.01 250);
 }
 
+/* Frost dark: triggered by .dark class (explicit) or system preference */
+.frost.dark,
+.frost-dark {
+  color-scheme: dark;
+  --color-primary-50: oklch(0.16 0.01 250);
+  --color-primary-100: oklch(0.20 0.012 250);
+  --color-primary-200: oklch(0.25 0.014 250);
+  --color-primary-300: oklch(0.33 0.016 250);
+  --color-primary-400: oklch(0.44 0.016 250);
+  --color-primary-500: oklch(0.56 0.015 250);
+  --color-primary-600: oklch(0.67 0.014 250);
+  --color-primary-700: oklch(0.76 0.012 250);
+  --color-primary-800: oklch(0.84 0.01 250);
+  --color-primary-900: oklch(0.90 0.008 250);
+  --color-primary-950: oklch(0.95 0.006 250);
+  --color-surface: oklch(0.11 0.008 250);
+  --color-ink: oklch(0.95 0.006 250);
+}
+
 @media (prefers-color-scheme: dark) {
-  .frost {
+  .frost:not(.frost-light):not(:where(.light, .light *)) {
     color-scheme: dark;
     --color-primary-50: oklch(0.16 0.01 250);
     --color-primary-100: oklch(0.20 0.012 250);
@@ -175,8 +194,16 @@ html.frost body {
     linear-gradient(180deg, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0.2));
 }
 
+html.frost.dark body,
+html.frost-dark body {
+  background:
+    radial-gradient(1200px 700px at -10% -10%, color-mix(in srgb, var(--opencami-accent) 18%, transparent), transparent 62%),
+    radial-gradient(900px 500px at 110% -5%, color-mix(in srgb, var(--opencami-accent) 14%, transparent), transparent 68%),
+    linear-gradient(180deg, rgba(10, 12, 18, 0.92), rgba(10, 12, 18, 0.86));
+}
+
 @media (prefers-color-scheme: dark) {
-  html.frost body {
+  html.frost:not(.frost-light) body {
     background:
       radial-gradient(1200px 700px at -10% -10%, color-mix(in srgb, var(--opencami-accent) 18%, transparent), transparent 62%),
       radial-gradient(900px 500px at 110% -5%, color-mix(in srgb, var(--opencami-accent) 14%, transparent), transparent 68%),
@@ -348,9 +375,27 @@ code {
   animation: stream-fade-in 0.25s ease-out;
 }
 
+@keyframes message-highlight-pulse {
+  0% {
+    background-color: color-mix(in srgb, var(--opencami-accent, #22c55e) 18%, transparent);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.opencami-message-highlight {
+  border-radius: 0.75rem;
+  animation: message-highlight-pulse 1.8s ease-out;
+}
+
 /* Respect reduced-motion preference */
 @media (prefers-reduced-motion: reduce) {
   .stream-fade-in {
+    animation: none;
+  }
+
+  .opencami-message-highlight {
     animation: none;
   }
 
