@@ -18,9 +18,6 @@ import {
   AiBrain01Icon,
   InformationCircleIcon,
   Link01Icon,
-  Add01Icon,
-  Delete02Icon,
-  Settings02Icon,
 } from '@hugeicons/core-free-icons'
 import type { PathsPayload } from '../types'
 import {
@@ -44,7 +41,6 @@ import type {
 } from '@/hooks/use-chat-settings'
 import { Button } from '@/components/ui/button'
 import { useLlmSettings, getLlmProviderDefaults } from '@/hooks/use-llm-settings'
-import { useMcpSettings, type McpServerConfig, type McpTransport } from '@/hooks/use-mcp-settings'
 
 type SettingsSectionProps = {
   title: string
@@ -227,26 +223,6 @@ export function SettingsDialog({
     status: llmStatus,
     testApiKey,
   } = useLlmSettings()
-
-  const {
-    settings: mcpSettings,
-    updateSettings: updateMcpSettings,
-    addServer: addMcpServer,
-    updateServer: updateMcpServer,
-    removeServer: removeMcpServer,
-    toggleServer: toggleMcpServer,
-  } = useMcpSettings()
-
-  // MCP server editing state
-  const [editingServer, setEditingServer] = useState<McpServerConfig | null>(null)
-  const [isAddingServer, setIsAddingServer] = useState(false)
-  const [newServerForm, setNewServerForm] = useState({
-    name: '',
-    endpoint: '',
-    transport: 'stdio' as McpTransport,
-    description: '',
-    apiKey: '',
-  })
 
   const [activeTab, setActiveTab] = useState('appearance')
   const [apiKeyInput, setApiKeyInput] = useState(llmSettings.llmApiKey)
@@ -701,7 +677,6 @@ export function SettingsDialog({
                 { id: 'personas', label: 'Personas', icon: UserIcon },
                 { id: 'voice', label: 'Voice', icon: VoiceIcon },
                 { id: 'llm', label: 'LLM Features', icon: AiBrain01Icon },
-                { id: 'mcp', label: 'MCP Servers', icon: Settings02Icon },
                 { id: 'about', label: 'About', icon: InformationCircleIcon },
               ] as const).map((tab) => (
                 <button
@@ -1136,11 +1111,6 @@ export function SettingsDialog({
                     ? 'Optional: Override server key with your own'
                     : `Required for ${llmSettings.llmProvider === 'openrouter' ? 'OpenRouter' : 'LLM features'} (stored locally)`}
               </div>
-              <div className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5 mb-2">
-                ⚠️ <strong>Security Note:</strong> API keys are stored in your browser's localStorage.
-                This is convenient but not secure for shared computers. For production use,
-                configure keys server-side via environment variables (OPENAI_API_KEY, OPENROUTER_API_KEY).
-              </div>
               <div className="flex gap-2">
                 <input
                   type="password"
@@ -1212,280 +1182,6 @@ export function SettingsDialog({
                   Save without testing
                 </Button>
               )}
-            </div>
-          </SettingsSection>
-
-          <SettingsSection title="MCP Servers" tabId="mcp" activeTab={activeTab}>
-            <div className="text-xs text-primary-500 mb-3">
-              Connect to Model Context Protocol (MCP) servers for external tools and data sources.
-              <a
-                href="https://modelcontextprotocol.io"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="ml-1 text-primary-600 hover:underline"
-              >
-                Learn more →
-              </a>
-            </div>
-
-            <SettingsRow inline
-              label="Enable MCP"
-              description="Allow connections to MCP servers"
-            >
-              <Switch
-                checked={mcpSettings.mcpEnabled}
-                onCheckedChange={(checked) => updateMcpSettings({ mcpEnabled: checked })}
-              />
-            </SettingsRow>
-
-            <SettingsRow inline
-              label="Show MCP tools in chat"
-              description="Display MCP tool calls in messages"
-            >
-              <Switch
-                checked={mcpSettings.showMcpTools}
-                onCheckedChange={(checked) => updateMcpSettings({ showMcpTools: checked })}
-              />
-            </SettingsRow>
-
-            <div className="mt-4 pt-3 border-t border-primary-100">
-              <div className="flex items-center justify-between mb-3">
-                <div className="text-sm font-medium text-primary-800">
-                  Servers ({mcpSettings.servers.length})
-                </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setIsAddingServer(true)}
-                  className="gap-1"
-                >
-                  <HugeiconsIcon icon={Add01Icon} size={14} />
-                  Add Server
-                </Button>
-              </div>
-
-              {/* Server list */}
-              {mcpSettings.servers.length === 0 && !isAddingServer && (
-                <div className="text-xs text-primary-500 text-center py-4 bg-primary-50 rounded-md">
-                  No MCP servers configured. Add one to get started.
-                </div>
-              )}
-
-              {mcpSettings.servers.map((server) => (
-                <div
-                  key={server.id}
-                  className="flex items-center gap-2 p-2 rounded-md border border-primary-200 bg-primary-50 mb-2"
-                >
-                  <Switch
-                    checked={server.enabled}
-                    onCheckedChange={() => toggleMcpServer(server.id)}
-                    className="shrink-0"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-primary-800 truncate">
-                      {server.name}
-                    </div>
-                    <div className="text-xs text-primary-500 truncate">
-                      {server.transport} • {server.endpoint}
-                    </div>
-                  </div>
-                  <Button
-                    size="icon-sm"
-                    variant="ghost"
-                    onClick={() => setEditingServer(server)}
-                    className="shrink-0 text-primary-500 hover:text-primary-700"
-                  >
-                    <HugeiconsIcon icon={Settings02Icon} size={14} />
-                  </Button>
-                  <Button
-                    size="icon-sm"
-                    variant="ghost"
-                    onClick={() => removeMcpServer(server.id)}
-                    className="shrink-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                  >
-                    <HugeiconsIcon icon={Delete02Icon} size={14} />
-                  </Button>
-                </div>
-              ))}
-
-              {/* Add/Edit server form */}
-              {(isAddingServer || editingServer) && (
-                <div className="mt-3 p-3 rounded-md border border-primary-300 bg-primary-50/50">
-                  <div className="text-sm font-medium text-primary-800 mb-2">
-                    {editingServer ? 'Edit Server' : 'Add Server'}
-                  </div>
-                  <div className="space-y-2">
-                    <div>
-                      <label className="text-xs text-primary-500">Name</label>
-                      <input
-                        type="text"
-                        value={editingServer ? editingServer.name : newServerForm.name}
-                        onChange={(e) => {
-                          if (editingServer) {
-                            setEditingServer({ ...editingServer, name: e.target.value })
-                          } else {
-                            setNewServerForm({ ...newServerForm, name: e.target.value })
-                          }
-                        }}
-                        placeholder="My MCP Server"
-                        className="w-full px-2 py-1 text-sm rounded border border-primary-200 bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-primary-500">Transport</label>
-                      <select
-                        value={editingServer ? editingServer.transport : newServerForm.transport}
-                        onChange={(e) => {
-                          const transport = e.target.value as McpTransport
-                          if (editingServer) {
-                            setEditingServer({ ...editingServer, transport })
-                          } else {
-                            setNewServerForm({ ...newServerForm, transport })
-                          }
-                        }}
-                        className="w-full px-2 py-1 text-sm rounded border border-primary-200 bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      >
-                        <option value="stdio">stdio (Local Command)</option>
-                        <option value="sse">SSE (Server-Sent Events)</option>
-                        <option value="http">HTTP (Streamable HTTP)</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-xs text-primary-500">
-                        {(editingServer?.transport || newServerForm.transport) === 'stdio'
-                          ? 'Command'
-                          : 'Endpoint URL'}
-                      </label>
-                      <input
-                        type="text"
-                        value={editingServer ? editingServer.endpoint : newServerForm.endpoint}
-                        onChange={(e) => {
-                          if (editingServer) {
-                            setEditingServer({ ...editingServer, endpoint: e.target.value })
-                          } else {
-                            setNewServerForm({ ...newServerForm, endpoint: e.target.value })
-                          }
-                        }}
-                        placeholder={
-                          (editingServer?.transport || newServerForm.transport) === 'stdio'
-                            ? 'npx @mcp/server-name'
-                            : 'https://api.example.com/mcp'
-                        }
-                        className="w-full px-2 py-1 text-sm rounded border border-primary-200 bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-primary-500">Description (optional)</label>
-                      <input
-                        type="text"
-                        value={editingServer ? (editingServer.description || '') : newServerForm.description}
-                        onChange={(e) => {
-                          if (editingServer) {
-                            setEditingServer({ ...editingServer, description: e.target.value })
-                          } else {
-                            setNewServerForm({ ...newServerForm, description: e.target.value })
-                          }
-                        }}
-                        placeholder="What does this server do?"
-                        className="w-full px-2 py-1 text-sm rounded border border-primary-200 bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      />
-                    </div>
-                    {(editingServer?.transport !== 'stdio' && newServerForm.transport !== 'stdio') && (
-                      <div>
-                        <label className="text-xs text-primary-500">API Key (optional)</label>
-                        <input
-                          type="password"
-                          value={editingServer ? (editingServer.apiKey || '') : newServerForm.apiKey}
-                          onChange={(e) => {
-                            if (editingServer) {
-                              setEditingServer({ ...editingServer, apiKey: e.target.value })
-                            } else {
-                              setNewServerForm({ ...newServerForm, apiKey: e.target.value })
-                            }
-                          }}
-                          placeholder="Bearer token or API key"
-                          className="w-full px-2 py-1 text-sm rounded border border-primary-200 bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        />
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex gap-2 mt-3">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        setEditingServer(null)
-                        setIsAddingServer(false)
-                        setNewServerForm({
-                          name: '',
-                          endpoint: '',
-                          transport: 'stdio',
-                          description: '',
-                          apiKey: '',
-                        })
-                      }}
-                      className="flex-1"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="default"
-                      onClick={() => {
-                        if (editingServer) {
-                          updateMcpServer(editingServer.id, {
-                            name: editingServer.name,
-                            endpoint: editingServer.endpoint,
-                            transport: editingServer.transport,
-                            description: editingServer.description,
-                            apiKey: editingServer.apiKey,
-                          })
-                          setEditingServer(null)
-                        } else {
-                          if (newServerForm.name.trim() && newServerForm.endpoint.trim()) {
-                            addMcpServer({
-                              name: newServerForm.name.trim(),
-                              endpoint: newServerForm.endpoint.trim(),
-                              transport: newServerForm.transport,
-                              enabled: true,
-                              description: newServerForm.description.trim() || undefined,
-                              apiKey: newServerForm.apiKey.trim() || undefined,
-                            })
-                            setIsAddingServer(false)
-                            setNewServerForm({
-                              name: '',
-                              endpoint: '',
-                              transport: 'stdio',
-                              description: '',
-                              apiKey: '',
-                            })
-                          }
-                        }
-                      }}
-                      disabled={
-                        editingServer
-                          ? !editingServer.name.trim() || !editingServer.endpoint.trim()
-                          : !newServerForm.name.trim() || !newServerForm.endpoint.trim()
-                      }
-                      className="flex-1"
-                    >
-                      {editingServer ? 'Save' : 'Add'}
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="mt-4 pt-3 border-t border-primary-100">
-              <div className="text-xs text-primary-500">
-                <strong>Popular MCP Servers:</strong>
-                <ul className="mt-1 space-y-0.5 list-disc list-inside">
-                  <li>@anthropic/mcp-server-fs — File system access</li>
-                  <li>@anthropic/mcp-server-sqlite — SQLite database</li>
-                  <li>@browserbasehq/mcp — Web browsing</li>
-                  <li>@e2b/mcp-server — Code sandbox execution</li>
-                </ul>
-              </div>
             </div>
           </SettingsSection>
 
