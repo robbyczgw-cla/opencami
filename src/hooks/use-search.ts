@@ -141,70 +141,69 @@ export function useSearch({ sessions, currentFriendlyId, currentSessionKey }: Us
 
           const batch = sessions.slice(i, i + BATCH_SIZE)
 
-          const batchResults = await Promise.all(
+          // Use Promise.allSettled for better error resilience - failed sessions don't block others
+          const batchSettled = await Promise.allSettled(
             batch.map(async (session) => {
-              try {
-                // Try to get from cache first
-                const historyKey = chatQueryKeys.history(session.friendlyId, session.key)
-                let historyData = queryClient.getQueryData(historyKey) as HistoryResponse | undefined
+              // Try to get from cache first
+              const historyKey = chatQueryKeys.history(session.friendlyId, session.key)
+              let historyData = queryClient.getQueryData(historyKey) as HistoryResponse | undefined
 
-                // If not cached, fetch it
-                if (!historyData) {
-                  const params = new URLSearchParams({
+              // If not cached, fetch it
+              if (!historyData) {
+                const params = new URLSearchParams({
+                  sessionKey: session.key,
+                  friendlyId: session.friendlyId,
+                  limit: '200',
+                })
+                const res = await fetch(`/api/history?${params.toString()}`, {
+                  signal: controller.signal,
+                })
+                if (res.ok) {
+                  historyData = await res.json() as HistoryResponse
+                  // Cache it for later
+                  queryClient.setQueryData(historyKey, historyData)
+                }
+              }
+
+              if (!historyData?.messages) return [] as SearchResult[]
+
+              const sessionTitle = session.label || session.title || session.derivedTitle || session.friendlyId
+              const sessionResults: SearchResult[] = []
+
+              historyData.messages.forEach((message, index) => {
+                const text = extractTextFromMessage(message)
+                if (!text) return
+
+                const lowerText = text.toLowerCase()
+                const matchIndex = lowerText.indexOf(normalizedQuery)
+
+                if (matchIndex !== -1) {
+                  sessionResults.push({
                     sessionKey: session.key,
                     friendlyId: session.friendlyId,
-                    limit: '200',
+                    sessionTitle,
+                    messageIndex: index,
+                    messageId: typeof message.id === 'string' ? message.id : undefined,
+                    messageRole: message.role || 'unknown',
+                    messageText: text,
+                    matchStart: matchIndex,
+                    matchEnd: matchIndex + trimmedQuery.length,
+                    timestamp: message.timestamp,
                   })
-                  const res = await fetch(`/api/history?${params.toString()}`, {
-                    signal: controller.signal,
-                  })
-                  if (res.ok) {
-                    historyData = await res.json() as HistoryResponse
-                    // Cache it for later
-                    queryClient.setQueryData(historyKey, historyData)
-                  }
                 }
+              })
 
-                if (!historyData?.messages) return [] as SearchResult[]
-
-                const sessionTitle = session.label || session.title || session.derivedTitle || session.friendlyId
-                const sessionResults: SearchResult[] = []
-
-                historyData.messages.forEach((message, index) => {
-                  const text = extractTextFromMessage(message)
-                  if (!text) return
-
-                  const lowerText = text.toLowerCase()
-                  const matchIndex = lowerText.indexOf(normalizedQuery)
-
-                  if (matchIndex !== -1) {
-                    sessionResults.push({
-                      sessionKey: session.key,
-                      friendlyId: session.friendlyId,
-                      sessionTitle,
-                      messageIndex: index,
-                      messageId: typeof message.id === 'string' ? message.id : undefined,
-                      messageRole: message.role || 'unknown',
-                      messageText: text,
-                      matchStart: matchIndex,
-                      matchEnd: matchIndex + trimmedQuery.length,
-                      timestamp: message.timestamp,
-                    })
-                  }
-                })
-
-                return sessionResults
-              } catch (error) {
-                if (error instanceof DOMException && error.name === 'AbortError') {
-                  throw error
-                }
-                // Skip sessions that fail to load
-                return [] as SearchResult[]
-              }
+              return sessionResults
             })
           )
 
-          allResults.push(...batchResults.flat())
+          // Extract successful results, skip failures silently
+          for (const result of batchSettled) {
+            if (result.status === 'fulfilled') {
+              allResults.push(...result.value)
+            }
+            // Rejected promises are silently skipped (network errors, etc.)
+          }
 
           // Progressive updates after each batch.
           allResults.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
