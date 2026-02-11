@@ -786,34 +786,16 @@ export function SettingsDialog({
                 </TabsList>
               </Tabs>
             </SettingsRow>
-            <SettingsRow
-              label="Font Family"
-            >
-              <div className="grid grid-cols-3 gap-1 w-full">
-                {fontFamilyOptions.map((option) => {
-                  const selected = settings.fontFamily === option.value
-                  return (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => handleFontFamilyChange(option.value)}
-                      className={cn(
-                        'rounded-md border px-1.5 py-1.5 transition-colors text-center',
-                        selected
-                          ? 'border-[var(--opencami-accent)] text-primary-900 font-medium'
-                          : 'border-primary-200 bg-surface text-primary-600 hover:border-primary-400 hover:bg-primary-50',
-                      )}
-                      style={{
-                        fontFamily: option.cssValue,
-                        ...(selected ? { backgroundColor: 'var(--opencami-accent-light)' } : {}),
-                      }}
-                    >
-                      <div className="text-[11px] truncate">{option.label}</div>
-                      <div className="text-[15px] text-primary-400 leading-tight mt-0.5">Aa</div>
-                    </button>
-                  )
-                })}
-              </div>
+            <SettingsRow inline label="Font">
+              <Tabs value={settings.fontFamily} onValueChange={handleFontFamilyChange}>
+                <TabsList variant="default" className="gap-1 *:data-[slot=tab-indicator]:duration-0">
+                  {fontFamilyOptions.map((option) => (
+                    <TabsTab key={option.value} value={option.value}>
+                      <span className="text-xs" style={{ fontFamily: option.cssValue }}>{option.label}</span>
+                    </TabsTab>
+                  ))}
+                </TabsList>
+              </Tabs>
             </SettingsRow>
             <SettingsRow inline label="Density">
               <Tabs value={settings.density} onValueChange={handleDensityChange}>
