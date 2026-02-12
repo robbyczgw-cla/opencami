@@ -6,40 +6,7 @@ import {
   TextWrapIcon,
   Tick02Icon,
 } from '@hugeicons/core-free-icons'
-import { createHighlighterCore } from 'shiki/core'
-import { createJavaScriptRegexEngine } from 'shiki/engine/javascript'
-import type { HighlighterCore } from 'shiki/core'
-import vitesseDark from '@shikijs/themes/vitesse-dark'
-import vitesseLight from '@shikijs/themes/vitesse-light'
-import langBash from '@shikijs/langs/bash'
-import langC from '@shikijs/langs/c'
-import langCpp from '@shikijs/langs/cpp'
-import langCsharp from '@shikijs/langs/csharp'
-import langCss from '@shikijs/langs/css'
-import langDiff from '@shikijs/langs/diff'
-import langDockerfile from '@shikijs/langs/dockerfile'
-import langGo from '@shikijs/langs/go'
-import langGraphql from '@shikijs/langs/graphql'
-import langHtml from '@shikijs/langs/html'
-import langJava from '@shikijs/langs/java'
-import langJavascript from '@shikijs/langs/javascript'
-import langJson from '@shikijs/langs/json'
-import langJsx from '@shikijs/langs/jsx'
-import langKotlin from '@shikijs/langs/kotlin'
-import langMarkdown from '@shikijs/langs/markdown'
-import langPhp from '@shikijs/langs/php'
-import langPython from '@shikijs/langs/python'
-import langRegexp from '@shikijs/langs/regexp'
-import langRuby from '@shikijs/langs/ruby'
-import langRust from '@shikijs/langs/rust'
-import langShell from '@shikijs/langs/shell'
-import langSql from '@shikijs/langs/sql'
-import langSwift from '@shikijs/langs/swift'
-import langToml from '@shikijs/langs/toml'
-import langTypescript from '@shikijs/langs/typescript'
-import langTsx from '@shikijs/langs/tsx'
-import langXml from '@shikijs/langs/xml'
-import langYaml from '@shikijs/langs/yaml'
+import type { HighlighterCore, LanguageRegistration } from 'shiki/core'
 import { useResolvedTheme } from '@/hooks/use-chat-settings'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -53,24 +20,100 @@ type CodeBlockProps = {
   className?: string
 }
 
-let highlighterPromise: Promise<HighlighterCore> | null = null
+// Lazy language loaders - only load grammars when needed
+const languageLoaders: Record<string, () => Promise<LanguageRegistration[]>> = {
+  bash: () => import('@shikijs/langs/bash').then(m => m.default),
+  c: () => import('@shikijs/langs/c').then(m => m.default),
+  cpp: () => import('@shikijs/langs/cpp').then(m => m.default),
+  csharp: () => import('@shikijs/langs/csharp').then(m => m.default),
+  css: () => import('@shikijs/langs/css').then(m => m.default),
+  diff: () => import('@shikijs/langs/diff').then(m => m.default),
+  dockerfile: () => import('@shikijs/langs/dockerfile').then(m => m.default),
+  go: () => import('@shikijs/langs/go').then(m => m.default),
+  graphql: () => import('@shikijs/langs/graphql').then(m => m.default),
+  html: () => import('@shikijs/langs/html').then(m => m.default),
+  java: () => import('@shikijs/langs/java').then(m => m.default),
+  javascript: () => import('@shikijs/langs/javascript').then(m => m.default),
+  json: () => import('@shikijs/langs/json').then(m => m.default),
+  jsx: () => import('@shikijs/langs/jsx').then(m => m.default),
+  kotlin: () => import('@shikijs/langs/kotlin').then(m => m.default),
+  markdown: () => import('@shikijs/langs/markdown').then(m => m.default),
+  php: () => import('@shikijs/langs/php').then(m => m.default),
+  python: () => import('@shikijs/langs/python').then(m => m.default),
+  regexp: () => import('@shikijs/langs/regexp').then(m => m.default),
+  ruby: () => import('@shikijs/langs/ruby').then(m => m.default),
+  rust: () => import('@shikijs/langs/rust').then(m => m.default),
+  shell: () => import('@shikijs/langs/shell').then(m => m.default),
+  sql: () => import('@shikijs/langs/sql').then(m => m.default),
+  swift: () => import('@shikijs/langs/swift').then(m => m.default),
+  toml: () => import('@shikijs/langs/toml').then(m => m.default),
+  typescript: () => import('@shikijs/langs/typescript').then(m => m.default),
+  tsx: () => import('@shikijs/langs/tsx').then(m => m.default),
+  xml: () => import('@shikijs/langs/xml').then(m => m.default),
+  yaml: () => import('@shikijs/langs/yaml').then(m => m.default),
+}
 
-function getHighlighter() {
+// Aliases for common language names
+const languageAliases: Record<string, string> = {
+  sh: 'bash',
+  zsh: 'bash',
+  js: 'javascript',
+  ts: 'typescript',
+  py: 'python',
+  rb: 'ruby',
+  rs: 'rust',
+  cs: 'csharp',
+  'c++': 'cpp',
+  yml: 'yaml',
+  md: 'markdown',
+  docker: 'dockerfile',
+}
+
+let highlighterPromise: Promise<HighlighterCore> | null = null
+const loadedLanguages = new Set<string>()
+
+async function getHighlighter(): Promise<HighlighterCore> {
   if (!highlighterPromise) {
+    // Lazy load Shiki core and themes
+    const [{ createHighlighterCore }, { createJavaScriptRegexEngine }, vitesseDark, vitesseLight] = await Promise.all([
+      import('shiki/core'),
+      import('shiki/engine/javascript'),
+      import('@shikijs/themes/vitesse-dark').then(m => m.default),
+      import('@shikijs/themes/vitesse-light').then(m => m.default),
+    ])
+    
     highlighterPromise = createHighlighterCore({
       themes: [vitesseDark, vitesseLight],
-      langs: [
-        langBash, langC, langCpp, langCsharp, langCss, langDiff,
-        langDockerfile, langGo, langGraphql, langHtml, langJava,
-        langJavascript, langJson, langJsx, langKotlin, langMarkdown,
-        langPhp, langPython, langRegexp, langRuby, langRust, langShell,
-        langSql, langSwift, langToml, langTypescript, langTsx, langXml,
-        langYaml,
-      ],
+      langs: [], // Start with no languages, load on demand
       engine: createJavaScriptRegexEngine(),
     })
   }
   return highlighterPromise
+}
+
+async function ensureLanguageLoaded(highlighter: HighlighterCore, lang: string): Promise<string> {
+  // Resolve aliases
+  const resolvedLang = languageAliases[lang] || lang
+  
+  // If already loaded or no loader exists, return
+  if (loadedLanguages.has(resolvedLang)) {
+    return resolvedLang
+  }
+  
+  const loader = languageLoaders[resolvedLang]
+  if (!loader) {
+    // Fall back to plaintext for unknown languages
+    return 'text'
+  }
+  
+  try {
+    const langModule = await loader()
+    await highlighter.loadLanguage(langModule)
+    loadedLanguages.add(resolvedLang)
+    return resolvedLang
+  } catch {
+    return 'text'
+  }
 }
 
 export function CodeBlock({
@@ -96,9 +139,17 @@ export function CodeBlock({
 
   useEffect(() => {
     let active = true
-    getHighlighter()
-      .then(async (highlighter) => {
-        const lang = resolveLanguage(normalizedLanguage)
+    
+    async function highlight() {
+      try {
+        const highlighter = await getHighlighter()
+        if (!active) return
+        
+        // Lazy load the specific language needed
+        const baseLang = resolveLanguage(normalizedLanguage)
+        const lang = await ensureLanguageLoaded(highlighter, baseLang)
+        if (!active) return
+        
         const highlighted = highlighter.codeToHtml(content, {
           lang,
           theme: themeName,
@@ -109,10 +160,13 @@ export function CodeBlock({
           const theme = highlighter.getTheme(themeName)
           setHeaderBg(theme.bg)
         }
-      })
-      .catch(() => {
+      } catch {
         if (active) setHtml(null)
-      })
+      }
+    }
+    
+    highlight()
+    
     return () => {
       active = false
     }

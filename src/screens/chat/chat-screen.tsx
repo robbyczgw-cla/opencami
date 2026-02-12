@@ -300,17 +300,35 @@ export function ChatScreen({
   // Merge streaming message into display messages
   const messagesWithStreaming = useMemo(() => {
     if (!streamingMessage) return displayMessages
-    const lastMsg = displayMessages[displayMessages.length - 1]
-    // If history already has the complete assistant message, use it
-    if (lastMsg?.role === 'assistant') {
-      const lastText = textFromMessage(lastMsg)
-      if (lastText.length >= streaming.text.length) return displayMessages
-      // History has assistant msg but streaming is ahead — replace with streaming
+
+    const lastAssistantIndex = [...displayMessages]
+      .map((message, index) => ({ message, index }))
+      .filter(({ message }) => message.role === 'assistant')
+      .map(({ index }) => index)
+      .pop()
+    const lastUserIndex = [...displayMessages]
+      .map((message, index) => ({ message, index }))
+      .filter(({ message }) => message.role === 'user')
+      .map(({ index }) => index)
+      .pop()
+
+    // If the latest turn in history is already assistant, we can compare lengths
+    // and replace it while stream text is ahead.
+    const assistantIsLatestTurn =
+      typeof lastAssistantIndex === 'number' &&
+      (typeof lastUserIndex !== 'number' || lastAssistantIndex > lastUserIndex)
+
+    if (assistantIsLatestTurn && typeof lastAssistantIndex === 'number') {
+      const historyAssistant = displayMessages[lastAssistantIndex]
+      const historyText = textFromMessage(historyAssistant)
+      if (historyText.length >= streaming.text.length) return displayMessages
+
       const msgs = [...displayMessages]
-      msgs[msgs.length - 1] = streamingMessage
+      msgs[lastAssistantIndex] = streamingMessage
       return msgs
     }
-    // No assistant message in history yet — append streaming
+
+    // No assistant response for the current turn in history yet — append streaming.
     return [...displayMessages, streamingMessage]
   }, [displayMessages, streamingMessage, streaming.text])
 

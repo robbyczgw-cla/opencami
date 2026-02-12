@@ -503,12 +503,10 @@ function ChatComposerComponent({
             <CommandHelp onCommandSelect={(cmd) => handleValueChange(cmd + ' ')} />
           </div>
           <div className="flex items-center gap-1">
-            <PromptInputAction tooltip="Attach file">
-              <AttachmentButton
-                onFileSelect={handleFileSelect}
-                disabled={disabled}
-              />
-            </PromptInputAction>
+            <AttachmentButton
+              onFileSelect={handleFileSelect}
+              disabled={disabled}
+            />
             <PromptInputAction tooltip={isRecording ? 'Stop recording' : 'Voice input'}>
               <Button
                 onClick={handleMicClick}
