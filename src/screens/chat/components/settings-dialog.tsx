@@ -18,6 +18,9 @@ import {
   AiBrain01Icon,
   InformationCircleIcon,
   Link01Icon,
+  Add01Icon,
+  Delete02Icon,
+  Settings02Icon,
 } from '@hugeicons/core-free-icons'
 import type { PathsPayload } from '../types'
 import {
@@ -618,7 +621,6 @@ export function SettingsDialog({
     { value: 'dark', label: 'Dark', icon: Moon01Icon },
     { value: 'chameleon', label: 'Cham', icon: Leaf01Icon },
     { value: 'frost-light', label: 'Ice', icon: DropletIcon },
-    { value: 'frost-dark', label: 'Noir', icon: DropletIcon },
   ] as const
   function applyTheme(theme: ThemeMode) {
     if (typeof document === 'undefined') return
@@ -1110,6 +1112,11 @@ export function SettingsDialog({
                   : llmStatus.hasEnvKey && llmSettings.llmProvider === 'openai'
                     ? 'Optional: Override server key with your own'
                     : `Required for ${llmSettings.llmProvider === 'openrouter' ? 'OpenRouter' : 'LLM features'} (stored locally)`}
+              </div>
+              <div className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5 mb-2">
+                ⚠️ <strong>Security Note:</strong> API keys are stored in your browser's localStorage.
+                This is convenient but not secure for shared computers. For production use,
+                configure keys server-side via environment variables (OPENAI_API_KEY, OPENROUTER_API_KEY).
               </div>
               <div className="flex gap-2">
                 <input
