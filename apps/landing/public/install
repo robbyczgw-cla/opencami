@@ -29,6 +29,8 @@ function track_install() {
 
   curl -sS -X POST \
     -H "Content-Type: application/json" \
+    -H "Origin: https://webclaw.dev" \
+    -H "Referer: https://webclaw.dev/" \
     -d "{\"name\":\"install\",\"event\":\"install\",\"properties\":{\"source\":\"install-script\",\"os\":\"${os}\",\"arch\":\"${arch}\"}}" \
     "$TRACKING_URL" >/dev/null 2>&1 || true
 }
