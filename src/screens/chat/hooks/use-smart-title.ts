@@ -70,7 +70,8 @@ export function useSmartTitle(): UseSmartTitleResult {
           throw new Error('Aborted')
         }
 
-        const title = data.title || message.slice(0, 50)
+        const rawTitle = data.title || message.slice(0, 50)
+        const title = rawTitle.length > 64 ? rawTitle.slice(0, 61) + '...' : rawTitle
         const source = data.source || 'heuristic'
 
         setLastTitle(title)
