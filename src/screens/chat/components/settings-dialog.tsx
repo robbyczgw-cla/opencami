@@ -621,7 +621,6 @@ export function SettingsDialog({
     { value: 'dark', label: 'Dark', icon: Moon01Icon },
     { value: 'chameleon', label: 'Cham', icon: Leaf01Icon },
     { value: 'frost-light', label: 'Ice', icon: DropletIcon },
-    { value: 'frost-dark', label: 'Noir', icon: DropletIcon },
   ] as const
   function applyTheme(theme: ThemeMode) {
     if (typeof document === 'undefined') return
