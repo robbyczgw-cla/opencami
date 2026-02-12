@@ -153,37 +153,37 @@ html {
 .frost.dark,
 .frost-dark {
   color-scheme: dark;
-  --color-primary-50: oklch(0.13 0.008 250);
-  --color-primary-100: oklch(0.17 0.01 250);
-  --color-primary-200: oklch(0.22 0.012 250);
-  --color-primary-300: oklch(0.32 0.012 250);
-  --color-primary-400: oklch(0.42 0.01 250);
-  --color-primary-500: oklch(0.55 0.01 250);
-  --color-primary-600: oklch(0.67 0.008 250);
-  --color-primary-700: oklch(0.75 0.008 250);
-  --color-primary-800: oklch(0.84 0.006 250);
-  --color-primary-900: oklch(0.91 0.004 250);
-  --color-primary-950: oklch(0.96 0.003 250);
-  --color-surface: oklch(0.09 0.006 250);
-  --color-ink: oklch(0.96 0.003 250);
+  --color-primary-50: oklch(0.15 0.01 260);
+  --color-primary-100: oklch(0.19 0.012 260);
+  --color-primary-200: oklch(0.24 0.014 260);
+  --color-primary-300: oklch(0.34 0.014 260);
+  --color-primary-400: oklch(0.44 0.012 260);
+  --color-primary-500: oklch(0.56 0.012 260);
+  --color-primary-600: oklch(0.68 0.01 260);
+  --color-primary-700: oklch(0.76 0.01 260);
+  --color-primary-800: oklch(0.86 0.008 260);
+  --color-primary-900: oklch(0.93 0.005 260);
+  --color-primary-950: oklch(0.97 0.003 260);
+  --color-surface: oklch(0.06 0.008 260);
+  --color-ink: oklch(0.97 0.003 260);
 }
 
 @media (prefers-color-scheme: dark) {
   .frost:not(.frost-light):not(:where(.light, .light *)) {
     color-scheme: dark;
-    --color-primary-50: oklch(0.13 0.008 250);
-    --color-primary-100: oklch(0.17 0.01 250);
-    --color-primary-200: oklch(0.22 0.012 250);
-    --color-primary-300: oklch(0.32 0.012 250);
-    --color-primary-400: oklch(0.42 0.01 250);
-    --color-primary-500: oklch(0.55 0.01 250);
-    --color-primary-600: oklch(0.67 0.008 250);
-    --color-primary-700: oklch(0.75 0.008 250);
-    --color-primary-800: oklch(0.84 0.006 250);
-    --color-primary-900: oklch(0.91 0.004 250);
-    --color-primary-950: oklch(0.96 0.003 250);
-    --color-surface: oklch(0.09 0.006 250);
-    --color-ink: oklch(0.96 0.003 250);
+    --color-primary-50: oklch(0.15 0.01 260);
+    --color-primary-100: oklch(0.19 0.012 260);
+    --color-primary-200: oklch(0.24 0.014 260);
+    --color-primary-300: oklch(0.34 0.014 260);
+    --color-primary-400: oklch(0.44 0.012 260);
+    --color-primary-500: oklch(0.56 0.012 260);
+    --color-primary-600: oklch(0.68 0.01 260);
+    --color-primary-700: oklch(0.76 0.01 260);
+    --color-primary-800: oklch(0.86 0.008 260);
+    --color-primary-900: oklch(0.93 0.005 260);
+    --color-primary-950: oklch(0.97 0.003 260);
+    --color-surface: oklch(0.06 0.008 260);
+    --color-ink: oklch(0.97 0.003 260);
   }
 }
 
