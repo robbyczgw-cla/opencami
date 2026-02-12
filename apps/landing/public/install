@@ -4,6 +4,7 @@ set -euo pipefail
 REPO_URL="https://github.com/ibelick/webclaw"
 APP_DIR="webclaw"
 ENV_FILE="apps/webclaw/.env.local"
+TRACKING_URL="https://collector.onedollarstats.com/events"
 
 cat <<'EOF'                                   
               ▄▄          ▄▄               
@@ -15,6 +16,24 @@ cat <<'EOF'
 Fast web client for OpenClaw
 
 EOF
+
+function track_install() {
+  if ! command -v curl >/dev/null 2>&1; then
+    return
+  fi
+
+  local os
+  local arch
+  os="$(uname -s 2>/dev/null || echo "unknown")"
+  arch="$(uname -m 2>/dev/null || echo "unknown")"
+
+  curl -sS -X POST \
+    -H "Content-Type: application/json" \
+    -d "{\"name\":\"install\",\"event\":\"install\",\"properties\":{\"source\":\"install-script\",\"os\":\"${os}\",\"arch\":\"${arch}\"}}" \
+    "$TRACKING_URL" >/dev/null 2>&1 || true
+}
+
+track_install
 
 if ! command -v git >/dev/null 2>&1; then
   echo "git is required but not found."
