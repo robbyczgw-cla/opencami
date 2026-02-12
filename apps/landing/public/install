@@ -5,6 +5,7 @@ REPO_URL="https://github.com/ibelick/webclaw"
 APP_DIR="webclaw"
 ENV_FILE="apps/webclaw/.env.local"
 TRACKING_URL="https://collector.onedollarstats.com/events"
+EVENT_URL="https://webclaw.dev/install"
 
 cat <<'EOF'                                   
               ▄▄          ▄▄               
@@ -24,14 +25,16 @@ function track_install() {
 
   local os
   local arch
+  local payload
   os="$(uname -s 2>/dev/null || echo "unknown")"
   arch="$(uname -m 2>/dev/null || echo "unknown")"
+  payload=$(printf '{"u":"%s","e":[{"t":"install","p":{"source":"install-script","os":"%s","arch":"%s"}}]}' "$EVENT_URL" "$os" "$arch")
 
   curl -sS -X POST \
     -H "Content-Type: application/json" \
     -H "Origin: https://webclaw.dev" \
     -H "Referer: https://webclaw.dev/" \
-    -d "{\"name\":\"install\",\"event\":\"install\",\"properties\":{\"source\":\"install-script\",\"os\":\"${os}\",\"arch\":\"${arch}\"}}" \
+    -d "$payload" \
     "$TRACKING_URL" >/dev/null 2>&1 || true
 }
 
@@ -58,13 +61,18 @@ cd "$APP_DIR"
 pnpm install
 
 echo ""
-printf "Create %s now? [Y/n]: " "$ENV_FILE"
-read -r create_env
+if [ -r /dev/tty ] && [ -w /dev/tty ]; then
+  printf "Create %s now? [Y/n]: " "$ENV_FILE" > /dev/tty
+  read -r create_env < /dev/tty
+else
+  echo "No TTY detected. Skipping env setup prompts."
+  create_env="skip"
+fi
 
 if [ -z "$create_env" ] || [ "$create_env" = "y" ] || [ "$create_env" = "Y" ]; then
   if [ -f "$ENV_FILE" ]; then
-    printf "%s already exists. Overwrite? [y/N]: " "$ENV_FILE"
-    read -r overwrite_env
+    printf "%s already exists. Overwrite? [y/N]: " "$ENV_FILE" > /dev/tty
+    read -r overwrite_env < /dev/tty
     if [ "$overwrite_env" != "y" ] && [ "$overwrite_env" != "Y" ]; then
       echo "Keeping existing $ENV_FILE"
       create_env="skip"
@@ -72,10 +80,10 @@ if [ -z "$create_env" ] || [ "$create_env" = "y" ] || [ "$create_env" = "Y" ]; t
   fi
 
   if [ "$create_env" != "skip" ]; then
-    printf "CLAWDBOT_GATEWAY_URL: "
-    read -r gateway_url
-    printf "CLAWDBOT_GATEWAY_TOKEN: "
-    read -r gateway_token
+    printf "CLAWDBOT_GATEWAY_URL: " > /dev/tty
+    read -r gateway_url < /dev/tty
+    printf "CLAWDBOT_GATEWAY_TOKEN: " > /dev/tty
+    read -r gateway_token < /dev/tty
 
     mkdir -p "$(dirname "$ENV_FILE")"
     {
