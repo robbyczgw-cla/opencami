@@ -1,21 +1,8 @@
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
-import {
-  deriveFriendlyIdFromKey,
-  getMessageTimestamp,
-  isMissingGatewayAuth,
-  readError,
-  textFromMessage,
-} from './utils'
+import { deriveFriendlyIdFromKey, isMissingGatewayAuth, readError } from './utils'
 import { createOptimisticMessage } from './chat-screen-utils'
 import {
   appendHistoryMessage,
@@ -24,7 +11,6 @@ import {
   fetchGatewayStatus,
   removeHistoryMessageByClientId,
   updateHistoryMessageByClientId,
-  updateHistoryMessages,
   updateSessionLastMessage,
 } from './chat-queries'
 import { chatUiQueryKey, getChatUiState, setChatUiState } from './chat-ui'
@@ -34,11 +20,9 @@ import { ChatMessageList } from './components/chat-message-list'
 import { ChatComposer } from './components/chat-composer'
 import { GatewayStatusMessage } from './components/gateway-status-message'
 import {
-  consumePendingSend,
   hasPendingGeneration,
   hasPendingSend,
   isRecentSession,
-  resetPendingSend,
   setPendingGeneration,
   setRecentSession,
   stashPendingSend,
@@ -47,9 +31,13 @@ import { useChatMeasurements } from './hooks/use-chat-measurements'
 import { useChatHistory } from './hooks/use-chat-history'
 import { useChatMobile } from './hooks/use-chat-mobile'
 import { useChatSessions } from './hooks/use-chat-sessions'
+import { useChatStream } from './hooks/use-chat-stream'
+import { useChatPendingSend } from './hooks/use-chat-pending-send'
+import { useChatGenerationGuard } from './hooks/use-chat-generation-guard'
+import { useChatErrorState } from './hooks/use-chat-error-state'
+import { useChatRedirect } from './hooks/use-chat-redirect'
 import type { AttachmentFile } from '@/components/attachment-button'
 import type { ChatComposerHelpers } from './components/chat-composer'
-import type { GatewayMessage, HistoryResponse } from './types'
 import { useExport } from '@/hooks/use-export'
 import { cn } from '@/lib/utils'
 
@@ -83,18 +71,7 @@ export function ChatScreen({
   const [pinToTop, setPinToTop] = useState(
     () => hasPendingSend() || hasPendingGeneration(),
   )
-  const streamIdleTimer = useRef<number | null>(null)
-  const streamRefetchInFlight = useRef(false)
-  const lastStreamStateVersion = useRef<number | null>(null)
-  const lastStreamSeq = useRef<number | null>(null)
-  const streamSourceRef = useRef<EventSource | null>(null)
-  const streamReconnectTimer = useRef<number | null>(null)
-  const streamReconnectAttempt = useRef(0)
-  const streamFinalRefetchTimer = useRef<number | null>(null)
-  const lastStreamFinalRunId = useRef('')
-  const lastAssistantSignature = useRef('')
-  const refreshHistoryRef = useRef<() => void>(() => {})
-  const pendingStartRef = useRef(false)
+  const sendRefreshTimersRef = useRef<Array<number>>([])
   const { isMobile } = useChatMobile(queryClient)
   const {
     sessionsQuery,
@@ -165,282 +142,7 @@ export function ChatScreen({
     setIsRedirecting(true)
     navigate({ to: '/new', replace: true })
   }, [navigate])
-  const streamStop = useCallback(() => {
-    if (streamIdleTimer.current) {
-      window.clearTimeout(streamIdleTimer.current)
-      streamIdleTimer.current = null
-    }
-    if (streamReconnectTimer.current) {
-      window.clearTimeout(streamReconnectTimer.current)
-      streamReconnectTimer.current = null
-    }
-    if (streamFinalRefetchTimer.current) {
-      window.clearTimeout(streamFinalRefetchTimer.current)
-      streamFinalRefetchTimer.current = null
-    }
-    if (streamSourceRef.current) {
-      streamSourceRef.current.close()
-      streamSourceRef.current = null
-    }
-    streamRefetchInFlight.current = false
-  }, [])
-  const streamFinish = useCallback(() => {
-    streamStop()
-    setPendingGeneration(false)
-    setWaitingForResponse(false)
-  }, [streamStop])
   const stableContentStyle = useMemo<React.CSSProperties>(() => ({}), [])
-  refreshHistoryRef.current = function refreshHistory() {
-    void historyQuery.refetch()
-  }
-
-  useEffect(function setupStream() {
-    if (!activeFriendlyId || isNewChat || isRedirecting) return
-    let cancelled = false
-
-    function startStream() {
-      if (cancelled) return
-      if (streamSourceRef.current) {
-        streamSourceRef.current.close()
-        streamSourceRef.current = null
-      }
-      const params = new URLSearchParams()
-      const streamSessionKey = resolvedSessionKey || sessionKeyForHistory
-      if (streamSessionKey) params.set('sessionKey', streamSessionKey)
-      if (activeFriendlyId) params.set('friendlyId', activeFriendlyId)
-      const source = new EventSource(`/api/stream?${params.toString()}`)
-      streamSourceRef.current = source
-
-      function handleStreamEvent(event: MessageEvent) {
-        try {
-          const parsed = JSON.parse(String(event.data || '{}')) as {
-            event?: string
-            payload?: unknown
-            seq?: number
-            stateVersion?: number
-          }
-          if (
-            typeof parsed.stateVersion === 'number' &&
-            parsed.stateVersion === lastStreamStateVersion.current
-          ) {
-          return
-        }
-        if (typeof parsed.stateVersion === 'number') {
-          lastStreamStateVersion.current = parsed.stateVersion
-        }
-        if (typeof parsed.seq === 'number') {
-          if (parsed.seq === lastStreamSeq.current) return
-          lastStreamSeq.current = parsed.seq
-        }
-
-        if (parsed.event === 'chat.history') {
-          const payload = parsed.payload as { messages?: Array<unknown> } | null
-          if (payload && Array.isArray(payload.messages)) {
-            console.info('[stream] apply history payload', {
-              count: payload.messages.length,
-            })
-            queryClient.setQueryData(
-              chatQueryKeys.history(activeFriendlyId, sessionKeyForHistory),
-              {
-                sessionKey: sessionKeyForHistory,
-                messages: payload.messages,
-              },
-            )
-            return
-          }
-          return
-        }
-        if (!parsed.event) return
-        if (parsed.event === 'chat') {
-          const payload = parsed.payload as
-            | {
-                runId?: string
-                sessionKey?: string
-                state?: string
-                message?: GatewayMessage
-              }
-            | null
-          if (payload?.message && typeof payload.message === 'object') {
-            const payloadSessionKey = payload.sessionKey
-            if (
-              payloadSessionKey &&
-              resolvedSessionKey &&
-              payloadSessionKey !== resolvedSessionKey &&
-              payloadSessionKey !== sessionKeyForHistory
-            ) {
-              return
-            }
-            const streamRunId =
-              typeof payload.runId === 'string' ? payload.runId : ''
-            const nextMessage = {
-              ...payload.message,
-              __streamRunId: streamRunId || undefined,
-            }
-            function upsert(messages: Array<GatewayMessage>) {
-              if (streamRunId) {
-                const index = messages.findIndex(
-                  (message) =>
-                    (message as { __streamRunId?: string }).__streamRunId ===
-                    streamRunId,
-                )
-                if (index >= 0) {
-                  const next = [...messages]
-                  next[index] = nextMessage
-                  return next
-                }
-              }
-              if (nextMessage.role === 'assistant') {
-                const nextTime = getMessageTimestamp(nextMessage)
-                const index = [...messages]
-                  .reverse()
-                  .findIndex((message) => message.role === 'assistant')
-                if (index >= 0) {
-                  const target = messages.length - 1 - index
-                  const targetTime = getMessageTimestamp(messages[target])
-                  if (Math.abs(nextTime - targetTime) <= 15000) {
-                    const next = [...messages]
-                    next[target] = nextMessage
-                    return next
-                  }
-                }
-              }
-              return [...messages, nextMessage]
-            }
-
-            updateHistoryMessages(
-              queryClient,
-              activeFriendlyId,
-              sessionKeyForHistory,
-              upsert,
-            )
-            if (payloadSessionKey && payloadSessionKey !== sessionKeyForHistory) {
-              updateHistoryMessages(
-                queryClient,
-                activeFriendlyId,
-                payloadSessionKey,
-                upsert,
-              )
-            }
-            if (payloadSessionKey) {
-              updateSessionLastMessage(
-                queryClient,
-                payloadSessionKey,
-                activeFriendlyId,
-                nextMessage,
-              )
-            }
-            if (payload.state === 'final') {
-              const nextRunId = streamRunId || 'final'
-              if (lastStreamFinalRunId.current !== nextRunId) {
-                lastStreamFinalRunId.current = nextRunId
-                if (streamFinalRefetchTimer.current) {
-                  window.clearTimeout(streamFinalRefetchTimer.current)
-                }
-                streamFinalRefetchTimer.current = window.setTimeout(() => {
-                  streamFinalRefetchTimer.current = null
-                  refreshHistoryRef.current()
-                }, 350)
-              }
-            }
-          }
-          return
-        }
-        if (!parsed.event.startsWith('chat.')) {
-          return
-        }
-      } catch {
-          // ignore parse errors
-        }
-      if (streamRefetchInFlight.current) return
-      streamRefetchInFlight.current = true
-      const refetchStart = performance.now()
-      Promise.resolve(refreshHistoryRef.current()).finally(() => {
-        streamRefetchInFlight.current = false
-        void refetchStart
-      })
-    }
-
-      function handleStreamOpen() {
-        streamReconnectAttempt.current = 0
-        console.info('[stream] open')
-        refreshHistoryRef.current()
-      }
-
-      function handleStreamError() {
-        console.info('[stream] error')
-        if (cancelled) return
-        if (streamReconnectTimer.current) return
-        if (streamSourceRef.current) {
-          streamSourceRef.current.close()
-          streamSourceRef.current = null
-        }
-        streamReconnectAttempt.current += 1
-        const backoff = Math.min(8000, 1000 * streamReconnectAttempt.current)
-        streamReconnectTimer.current = window.setTimeout(() => {
-          streamReconnectTimer.current = null
-          startStream()
-        }, backoff)
-      }
-
-      source.addEventListener('message', handleStreamEvent)
-      source.addEventListener('open', handleStreamOpen)
-      source.addEventListener('error', handleStreamError)
-    }
-
-    startStream()
-
-    return () => {
-      cancelled = true
-      streamStop()
-    }
-  }, [
-    activeFriendlyId,
-    isNewChat,
-    isRedirecting,
-    resolvedSessionKey,
-    sessionKeyForHistory,
-    streamStop,
-  ])
-
-  useEffect(() => {
-    if (isRedirecting) {
-      if (error) setError(null)
-      return
-    }
-    if (shouldRedirectToNew) {
-      if (error) setError(null)
-      return
-    }
-    if (sessionsQuery.isSuccess && !activeExists) {
-      if (error) setError(null)
-      return
-    }
-    const messageText = sessionsError ?? historyError ?? gatewayStatusError
-    if (!messageText) {
-      if (error?.startsWith('Failed to load')) {
-        setError(null)
-      }
-      return
-    }
-    if (isMissingGatewayAuth(messageText)) {
-      navigate({ to: '/connect', replace: true })
-    }
-    const message = sessionsError
-      ? `Failed to load sessions. ${sessionsError}`
-      : historyError
-        ? `Failed to load history. ${historyError}`
-        : gatewayStatusError
-          ? `Gateway unavailable. ${gatewayStatusError}`
-          : null
-    if (message) setError(message)
-  }, [
-    error,
-    gatewayStatusError,
-    historyError,
-    isRedirecting,
-    navigate,
-    sessionsError,
-  ])
 
   const shouldRedirectToNew =
     !isNewChat &&
@@ -452,125 +154,7 @@ export function ChatScreen({
     !historyQuery.isFetching &&
     !historyQuery.isSuccess
 
-  useEffect(() => {
-    if (!isRedirecting) return
-    if (isNewChat) {
-      setIsRedirecting(false)
-      return
-    }
-    if (!shouldRedirectToNew && sessionsQuery.isSuccess) {
-      setIsRedirecting(false)
-    }
-  }, [isNewChat, isRedirecting, sessionsQuery.isSuccess, shouldRedirectToNew])
-
-  useEffect(() => {
-    if (isNewChat) return
-    if (!sessionsQuery.isSuccess) return
-    if (sessions.length === 0) return
-    if (!shouldRedirectToNew) return
-    resetPendingSend()
-    clearHistoryMessages(queryClient, activeFriendlyId, sessionKeyForHistory)
-    navigate({ to: '/new', replace: true })
-  }, [
-    activeFriendlyId,
-    historyQuery.isFetching,
-    historyQuery.isSuccess,
-    isNewChat,
-    navigate,
-    queryClient,
-    sessionKeyForHistory,
-    sessions,
-    sessionsQuery.isSuccess,
-    shouldRedirectToNew,
-  ])
-
   const hideUi = shouldRedirectToNew || isRedirecting
-
-  useEffect(() => {
-    if (historyMessages.length === 0) return
-    const latestMessage = historyMessages[historyMessages.length - 1]
-    if (latestMessage.role !== 'assistant') return
-    const signature = `${historyMessages.length}:${textFromMessage(latestMessage).slice(-64)}`
-    if (signature !== lastAssistantSignature.current) {
-      lastAssistantSignature.current = signature
-      if (streamIdleTimer.current) {
-        window.clearTimeout(streamIdleTimer.current)
-      }
-      streamIdleTimer.current = window.setTimeout(() => {
-        streamFinish()
-      }, 12000)
-    }
-  }, [historyMessages, streamFinish])
-
-  useEffect(() => {
-    if (pendingStartRef.current) {
-      pendingStartRef.current = false
-      return
-    }
-    if (hasPendingSend() || hasPendingGeneration()) {
-      setWaitingForResponse(true)
-      setPinToTop(true)
-      return
-    }
-    streamStop()
-    lastAssistantSignature.current = ''
-    setWaitingForResponse(false)
-    setPinToTop(false)
-  }, [activeFriendlyId, isNewChat, streamStop])
-
-  useLayoutEffect(() => {
-    if (isNewChat) return
-    const pending = consumePendingSend(
-      forcedSessionKey || resolvedSessionKey || activeSessionKey,
-      activeFriendlyId,
-    )
-    if (!pending) return
-    pendingStartRef.current = true
-    const historyKey = chatQueryKeys.history(
-      pending.friendlyId,
-      pending.sessionKey,
-    )
-    const cached = queryClient.getQueryData<HistoryResponse>(historyKey)
-    const cachedMessages = Array.isArray(cached?.messages)
-      ? cached.messages
-      : []
-    const alreadyHasOptimistic = cachedMessages.some((message) => {
-      if (pending.optimisticMessage.clientId) {
-        if (message.clientId === pending.optimisticMessage.clientId) return true
-        if (message.__optimisticId === pending.optimisticMessage.clientId)
-          return true
-      }
-      if (pending.optimisticMessage.__optimisticId) {
-        if (message.__optimisticId === pending.optimisticMessage.__optimisticId)
-          return true
-      }
-      return false
-    })
-    if (!alreadyHasOptimistic) {
-      appendHistoryMessage(
-        queryClient,
-        pending.friendlyId,
-        pending.sessionKey,
-        pending.optimisticMessage,
-      )
-    }
-    setWaitingForResponse(true)
-    setPinToTop(true)
-    sendMessage(
-      pending.sessionKey,
-      pending.friendlyId,
-      pending.message,
-      true,
-      pending.attachments,
-    )
-  }, [
-    activeFriendlyId,
-    activeSessionKey,
-    forcedSessionKey,
-    isNewChat,
-    queryClient,
-    resolvedSessionKey,
-  ])
 
   function sendMessage(
     sessionKey: string,
@@ -611,6 +195,19 @@ export function ChatScreen({
       content: a.base64,
     }))
 
+    function schedulePostSendRefreshes() {
+      for (const timer of sendRefreshTimersRef.current) {
+        window.clearTimeout(timer)
+      }
+      sendRefreshTimersRef.current = []
+      const delays = [0, 2000, 6000]
+      sendRefreshTimersRef.current = delays.map((delay) =>
+        window.setTimeout(() => {
+          refreshHistory()
+        }, delay),
+      )
+    }
+
     fetch('/api/send', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -625,7 +222,7 @@ export function ChatScreen({
     })
       .then(async (res) => {
         if (!res.ok) throw new Error(await readError(res))
-        refreshHistoryRef.current()
+        schedulePostSendRefreshes()
       })
       .catch((err) => {
         const messageText = err instanceof Error ? err.message : String(err)
@@ -808,6 +405,66 @@ export function ChatScreen({
       />
     )
   }, [gatewayError, handleGatewayRefetch, showGatewayNotice])
+
+  const refreshHistory = useCallback(() => {
+    void historyQuery.refetch()
+  }, [historyQuery])
+
+  const { stopStream } = useChatStream({
+    activeFriendlyId,
+    isNewChat,
+    isRedirecting,
+    resolvedSessionKey,
+    sessionKeyForHistory,
+    queryClient,
+    refreshHistory,
+  })
+
+  useChatErrorState({
+    error,
+    setError,
+    isRedirecting,
+    shouldRedirectToNew,
+    sessionsReady: sessionsQuery.isSuccess,
+    activeExists,
+    sessionsError,
+    historyError,
+    gatewayStatusError,
+  })
+
+  useChatRedirect({
+    activeFriendlyId,
+    isNewChat,
+    isRedirecting,
+    shouldRedirectToNew,
+    sessionsReady: sessionsQuery.isSuccess,
+    sessionsCount: sessions.length,
+    sessionKeyForHistory,
+    queryClient,
+    setIsRedirecting,
+  })
+
+  useChatGenerationGuard({
+    waitingForResponse,
+    historyMessages,
+    streamStop: stopStream,
+    refreshHistory,
+    setWaitingForResponse,
+    setPinToTop,
+  })
+
+  useChatPendingSend({
+    activeFriendlyId,
+    activeSessionKey,
+    forcedSessionKey,
+    isNewChat,
+    queryClient,
+    resolvedSessionKey,
+    setWaitingForResponse,
+    setPinToTop,
+    streamStop: stopStream,
+    sendMessage,
+  })
 
   const sidebar = (
     <ChatSidebar
