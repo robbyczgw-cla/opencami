@@ -10,6 +10,7 @@
 - [Organization](#organization)
 - [Customization](#customization)
 - [Smart Features](#smart-features)
+- [Workspace](#workspace)
 - [File Management](#file-management)
 - [Mobile & PWA](#mobile--pwa)
 - [Desktop App](#desktop-app)
@@ -442,6 +443,31 @@ Smart features work with multiple providers.
 **Configuration:** Settings → LLM Features → Provider
 
 ---
+
+
+## Workspace
+
+### 🔧 Workspace
+
+Workspace centralizes tool visibility controls in Settings.
+
+**Included tools:**
+- 📂 **Files** (`/files`)
+- 🧠 **Memory** (`/memory`)
+- 🤖 **Agents** (`/agents`)
+- 🧩 **Skills** (`/skills`)
+- ⏰ **Cron Jobs** (`/bots`)
+
+**Navigation:**
+- Files, Memory, Agents, Skills, and Cron Jobs keep their existing sidebar links
+- Routes stay unchanged (`/files`, `/memory`, `/agents`, `/skills`, `/bots`)
+
+**Settings → Workspace controls:**
+- **File Explorer:** enabled by default (`opencami-file-explorer`)
+- **Memory Viewer:** always available (enabled by default)
+- **Agent Manager:** optional (`opencami-agent-manager`)
+- **Skills Browser:** optional (`opencami-skills-browser`)
+- **Cron Jobs Panel:** optional (`opencami-cron-manager`)
 
 ## File Management
 

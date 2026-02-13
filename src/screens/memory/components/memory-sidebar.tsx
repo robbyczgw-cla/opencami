@@ -32,7 +32,7 @@ export function MemorySidebar({ files, selectedPath, onSelect, loading }: Memory
               )}
               style={selectedPath === path ? { backgroundColor: 'var(--opencami-accent-light)' } : undefined}
             >
-              {path === 'MEMORY.md' ? 'MEMORY.md' : path.replace('memory/', '')}
+              {path === '/MEMORY.md' ? '📋 MEMORY.md' : path.replace(/^\/?memory\//, '📝 ')}
             </button>
           ))
         )}

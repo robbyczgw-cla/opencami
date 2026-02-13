@@ -1,5 +1,7 @@
 # OpenCami 🦎
 
+**Version 1.6.0**
+
 A beautiful web client for [OpenClaw](https://github.com/openclaw/openclaw).
 
 ```bash
@@ -46,6 +48,7 @@ docker run -p 3000:3000 opencami
 🔊 **Voice playback (TTS)** — ElevenLabs → OpenAI → Edge TTS fallback chain\
 🎤 **Voice input (STT)** — ElevenLabs Scribe → OpenAI Whisper → Browser Web Speech API\
 🔧 **TTS/STT provider selection** — choose provider and voice in Settings\
+🔧 **Workspace Settings** — Unified toggles for Files, Memory, Agents, Skills & Cron Jobs\
 📂 **File explorer** — 30+ file types, built-in editor, path jailing\
 🎭 **Persona picker** — 20 personas, integrated with the personas skill\
 🤖 **Agent manager** — sidebar panel for managing agents\
@@ -79,7 +82,7 @@ Then open the URL printed by Vite in your terminal.
 
 > Dev port notes: this repo's `npm run dev` script uses port `3002`. If you run Vite directly with the config default, it targets `3003` and auto-falls back to the next free port.
 
-## 🖥️ Desktop App (Tauri) — ⚠️ Beta
+## 🖥️ Desktop App (Tauri)
 
 > **Note:** The desktop app is experimental and under active development. The primary focus of OpenCami is the **web app**. Native builds (desktop & mobile) are secondary.
 

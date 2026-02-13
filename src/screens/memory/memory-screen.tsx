@@ -15,27 +15,27 @@ type ReadResponse = {
 }
 
 function sortMemoryFiles(paths: string[]) {
-  const memoryMd = paths.includes('MEMORY.md') ? ['MEMORY.md'] : []
+  const memoryMd = paths.includes('/MEMORY.md') ? ['/MEMORY.md'] : []
   const daily = paths
-    .filter((path) => path.startsWith('memory/') && path.endsWith('.md'))
+    .filter((path) => (path.startsWith('memory/') || path.startsWith('/memory/')) && path.endsWith('.md'))
     .sort((a, b) => b.localeCompare(a))
   return [...memoryMd, ...daily]
 }
 
 export function MemoryScreen() {
   const queryClient = useQueryClient()
-  const [selectedPath, setSelectedPath] = useState<string | null>('MEMORY.md')
+  const [selectedPath, setSelectedPath] = useState<string | null>('/MEMORY.md')
 
   const filesQuery = useQuery({
     queryKey: ['memory', 'files'],
     queryFn: async ({ signal }): Promise<string[]> => {
       const [memoryRootRes, dailyRes] = await Promise.all([
-        fetch('/api/files/read?path=MEMORY.md', { signal }),
-        fetch('/api/files/list?path=memory', { signal }),
+        fetch('/api/files/read?path=/MEMORY.md', { signal }),
+        fetch('/api/files/list?path=/memory', { signal }),
       ])
 
       const paths: string[] = []
-      if (memoryRootRes.ok) paths.push('MEMORY.md')
+      if (memoryRootRes.ok) paths.push('/MEMORY.md')
 
       if (dailyRes.ok) {
         const daily = (await dailyRes.json()) as FilesListResponse
@@ -56,7 +56,8 @@ export function MemoryScreen() {
   const contentQuery = useQuery({
     queryKey: ['memory', 'content', selectedFile],
     queryFn: async ({ signal }): Promise<ReadResponse> => {
-      const res = await fetch(`/api/files/read?path=${encodeURIComponent(selectedFile!)}`, { signal })
+      const filePath = selectedFile!.startsWith('/') ? selectedFile! : `/${selectedFile!}`
+      const res = await fetch(`/api/files/read?path=${encodeURIComponent(filePath)}`, { signal })
       if (!res.ok) throw new Error('Failed to read memory file')
       return res.json()
     },
@@ -65,10 +66,11 @@ export function MemoryScreen() {
 
   const saveMutation = useMutation({
     mutationFn: async (payload: { path: string; content: string }) => {
+      const savePath = payload.path.startsWith('/') ? payload.path : `/${payload.path}`
       const res = await fetch('/api/files/save', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ ...payload, path: savePath }),
       })
       if (!res.ok) throw new Error('Failed to save memory file')
       return res.json()
