@@ -14,6 +14,25 @@ Currently in beta.
 curl -fsSL https://webclaw.dev/install | bash
 ```
 
+## npm CLI
+
+```bash
+npx webclaw
+```
+
+Initialize in a target directory:
+
+```bash
+npx webclaw init my-webclaw
+```
+
+### CLI release (simple)
+
+```bash
+pnpm bump:webclaw:patch
+pnpm release:webclaw
+```
+
 ## Other option
 
 Create `apps/webclaw/.env.local` with `CLAWDBOT_GATEWAY_URL` and either

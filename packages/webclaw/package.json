@@ -1,0 +1,26 @@
+{
+  "name": "webclaw",
+  "version": "0.1.0",
+  "private": false,
+  "description": "WebClaw CLI",
+  "type": "module",
+  "bin": {
+    "webclaw": "./bin/webclaw.js"
+  },
+  "files": [
+    "bin",
+    "README.md"
+  ],
+  "keywords": [
+    "webclaw",
+    "openclaw",
+    "cli"
+  ],
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

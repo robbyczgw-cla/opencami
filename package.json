@@ -14,6 +14,10 @@
     "lint": "pnpm -C apps/webclaw lint",
     "format": "pnpm -C apps/webclaw format",
     "check": "pnpm -C apps/webclaw check",
+    "release:webclaw": "pnpm -C packages/webclaw publish --access public",
+    "bump:webclaw:patch": "pnpm -C packages/webclaw version patch --no-git-tag-version",
+    "bump:webclaw:minor": "pnpm -C packages/webclaw version minor --no-git-tag-version",
+    "bump:webclaw:major": "pnpm -C packages/webclaw version major --no-git-tag-version",
     "postinstall": "lefthook install"
   },
   "devDependencies": {

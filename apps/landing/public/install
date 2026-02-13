@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO_URL="https://github.com/ibelick/webclaw"
 APP_DIR="webclaw"
-ENV_FILE="apps/webclaw/.env.local"
 TRACKING_URL="https://collector.onedollarstats.com/events"
 EVENT_URL="https://webclaw.dev/install"
 
@@ -40,8 +38,8 @@ function track_install() {
 
 track_install
 
-if ! command -v git >/dev/null 2>&1; then
-  echo "git is required but not found."
+if ! command -v npm >/dev/null 2>&1; then
+  echo "npm is required but not found."
   exit 1
 fi
 
@@ -52,52 +50,13 @@ if ! command -v pnpm >/dev/null 2>&1; then
 fi
 
 if [ -d "$APP_DIR" ]; then
-  echo "Directory '$APP_DIR' already exists. Skipping clone."
+  echo "Directory '$APP_DIR' already exists. Skipping init."
 else
-  git clone "$REPO_URL" "$APP_DIR"
+  npx webclaw init "$APP_DIR"
 fi
 
 cd "$APP_DIR"
 pnpm install
-
-echo ""
-if [ -r /dev/tty ] && [ -w /dev/tty ]; then
-  printf "Create %s now? [Y/n]: " "$ENV_FILE" > /dev/tty
-  read -r create_env < /dev/tty
-else
-  echo "No TTY detected. Skipping env setup prompts."
-  create_env="skip"
-fi
-
-if [ -z "$create_env" ] || [ "$create_env" = "y" ] || [ "$create_env" = "Y" ]; then
-  if [ -f "$ENV_FILE" ]; then
-    printf "%s already exists. Overwrite? [y/N]: " "$ENV_FILE" > /dev/tty
-    read -r overwrite_env < /dev/tty
-    if [ "$overwrite_env" != "y" ] && [ "$overwrite_env" != "Y" ]; then
-      echo "Keeping existing $ENV_FILE"
-      create_env="skip"
-    fi
-  fi
-
-  if [ "$create_env" != "skip" ]; then
-    printf "CLAWDBOT_GATEWAY_URL: " > /dev/tty
-    read -r gateway_url < /dev/tty
-    printf "CLAWDBOT_GATEWAY_TOKEN: " > /dev/tty
-    read -r gateway_token < /dev/tty
-
-    mkdir -p "$(dirname "$ENV_FILE")"
-    {
-      echo "CLAWDBOT_GATEWAY_URL=$gateway_url"
-      echo "CLAWDBOT_GATEWAY_TOKEN=$gateway_token"
-    } > "$ENV_FILE"
-
-    echo "Wrote $ENV_FILE"
-  fi
-else
-  echo "Skipping env file. Create it later at $ENV_FILE with:"
-  echo "CLAWDBOT_GATEWAY_URL=..."
-  echo "CLAWDBOT_GATEWAY_TOKEN=..."
-fi
 
 echo ""
 echo "Next step: pnpm -C apps/webclaw dev"

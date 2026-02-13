@@ -164,6 +164,8 @@ importers:
         specifier: ^5.1.0
         version: 5.1.0
 
+  packages/webclaw: {}
+
 packages:
 
   '@acemir/cssom@0.9.31':
