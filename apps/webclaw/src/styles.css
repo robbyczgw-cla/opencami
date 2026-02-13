@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=EB+Garamond:opsz,wght@8..120,400..800&family=JetBrains+Mono:wght@400;500&display=swap');
 @import 'tailwindcss';
+@source "../../../node_modules/streamdown/dist/*.js";
 
 .root {
   isolation: isolate;
