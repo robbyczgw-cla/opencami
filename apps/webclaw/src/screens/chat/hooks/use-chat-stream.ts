@@ -39,6 +39,8 @@ export function useChatStream({
   const streamReconnectTimer = useRef<number | null>(null)
   const streamReconnectAttempt = useRef(0)
   const streamRunTextRef = useRef(new Map<string, string>())
+  const streamRunSeqRef = useRef(new Map<string, number>())
+  const streamRunStateVersionRef = useRef(new Map<string, number>())
   const refreshHistoryRef = useRef(refreshHistory)
 
   useEffect(() => {
@@ -55,6 +57,8 @@ export function useChatStream({
       streamSourceRef.current = null
     }
     streamRunTextRef.current.clear()
+    streamRunSeqRef.current.clear()
+    streamRunStateVersionRef.current.clear()
   }, [])
 
   useEffect(() => {
@@ -79,6 +83,8 @@ export function useChatStream({
           const parsed = JSON.parse(String(event.data || '{}')) as {
             event?: string
             payload?: unknown
+            seq?: unknown
+            stateVersion?: unknown
           }
           if (parsed.event === 'chat.history') {
             const payload = parsed.payload as { messages?: Array<unknown> } | null
@@ -104,6 +110,30 @@ export function useChatStream({
                   message?: GatewayMessage
                 }
               | null
+            const streamRunId =
+              typeof payload?.runId === 'string' ? payload.runId : ''
+            const eventSeq =
+              typeof parsed.seq === 'number' && Number.isFinite(parsed.seq)
+                ? parsed.seq
+                : undefined
+            const eventStateVersion =
+              typeof parsed.stateVersion === 'number' &&
+              Number.isFinite(parsed.stateVersion)
+                ? parsed.stateVersion
+                : undefined
+
+            if (
+              shouldSkipStaleRunEvent(
+                streamRunId,
+                eventSeq,
+                eventStateVersion,
+                streamRunSeqRef.current,
+                streamRunStateVersionRef.current,
+              )
+            ) {
+              return
+            }
+
             if (payload) {
               onChatEvent?.(payload)
             }
@@ -117,8 +147,6 @@ export function useChatStream({
               ) {
                 return
               }
-              const streamRunId =
-                typeof payload.runId === 'string' ? payload.runId : ''
               const state = typeof payload.state === 'string' ? payload.state : ''
               let nextMessage: GatewayMessage = {
                 ...payload.message,
@@ -150,6 +178,8 @@ export function useChatStream({
                   }
                 }
                 streamRunTextRef.current.delete(streamRunId)
+                streamRunSeqRef.current.delete(streamRunId)
+                streamRunStateVersionRef.current.delete(streamRunId)
               }
 
               if (
@@ -157,6 +187,8 @@ export function useChatStream({
                 (state === 'error' || state === 'aborted')
               ) {
                 streamRunTextRef.current.delete(streamRunId)
+                streamRunSeqRef.current.delete(streamRunId)
+                streamRunStateVersionRef.current.delete(streamRunId)
               }
 
               function upsert(messages: Array<GatewayMessage>) {
@@ -294,5 +326,46 @@ function mergeDeltaText(previousText: string, nextText: string): string {
   if (!nextText) return previousText
   if (nextText.startsWith(previousText)) return nextText
   if (previousText.endsWith(nextText)) return previousText
+
+  const maxOverlap = Math.min(previousText.length, nextText.length)
+  for (let overlap = maxOverlap; overlap > 0; overlap -= 1) {
+    const previousSuffix = previousText.slice(-overlap)
+    const nextPrefix = nextText.slice(0, overlap)
+    if (previousSuffix === nextPrefix) {
+      return `${previousText}${nextText.slice(overlap)}`
+    }
+  }
+
   return `${previousText}${nextText}`
+}
+
+function shouldSkipStaleRunEvent(
+  runId: string,
+  seq: number | undefined,
+  stateVersion: number | undefined,
+  runSeqMap: Map<string, number>,
+  runStateVersionMap: Map<string, number>,
+): boolean {
+  if (!runId) return false
+
+  if (typeof seq === 'number') {
+    const previousSeq = runSeqMap.get(runId)
+    if (typeof previousSeq === 'number' && seq <= previousSeq) {
+      return true
+    }
+    runSeqMap.set(runId, seq)
+  }
+
+  if (typeof stateVersion === 'number') {
+    const previousStateVersion = runStateVersionMap.get(runId)
+    if (
+      typeof previousStateVersion === 'number' &&
+      stateVersion < previousStateVersion
+    ) {
+      return true
+    }
+    runStateVersionMap.set(runId, stateVersion)
+  }
+
+  return false
 }
