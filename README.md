@@ -5,8 +5,13 @@
 A beautiful web client for [OpenClaw](https://github.com/openclaw/openclaw).
 
 ```bash
-npm install -g opencami
-opencami
+curl -fsSL https://opencami.xyz/install.sh | bash
+```
+
+Or via npm:
+
+```bash
+npm install -g opencami && opencami
 ```
 
 [![npm](https://img.shields.io/npm/v/opencami)](https://www.npmjs.com/package/opencami)
@@ -16,14 +21,20 @@ opencami
 
 ## Quick Start
 
-Install globally and run:
+One-line install:
+
+```bash
+curl -fsSL https://opencami.xyz/install.sh | bash
+```
+
+Or manually via npm:
 
 ```bash
 npm install -g opencami
 opencami
 ```
 
-That's it. Opens your browser to the chat interface.
+Opens your browser to the chat interface.
 
 ### Options
 
