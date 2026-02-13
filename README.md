@@ -42,30 +42,48 @@ docker run -p 3000:3000 opencami
 
 ## Features
 
-⚡ **Real-time streaming** — persistent WebSocket + SSE, token-by-token\
-🔍 **Conversation search** — current session (⌘F) and global (⌘⇧F)\
-🔊 **Voice playback (TTS)** — ElevenLabs → OpenAI → Edge TTS fallback chain\
-🎤 **Voice input (STT)** — ElevenLabs Scribe → OpenAI Whisper → Browser Web Speech API\
-🔧 **TTS/STT provider selection** — choose provider and voice in Settings\
-🔧 **Workspace Settings** — Unified toggles for Files, Memory, Agents, Skills & Cron Jobs\
-📂 **File explorer** — 30+ file types, built-in editor, path jailing\
-🎭 **Persona picker** — 20 personas, integrated with the personas skill\
-🤖 **Agent manager** — sidebar panel for managing agents\
-🎨 **Model selector** — switch models on the fly\
-🏷️ **Smart titles** — LLM-generated session titles\
-🧠 **Thinking level toggle** — Select reasoning depth (off/low/medium/high) per message\
-🔌 **Multi-provider LLM** — Smart features via OpenAI, OpenRouter, Ollama, or custom provider\
-💡 **Smart follow-ups** — contextual suggestions after each response\
-🖼️ **Image attachments** — with compression for the 512KB WS limit\
-🔎 **Search sources badge** — expandable badge with favicons for search results\
-📁 **Session folders** — grouped by kind (chats, subagents, cron, other)\
-📌 **Pin sessions** — pinned always on top\
-📥 **Export** — Markdown, JSON, or plain text\
-🔤 **Text size** — S / M / L / XL\
-🦎 **Chameleon theme** — adaptive color scheme\
-📱 **PWA** — installable, offline shell, auto-update\
-⌨️ **Keyboard shortcuts** — full keyboard navigation\
-💬 **Slash commands** — inline help and actions
+### 💬 Chat & Communication
+- ⚡ **Real-time streaming** — persistent WebSocket + SSE, token-by-token
+- 🖼️ **Image attachments** — drag & drop with compression
+- 🔊 **Voice playback (TTS)** — ElevenLabs → OpenAI → Edge TTS fallback
+- 🎤 **Voice input (STT)** — ElevenLabs Scribe → OpenAI Whisper → Browser
+- 🔔 **Browser notifications** — background tab alerts when assistant replies
+
+### 🧠 Smart Features
+- 🏷️ **Smart titles** — LLM-generated session titles
+- 💡 **Smart follow-ups** — contextual suggestions after each response
+- 🧠 **Thinking level toggle** — reasoning depth (off/low/medium/high) per message
+- 🔎 **Search sources badge** — see which search engines were used
+- 📊 **Context window meter** — visual token usage indicator
+
+### 🔧 Workspace
+- 📂 **File explorer** — browse & edit 30+ file types with built-in editor
+- 🧠 **Memory viewer** — browse and edit MEMORY.md and daily memory files
+- 🤖 **Agent manager** — create, edit, delete agents from the sidebar
+- 🧩 **Skills browser** — discover and install skills from ClawHub
+- ⏰ **Cron jobs panel** — manage scheduled automations
+- 🔧 **Workspace settings** — toggle each tool on/off in Settings
+
+### 🎨 Customization
+- 🎨 **Model selector** — switch AI models per message
+- 🎭 **Persona picker** — 20 AI personalities
+- 🦎 **Chameleon theme** — light/dark/system with accent colors
+- 🔤 **Text size** — S / M / L / XL
+- 🔌 **Multi-provider LLM** — OpenAI, OpenRouter, Ollama, or custom
+
+### 📁 Organization
+- 📁 **Session folders** — grouped by kind (chats, subagents, cron, other)
+- 📌 **Pin sessions** — pinned always on top
+- 🗑️ **Bulk delete** — select multiple sessions, delete at once
+- 🛡️ **Protected sessions** — prevent accidental deletion
+- 📥 **Export** — Markdown, JSON, or plain text
+
+### 📱 Platform
+- 📱 **PWA** — installable, offline shell, auto-update
+- 🖥️ **Tauri desktop app** (Beta) — native wrapper for macOS/Windows/Linux
+- ⌨️ **Keyboard shortcuts** — full power-user navigation
+- 💬 **Slash commands** — inline help and actions
+- 🔍 **Conversation search** — current (⌘F) and global (⌘⇧F)
 
 ## Development
 
