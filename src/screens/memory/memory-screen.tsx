@@ -14,12 +14,29 @@ type ReadResponse = {
   content: string
 }
 
+const DATE_RE = /\/(\d{4}-\d{2}-\d{2})/
+
 function sortMemoryFiles(paths: string[]) {
   const memoryMd = paths.includes('/MEMORY.md') ? ['/MEMORY.md'] : []
-  const daily = paths
-    .filter((path) => (path.startsWith('memory/') || path.startsWith('/memory/')) && path.endsWith('.md'))
-    .sort((a, b) => b.localeCompare(a))
-  return [...memoryMd, ...daily]
+  const mdFiles = paths.filter(
+    (p) => p !== '/MEMORY.md' && (p.startsWith('memory/') || p.startsWith('/memory/')) && p.endsWith('.md'),
+  )
+
+  const daily: string[] = []
+  const other: string[] = []
+
+  for (const p of mdFiles) {
+    if (DATE_RE.test(p)) {
+      daily.push(p)
+    } else {
+      other.push(p)
+    }
+  }
+
+  daily.sort((a, b) => b.localeCompare(a)) // newest first
+  other.sort((a, b) => a.localeCompare(b)) // alphabetical
+
+  return [...memoryMd, ...daily, ...other]
 }
 
 export function MemoryScreen() {
