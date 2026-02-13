@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SkillsRouteImport } from './routes/skills'
 import { Route as NewRouteImport } from './routes/new'
+import { Route as MemoryRouteImport } from './routes/memory'
 import { Route as FilesRouteImport } from './routes/files'
 import { Route as ConnectRouteImport } from './routes/connect'
 import { Route as BotsRouteImport } from './routes/bots'
@@ -50,6 +51,11 @@ const SkillsRoute = SkillsRouteImport.update({
 const NewRoute = NewRouteImport.update({
   id: '/new',
   path: '/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MemoryRoute = MemoryRouteImport.update({
+  id: '/memory',
+  path: '/memory',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FilesRoute = FilesRouteImport.update({
@@ -209,6 +215,7 @@ export interface FileRoutesByFullPath {
   '/bots': typeof BotsRoute
   '/connect': typeof ConnectRoute
   '/files': typeof FilesRoute
+  '/memory': typeof MemoryRoute
   '/new': typeof NewRoute
   '/skills': typeof SkillsRoute
   '/api/agents': typeof ApiAgentsRoute
@@ -243,6 +250,7 @@ export interface FileRoutesByTo {
   '/bots': typeof BotsRoute
   '/connect': typeof ConnectRoute
   '/files': typeof FilesRoute
+  '/memory': typeof MemoryRoute
   '/new': typeof NewRoute
   '/skills': typeof SkillsRoute
   '/api/agents': typeof ApiAgentsRoute
@@ -278,6 +286,7 @@ export interface FileRoutesById {
   '/bots': typeof BotsRoute
   '/connect': typeof ConnectRoute
   '/files': typeof FilesRoute
+  '/memory': typeof MemoryRoute
   '/new': typeof NewRoute
   '/skills': typeof SkillsRoute
   '/api/agents': typeof ApiAgentsRoute
@@ -314,6 +323,7 @@ export interface FileRouteTypes {
     | '/bots'
     | '/connect'
     | '/files'
+    | '/memory'
     | '/new'
     | '/skills'
     | '/api/agents'
@@ -348,6 +358,7 @@ export interface FileRouteTypes {
     | '/bots'
     | '/connect'
     | '/files'
+    | '/memory'
     | '/new'
     | '/skills'
     | '/api/agents'
@@ -382,6 +393,7 @@ export interface FileRouteTypes {
     | '/bots'
     | '/connect'
     | '/files'
+    | '/memory'
     | '/new'
     | '/skills'
     | '/api/agents'
@@ -417,6 +429,7 @@ export interface RootRouteChildren {
   BotsRoute: typeof BotsRoute
   ConnectRoute: typeof ConnectRoute
   FilesRoute: typeof FilesRoute
+  MemoryRoute: typeof MemoryRoute
   NewRoute: typeof NewRoute
   SkillsRoute: typeof SkillsRoute
   ApiAgentsRoute: typeof ApiAgentsRoute
@@ -460,6 +473,13 @@ declare module '@tanstack/react-router' {
       path: '/new'
       fullPath: '/new'
       preLoaderRoute: typeof NewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/memory': {
+      id: '/memory'
+      path: '/memory'
+      fullPath: '/memory'
+      preLoaderRoute: typeof MemoryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/files': {
@@ -681,6 +701,7 @@ const rootRouteChildren: RootRouteChildren = {
   BotsRoute: BotsRoute,
   ConnectRoute: ConnectRoute,
   FilesRoute: FilesRoute,
+  MemoryRoute: MemoryRoute,
   NewRoute: NewRoute,
   SkillsRoute: SkillsRoute,
   ApiAgentsRoute: ApiAgentsRoute,
