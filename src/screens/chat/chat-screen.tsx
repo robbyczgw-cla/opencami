@@ -58,6 +58,7 @@ import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
 import { useSwipeGesture } from './hooks/use-swipe-gesture'
 import type { SearchResult } from '@/hooks/use-search'
 import { useThinkingLevelStore } from '@/hooks/use-thinking-level'
+import { useNotifications } from '@/hooks/use-notifications'
 
 const KeyboardShortcutsDialog = lazy(() =>
   import('@/components/keyboard-shortcuts-dialog').then((m) => ({
@@ -108,12 +109,14 @@ export function ChatScreen({
   const [searchJumpMessageId, setSearchJumpMessageId] = useState<string | null>(null)
   const [isStreaming, setIsStreaming] = useState(false)
   const thinkingLevel = useThinkingLevelStore((state) => state.level)
+  const { maybeNotifyAssistantMessage } = useNotifications()
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
   const streamTimer = useRef<number | null>(null)
   const streamIdleTimer = useRef<number | null>(null)
   const lastAssistantSignature = useRef('')
   const refreshHistoryRef = useRef<() => void>(() => {})
   const pendingStartRef = useRef(false)
+  const streamingNotificationTextRef = useRef('')
   const { isMobile } = useChatMobile(queryClient)
   const {
     sessionsQuery,
@@ -250,6 +253,13 @@ export function ChatScreen({
   const { streaming, startStream, stopStream } = useStreaming({
     onDone: (sk: string) => handleStreamDoneRef.current(sk),
     onError: (err: string) => handleStreamErrorRef.current(err),
+    onAssistantDelta: ({ text }) => {
+      streamingNotificationTextRef.current += text
+      maybeNotifyAssistantMessage({
+        text: streamingNotificationTextRef.current,
+        sessionFriendlyId: activeFriendlyId,
+      })
+    },
   })
 
   handleStreamDoneRef.current = useCallback(
@@ -666,6 +676,7 @@ export function ChatScreen({
     }))
 
     // Start SSE streaming BEFORE sending — events arrive immediately after chat.send
+    streamingNotificationTextRef.current = ''
     startStream(sessionKey)
     streamStart()
 

@@ -44,6 +44,7 @@ import type {
 } from '@/hooks/use-chat-settings'
 import { Button } from '@/components/ui/button'
 import { useLlmSettings, getLlmProviderDefaults } from '@/hooks/use-llm-settings'
+import { useNotifications } from '@/hooks/use-notifications'
 
 type SettingsSectionProps = {
   title: string
@@ -226,6 +227,10 @@ export function SettingsDialog({
     status: llmStatus,
     testApiKey,
   } = useLlmSettings()
+  const {
+    notificationsEnabled,
+    setNotificationsEnabled,
+  } = useNotifications()
 
   const [activeTab, setActiveTab] = useState('appearance')
   const [apiKeyInput, setApiKeyInput] = useState(llmSettings.llmApiKey)
@@ -868,6 +873,17 @@ export function SettingsDialog({
                 onCheckedChange={(checked) =>
                   updateSettings({ showSearchSources: checked })
                 }
+              />
+            </SettingsRow>
+            <SettingsRow inline
+              label="Browser Notifications"
+              description="Notify when assistant replies while this tab is in background"
+            >
+              <Switch
+                checked={notificationsEnabled}
+                onCheckedChange={(checked) => {
+                  void setNotificationsEnabled(checked)
+                }}
               />
             </SettingsRow>
             <SettingsRow inline

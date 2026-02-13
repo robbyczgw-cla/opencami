@@ -25,13 +25,16 @@ const INITIAL_STATE: StreamingState = {
 export function useStreaming(options: {
   onDone: (sessionKey: string) => void
   onError?: (error: string) => void
+  onAssistantDelta?: (payload: { text: string; sessionKey: string }) => void
 }) {
   const [state, setState] = useState<StreamingState>(INITIAL_STATE)
   const eventSourceRef = useRef<EventSource | null>(null)
   const onDoneRef = useRef(options.onDone)
   const onErrorRef = useRef(options.onError)
+  const onAssistantDeltaRef = useRef(options.onAssistantDelta)
   onDoneRef.current = options.onDone
   onErrorRef.current = options.onError
+  onAssistantDeltaRef.current = options.onAssistantDelta
 
   const stop = useCallback((options?: { preserveState?: boolean }) => {
     if (eventSourceRef.current) {
@@ -70,6 +73,7 @@ export function useStreaming(options: {
             ...prev,
             text: prev.text + data.text,
           }))
+          onAssistantDeltaRef.current?.({ text: data.text, sessionKey: data.sessionKey })
         } catch {}
       })
 
