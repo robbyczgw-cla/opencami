@@ -11,3 +11,15 @@ count.txt
 .output
 .vinxi
 todos.json
+
+# Local-only files (not for public repo)
+BALIN-FORK-ANALYSIS.md
+CODE_REVIEW.md
+REVIEW.md
+AGENTS.md
+package.json.bak
+.clawhub-my-skills.json
+.cta.json
+docs/changelog.md
+docs/design-roadmap.md
+docs/FEATURE_WISHLIST.md
