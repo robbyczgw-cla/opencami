@@ -44,7 +44,6 @@ import type {
 } from '@/hooks/use-chat-settings'
 import { Button } from '@/components/ui/button'
 import { useLlmSettings, getLlmProviderDefaults } from '@/hooks/use-llm-settings'
-import { useNotifications } from '@/hooks/use-notifications'
 
 type SettingsSectionProps = {
   title: string
@@ -227,10 +226,6 @@ export function SettingsDialog({
     status: llmStatus,
     testApiKey,
   } = useLlmSettings()
-  const {
-    notificationsEnabled,
-    setNotificationsEnabled,
-  } = useNotifications()
 
   const [activeTab, setActiveTab] = useState('appearance')
   const [apiKeyInput, setApiKeyInput] = useState(llmSettings.llmApiKey)
@@ -681,6 +676,7 @@ export function SettingsDialog({
                 { id: 'connection', label: 'Connection', icon: Link01Icon },
                 { id: 'appearance', label: 'Appearance', icon: PaintBoardIcon },
                 { id: 'chat', label: 'Chat', icon: MessageEdit01Icon },
+                { id: 'workspace', label: 'Workspace', icon: Settings02Icon },
                 { id: 'personas', label: 'Personas', icon: UserIcon },
                 { id: 'voice', label: 'Voice', icon: VoiceIcon },
                 { id: 'llm', label: 'LLM Features', icon: AiBrain01Icon },
@@ -876,13 +872,40 @@ export function SettingsDialog({
               />
             </SettingsRow>
             <SettingsRow inline
-              label="Browser Notifications"
-              description="Notify when assistant replies while this tab is in background"
+              label="Inline File Preview"
+              description="Make file paths in messages clickable to preview file contents"
             >
               <Switch
-                checked={notificationsEnabled}
+                checked={settings.inlineFilePreview}
+                onCheckedChange={(checked) =>
+                  updateSettings({ inlineFilePreview: checked })
+                }
+              />
+            </SettingsRow>
+          </SettingsSection>
+
+          <SettingsSection title="Workspace" tabId="workspace" activeTab={activeTab}>
+            <SettingsRow inline
+              label="File Explorer"
+              description="Browse and edit workspace files from the sidebar"
+            >
+              <Switch
+                checked={(() => { try { const v = localStorage.getItem('opencami-file-explorer'); return v === null ? true : v === 'true' } catch { return true } })()}
                 onCheckedChange={(checked) => {
-                  void setNotificationsEnabled(checked)
+                  localStorage.setItem('opencami-file-explorer', String(checked))
+                  window.location.reload()
+                }}
+              />
+            </SettingsRow>
+            <SettingsRow inline
+              label="Memory Viewer"
+              description="Browse and edit MEMORY.md and daily memory files"
+            >
+              <Switch
+                checked={(() => { try { const v = localStorage.getItem('opencami-memory-viewer'); return v === null ? true : v === 'true' } catch { return true } })()}
+                onCheckedChange={(checked) => {
+                  localStorage.setItem('opencami-memory-viewer', String(checked))
+                  window.location.reload()
                 }}
               />
             </SettingsRow>
@@ -920,17 +943,6 @@ export function SettingsDialog({
                   localStorage.setItem('opencami-cron-manager', String(checked))
                   window.location.reload()
                 }}
-              />
-            </SettingsRow>
-            <SettingsRow inline
-              label="Inline File Preview"
-              description="Make file paths in messages clickable to preview file contents"
-            >
-              <Switch
-                checked={settings.inlineFilePreview}
-                onCheckedChange={(checked) =>
-                  updateSettings({ inlineFilePreview: checked })
-                }
               />
             </SettingsRow>
           </SettingsSection>
