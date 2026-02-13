@@ -4,16 +4,6 @@
 
 A beautiful web client for [OpenClaw](https://github.com/openclaw/openclaw).
 
-```bash
-curl -fsSL https://opencami.xyz/install.sh | bash
-```
-
-Or via npm:
-
-```bash
-npm install -g opencami && opencami
-```
-
 [![npm](https://img.shields.io/npm/v/opencami)](https://www.npmjs.com/package/opencami)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
@@ -21,13 +11,11 @@ npm install -g opencami && opencami
 
 ## Quick Start
 
-One-line install:
-
 ```bash
 curl -fsSL https://opencami.xyz/install.sh | bash
 ```
 
-Or manually via npm:
+Or via npm:
 
 ```bash
 npm install -g opencami
