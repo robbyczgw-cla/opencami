@@ -1,5 +1,30 @@
 import { useCallback, useRef, useState } from 'react'
 
+/**
+ * Merge a new delta into accumulated text, detecting overlaps.
+ * If deltaText is a suffix that overlaps with the end of previousText,
+ * only append the non-overlapping portion.
+ */
+function mergeDeltaText(previousText: string, deltaText: string): string {
+  if (!deltaText) return previousText
+  if (!previousText) return deltaText
+
+  // Check if delta is cumulative (contains previous text as prefix)
+  if (deltaText.startsWith(previousText)) {
+    return deltaText
+  }
+
+  // Check for overlap at the boundary
+  const maxOverlap = Math.min(previousText.length, deltaText.length)
+  for (let i = maxOverlap; i > 0; i--) {
+    if (previousText.endsWith(deltaText.substring(0, i))) {
+      return previousText + deltaText.substring(i)
+    }
+  }
+
+  return previousText + deltaText
+}
+
 export type StreamingState = {
   /** Whether we're currently receiving streamed content */
   active: boolean
@@ -29,6 +54,7 @@ export function useStreaming(options: {
 }) {
   const [state, setState] = useState<StreamingState>(INITIAL_STATE)
   const eventSourceRef = useRef<EventSource | null>(null)
+  const seqRef = useRef(new Map<string, number>())
   const onDoneRef = useRef(options.onDone)
   const onErrorRef = useRef(options.onError)
   const onAssistantDeltaRef = useRef(options.onAssistantDelta)
@@ -41,6 +67,7 @@ export function useStreaming(options: {
       eventSourceRef.current.close()
       eventSourceRef.current = null
     }
+    seqRef.current.clear()
     if (options?.preserveState) {
       setState((prev) => ({ ...prev, active: false }))
       return
@@ -56,6 +83,8 @@ export function useStreaming(options: {
         eventSourceRef.current = null
       }
 
+      seqRef.current.clear()
+
       setState({
         active: true,
         text: '',
@@ -68,10 +97,21 @@ export function useStreaming(options: {
 
       es.addEventListener('delta', (e) => {
         try {
-          const data = JSON.parse(e.data) as { text: string; sessionKey: string }
+          const data = JSON.parse(e.data) as {
+            text: string
+            sessionKey: string
+            seq?: number
+          }
+
+          if (typeof data.seq === 'number') {
+            const lastSeq = seqRef.current.get(data.sessionKey) ?? -1
+            if (data.seq <= lastSeq) return
+            seqRef.current.set(data.sessionKey, data.seq)
+          }
+
           setState((prev) => ({
             ...prev,
-            text: prev.text + data.text,
+            text: mergeDeltaText(prev.text, data.text),
           }))
           onAssistantDeltaRef.current?.({ text: data.text, sessionKey: data.sessionKey })
         } catch {}
@@ -103,6 +143,7 @@ export function useStreaming(options: {
           const data = JSON.parse(e.data) as { sessionKey: string; status: string }
           es.close()
           eventSourceRef.current = null
+          seqRef.current.delete(data.sessionKey)
           // Mark stream as inactive but keep text/tools so the UI can
           // continue displaying them until history refetch completes.
           setState((prev) => ({ ...prev, active: false }))

@@ -65,8 +65,18 @@ export const Route = createFileRoute('/api/stream')({
                           : typeof payload.delta === 'string'
                             ? payload.delta
                             : ''
+                  const seqCandidate =
+                    typeof data.seq === 'number'
+                      ? data.seq
+                      : typeof payload.seq === 'number'
+                        ? payload.seq
+                        : typeof data.stateVersion === 'number'
+                          ? data.stateVersion
+                          : typeof payload.stateVersion === 'number'
+                            ? payload.stateVersion
+                            : undefined
                   if (text) {
-                    sendSSE('delta', { text, sessionKey })
+                    sendSSE('delta', { text, sessionKey, seq: seqCandidate })
                   }
                 } else if (agentStream === 'tool') {
                   gotAgentStream = true
@@ -101,8 +111,14 @@ export const Route = createFileRoute('/api/stream')({
                       : typeof payload.delta === 'string'
                         ? payload.delta
                         : ''
+                  const seqCandidate =
+                    typeof payload.seq === 'number'
+                      ? payload.seq
+                      : typeof payload.stateVersion === 'number'
+                        ? payload.stateVersion
+                        : undefined
                   if (text) {
-                    sendSSE('delta', { text, sessionKey })
+                    sendSSE('delta', { text, sessionKey, seq: seqCandidate })
                   }
                 } else if (kind === 'final') {
                   // Chat final message — always send done
