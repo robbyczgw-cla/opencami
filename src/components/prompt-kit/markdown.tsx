@@ -1,8 +1,5 @@
-import { marked } from 'marked'
-import { memo, useCallback, useEffect, useId, useMemo, useState } from 'react'
-import ReactMarkdown from 'react-markdown'
-import remarkBreaks from 'remark-breaks'
-import remarkGfm from 'remark-gfm'
+import { memo, useCallback, useEffect, useMemo, useState, type ComponentType } from 'react'
+import { Streamdown } from 'streamdown'
 import { CodeBlock } from './code-block'
 import {
   isLikelyFilePath,
@@ -18,15 +15,16 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { useFileExplorerState } from '../../screens/files/hooks/use-file-explorer-state'
-import type { Components } from 'react-markdown'
 import { cn } from '@/lib/utils'
 import { Link, useNavigate } from '@tanstack/react-router'
+
+type MarkdownComponents = Record<string, ComponentType<any>>
 
 export type MarkdownProps = {
   children: string
   id?: string
   className?: string
-  components?: Partial<Components>
+  components?: Partial<MarkdownComponents>
 }
 
 type FilePreviewState =
@@ -76,11 +74,6 @@ function isDirectoryError(code?: string, message?: string): boolean {
   )
 }
 
-function parseMarkdownIntoBlocks(markdown: string): Array<string> {
-  const tokens = marked.lexer(markdown)
-  return tokens.map((token) => token.raw)
-}
-
 function extractLanguage(className?: string): string {
   if (!className) return 'text'
   const match = className.match(/language-([\w-]+)/)
@@ -94,7 +87,7 @@ function extractFilenameFromMeta(meta?: string): string | undefined {
   return firstToken || undefined
 }
 
-const BASE_COMPONENTS: Partial<Components> = {
+const BASE_COMPONENTS: Partial<MarkdownComponents> = {
   code: function CodeComponent({ className, children, node }) {
     const isInline = !className?.includes('language-')
 
@@ -205,7 +198,7 @@ const BASE_COMPONENTS: Partial<Components> = {
 
 function createDefaultComponents(
   onOpenFilePreview: (path: string) => void,
-): Partial<Components> {
+): Partial<MarkdownComponents> {
   return {
     ...BASE_COMPONENTS,
     a: function AComponent({ children, href }) {
@@ -280,27 +273,23 @@ function createDefaultComponents(
   }
 }
 
-const MemoizedMarkdownBlock = memo(
-  function MarkdownBlock({
-    content,
-    components,
-  }: {
-    content: string
-    components?: Partial<Components>
-  }) {
-    return (
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkBreaks, remarkFilePathLinks]}
-        components={components}
-      >
-        {content}
-      </ReactMarkdown>
-    )
-  },
-  function propsAreEqual(prevProps, nextProps) {
-    return prevProps.content === nextProps.content
-  },
-)
+const MemoizedMarkdownBlock = memo(function MarkdownBlock({
+  content,
+  components,
+}: {
+  content: string
+  components?: Partial<MarkdownComponents>
+}) {
+  return (
+    <Streamdown
+      parseIncompleteMarkdown
+      remarkPlugins={[remarkFilePathLinks]}
+      components={components}
+    >
+      {content}
+    </Streamdown>
+  )
+})
 
 MemoizedMarkdownBlock.displayName = 'MemoizedMarkdownBlock'
 
@@ -317,9 +306,6 @@ function MarkdownComponent({
   className,
   components,
 }: MarkdownProps) {
-  const generatedId = useId()
-  const blockId = id ?? generatedId
-  const blocks = useMemo(() => parseMarkdownIntoBlocks(children), [children])
   const [filePreview, setFilePreview] = useState<FilePreviewState>({ status: 'idle' })
   const navigate = useNavigate()
 
@@ -398,6 +384,7 @@ function MarkdownComponent({
   return (
     <>
       <div
+        id={id}
         className={cn('flex min-w-0 max-w-full flex-col gap-2 overflow-x-hidden', className)}
         onClickCapture={(event) => {
           const target = event.target as HTMLElement | null
@@ -412,13 +399,7 @@ function MarkdownComponent({
           onOpenFilePreview(filePath)
         }}
       >
-        {blocks.map((block, index) => (
-          <MemoizedMarkdownBlock
-            key={`${blockId}-block-${index}`}
-            content={block}
-            components={mergedComponents}
-          />
-        ))}
+        <MemoizedMarkdownBlock content={children} components={mergedComponents} />
       </div>
 
       <DialogRoot
