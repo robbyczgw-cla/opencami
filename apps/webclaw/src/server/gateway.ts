@@ -109,7 +109,7 @@ function buildConnectParams(token: string, password: string): ConnectParams {
       password: password || undefined,
     },
     role: 'operator',
-    scopes: ['operator.admin'],
+    scopes: ['operator.read', 'operator.write', 'operator.admin'],
   }
 }
 
