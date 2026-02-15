@@ -60,7 +60,7 @@ function buildConnectParams(token: string, password: string): ConnectParams {
     maxProtocol: 3,
     client: {
       id: 'gateway-client',
-      displayName: 'webclaw',
+      displayName: 'OpenCami',
       version: 'dev',
       platform: process.platform,
       mode: 'ui',
@@ -71,7 +71,7 @@ function buildConnectParams(token: string, password: string): ConnectParams {
       password: password || undefined,
     },
     role: 'operator',
-    scopes: ['operator.admin'],
+    scopes: ['operator.read', 'operator.write', 'operator.admin'],
   }
 }
 
