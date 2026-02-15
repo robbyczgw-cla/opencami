@@ -181,9 +181,12 @@ All frames are JSON with a `type` field:
   session: string,
   message: string,
   attachments?: Array<{
-    type: 'image',
-    data: string,      // base64
-    mimeType: string
+    type: 'image' | 'file',
+    mimeType: string,
+    data?: string,        // base64 (image attachments)
+    uploadedPath?: string, // /uploads/... (file attachments)
+    name?: string,
+    size?: number
   }>,
   model?: string,      // Override model
   thinking?: 'off' | 'low' | 'medium' | 'high'
@@ -335,6 +338,15 @@ List directory contents.
     modified: string
   }>
 }
+```
+
+#### GET `/api/files/info?path=<path>`
+
+Get file metadata.
+
+**Response:**
+```typescript
+{ ok: true, name: string, path: string, size: number, modified: string, isDirectory: boolean }
 ```
 
 #### GET `/api/files/read?path=<path>`
@@ -613,9 +625,12 @@ interface Message {
 }
 
 interface Attachment {
-  type: 'image'
-  data: string      // base64
+  type: 'image' | 'file'
   mimeType: string
+  data?: string          // base64 for image attachments
+  uploadedPath?: string  // /uploads/... for file attachments
+  name?: string
+  size?: number
 }
 
 interface ToolCall {

@@ -1,6 +1,6 @@
 # OpenCami 🦎
 
-**Version 1.6.0**
+**Version 1.7.0**
 
 A beautiful web client for [OpenClaw](https://github.com/openclaw/openclaw).
 
@@ -44,7 +44,9 @@ docker run -p 3000:3000 opencami
 
 ### 💬 Chat & Communication
 - ⚡ **Real-time streaming** — persistent WebSocket + SSE, token-by-token
-- 🖼️ **Image attachments** — drag & drop with compression
+- 📎 **File attachments** — upload PDFs, text, code, CSV, JSON via attach button or drag & drop (`/uploads/` + `read` tool workflow)
+- 📄 **File cards** — uploaded files render as clickable cards (filename, icon, size) and open in File Explorer
+- 🖼️ **Image attachments** — drag & drop with compression (images stay Base64 for vision)
 - 🔊 **Voice playback (TTS)** — ElevenLabs → OpenAI → Edge TTS fallback
 - 🎤 **Voice input (STT)** — ElevenLabs Scribe → OpenAI Whisper → Browser
 - 🔔 **Browser notifications** — background tab alerts when assistant replies

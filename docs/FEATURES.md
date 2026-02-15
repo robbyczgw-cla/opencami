@@ -68,6 +68,31 @@ Send images directly in chat with automatic optimization.
 4. Preview appears — click ✕ to remove
 5. Send with your message
 
+### 📎 File Attachments
+
+Attach non-image files directly from the composer.
+
+**Features:**
+- Attach button and drag & drop support
+- Accepted types include PDF, TXT/MD, CSV/JSON/XML/YAML, and common code files
+- Non-image files are uploaded via HTTP to `/uploads/`
+- Composer auto-inserts `📎 Uploaded file: /uploads/...` references for agent context
+- Files can then be read by the agent with the `read` tool
+
+**Upload behavior:**
+- **Images** → Base64 inline attachment (vision flow)
+- **Other supported files** → HTTP upload + path reference
+
+### 📄 Uploaded File Cards
+
+Uploaded file references are rendered as clickable cards in chat.
+
+**Features:**
+- Shows filename, file icon, and formatted file size
+- Click opens the file in **File Explorer**
+- Uses `/api/files/info` to load accurate file metadata
+- Regex parsing is scoped to leading `📎 Uploaded file:` lines to avoid false positives in normal message text
+
 ### 📝 Markdown Rendering
 
 Full markdown support with syntax highlighting.
@@ -348,12 +373,12 @@ Multiple theme options for your preference.
 - 🌙 **Dark** — Easy on the eyes
 - 💻 **System** — Follows OS preference
 - 🦎 **Chameleon** — Nature-inspired sage/mint
-- ❄️ **Frost** — Glassmorphism with accent colors
+- ❄️ **Ice** — Glassmorphism with accent colors (always light in v1.7.0)
 
-**Frost theme features:**
+**Ice theme features:**
 - Translucent panels with backdrop blur
 - Accent color glow effects
-- Automatic dark mode support
+- Always light (does not switch with system dark mode)
 - Premium glass aesthetic
 
 **Usage:** Settings → Appearance → Theme
