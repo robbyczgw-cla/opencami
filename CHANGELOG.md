@@ -3,6 +3,18 @@
 All notable changes to OpenCami are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [Semantic Versioning](https://semver.org/).
 
+## [1.7.0] - 2026-02-15
+
+### Added
+- 📎 **File Attachments** — Upload PDFs, text files, code, CSVs, JSON, and more via attach button or drag & drop. Files uploaded via HTTP to `/uploads/`, agent reads them with `read` tool. Images still use Base64 inline for vision.
+- 📄 **File Cards** — Uploaded files render as clickable cards in messages showing filename, icon, and size. Click to open in File Explorer.
+- 🖱️ **Drag & Drop** — Drop files onto the composer: images → Base64 (vision), other files → HTTP upload.
+
+### Fixed
+- 🧊 **Ice theme** — Always renders as light theme now, regardless of system dark mode setting. CSS media queries and JS theme logic hardened to prevent dark override.
+- 📊 **File info endpoint** — `/api/files/info` returns correct file size via `fs.stat()`
+- 🎯 **File card false positives** — Regex tightened to only match at start of message, ignores code blocks and quotes.
+
 ## [1.6.1] - 2026-02-15
 
 ### Fixed
