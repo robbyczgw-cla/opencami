@@ -627,15 +627,24 @@ export function SettingsDialog({
     const root = document.documentElement
     const media = window.matchMedia('(prefers-color-scheme: dark)')
     root.classList.remove('light', 'dark', 'system', 'chameleon', 'frost', 'frost-light', 'frost-dark')
+    root.style.colorScheme = ''
     root.classList.add(theme)
-    if (theme === 'frost-light' || theme === 'frost-dark') {
+
+    const isFrostLight = theme === 'frost-light'
+    const isFrostDark = theme === 'frost-dark'
+
+    if (isFrostLight || isFrostDark) {
       root.classList.add('frost')
     }
-    if (theme === 'frost-dark') {
+    if (isFrostDark) {
       root.classList.add('dark')
     }
     if (theme === 'system' && media.matches) {
       root.classList.add('dark')
+    }
+    if (isFrostLight) {
+      root.classList.remove('dark')
+      root.style.colorScheme = 'light'
     }
   }
 

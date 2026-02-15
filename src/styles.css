@@ -130,7 +130,7 @@ html {
 }
 
 
-/* Frost theme - glassmorphism (light + auto dark variant) */
+/* Frost theme - glassmorphism (Ice stays light; frost-dark is explicit dark) */
 .frost {
   color-scheme: light;
   --color-primary-50: oklch(0.985 0.008 250);
@@ -150,7 +150,7 @@ html {
 }
 
 /* Frost dark: triggered by .dark class (explicit) or system preference */
-.frost.dark,
+.frost.dark:not(.frost-light),
 .frost-dark {
   color-scheme: dark;
   --color-primary-50: oklch(0.15 0.01 260);
@@ -194,7 +194,7 @@ html.frost body {
     linear-gradient(180deg, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0.2));
 }
 
-html.frost.dark body,
+html.frost.dark:not(.frost-light) body,
 html.frost-dark body {
   background:
     radial-gradient(1200px 700px at -10% -10%, color-mix(in srgb, var(--opencami-accent) 18%, transparent), transparent 62%),
@@ -231,9 +231,9 @@ html.frost-dark body {
 }
 
 @media (prefers-color-scheme: dark) {
-  .frost aside,
-  .frost .tauri-drag-header,
-  .frost .bg-surface.cursor-text {
+  .frost:not(.frost-light) aside,
+  .frost:not(.frost-light) .tauri-drag-header,
+  .frost:not(.frost-light) .bg-surface.cursor-text {
     background: rgba(15, 15, 15, 0.7) !important;
     border-color: rgba(255, 255, 255, 0.16) !important;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
@@ -269,7 +269,7 @@ html.frost-dark body {
 }
 
 @media (prefers-color-scheme: dark) {
-  .frost .opencami-message-assistant {
+  .frost:not(.frost-light) .opencami-message-assistant {
     background: rgba(22, 24, 30, 0.5);
     border-color: rgba(255, 255, 255, 0.15);
   }
@@ -292,8 +292,8 @@ html.frost-dark body {
 }
 
 @media (prefers-color-scheme: dark) {
-  .frost [role='dialog'],
-  .frost [role='menu'] {
+  .frost:not(.frost-light) [role='dialog'],
+  .frost:not(.frost-light) [role='menu'] {
     background: rgba(15, 15, 15, 0.72);
     border-color: rgba(255, 255, 255, 0.18);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);

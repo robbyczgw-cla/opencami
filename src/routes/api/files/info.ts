@@ -1,11 +1,13 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
-import { getFileInfo } from '../../../server/filesystem'
+import { stat } from 'node:fs/promises'
+import { resolve } from 'node:path'
 import { validatePath } from '../../../server/path-utils'
-import type { FileItem } from '../../../lib/file-types'
 import type { FileSystemError } from '../../../server/filesystem'
 
-type InfoResponse = FileItem
+type InfoResponse = {
+  size: number
+}
 
 type ErrorResponse = {
   error: string
@@ -33,9 +35,14 @@ export const Route = createFileRoute('/api/files/info')({
           // Validate and sanitize the path
           const path = validatePath(rawPath, 'Path parameter')
 
-          const fileInfo = await getFileInfo(path)
+          const root = process.env.FILES_ROOT?.trim()
+            ? resolve(process.env.FILES_ROOT)
+            : (process.env.HOME || '/home')
+          const absolutePath = resolve(root, path.replace(/^\/+/, ''))
 
-          return json<InfoResponse>(fileInfo)
+          const stats = await stat(absolutePath)
+
+          return json<InfoResponse>({ size: stats.size })
         } catch (err) {
           const error = err as Error & FileSystemError
           
@@ -50,9 +57,29 @@ export const Route = createFileRoute('/api/files/info')({
             )
           }
 
+          if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+            return json<ErrorResponse>(
+              {
+                error: 'File not found',
+                code: 'NOT_FOUND',
+              },
+              { status: 404 },
+            )
+          }
+
+          if ((error as NodeJS.ErrnoException).code === 'EACCES') {
+            return json<ErrorResponse>(
+              {
+                error: 'Permission denied',
+                code: 'PERMISSION_DENIED',
+              },
+              { status: 403 },
+            )
+          }
+
           const status = error.status || 500
           const code = error.code || 'INTERNAL_ERROR'
-          
+
           return json<ErrorResponse>(
             {
               error: error.message || 'An unexpected error occurred',

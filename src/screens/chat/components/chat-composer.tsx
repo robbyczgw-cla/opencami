@@ -17,6 +17,7 @@ import {
   AttachmentButton,
   createAttachmentFromFile,
   isAcceptedImage,
+  isAcceptedNonImage,
   type AttachmentFile,
 } from '@/components/attachment-button'
 import { AttachmentPreviewList } from '@/components/attachment-preview'
@@ -151,9 +152,96 @@ function ChatComposerComponent({
     setSlashMenuDismissed(false)
     focusPrompt()
   }, [focusPrompt])
-  const handleFileSelect = useCallback((file: AttachmentFile) => {
-    setAttachments((prev) => [...prev, file])
+  const appendUploadedFilePrompt = useCallback((uploadedPath: string) => {
+    setValue((prev) => {
+      const template = `📎 Uploaded file: ${uploadedPath}\n\nPlease analyze this file.`
+      if (!prev.trim()) return template
+      return `${prev.trim()}\n\n${template}`
+    })
   }, [])
+
+  const ensureUploadsDirectory = useCallback(async () => {
+    await fetch('/api/files/mkdir', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: '/uploads' }),
+    })
+  }, [])
+
+  const uploadAttachmentFile = useCallback(async (file: File): Promise<AttachmentFile> => {
+    const id = crypto.randomUUID()
+
+    if (!isAcceptedNonImage(file)) {
+      return {
+        id,
+        file,
+        preview: null,
+        type: 'file',
+        base64: null,
+        error: 'Unsupported file type for upload.',
+      }
+    }
+
+    try {
+      await ensureUploadsDirectory()
+
+      const formData = new FormData()
+      formData.append('path', '/uploads')
+      formData.append('file', file)
+
+      const response = await fetch('/api/files/upload', {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const message = await response.text()
+        throw new Error(message || 'File upload failed')
+      }
+
+      const data = (await response.json()) as {
+        ok?: boolean
+        files?: Array<{ path: string }>
+      }
+
+      const uploadedPath = data.files?.[0]?.path
+      if (!uploadedPath) {
+        throw new Error('Upload succeeded but no path was returned')
+      }
+
+      appendUploadedFilePrompt(uploadedPath)
+
+      return {
+        id,
+        file,
+        preview: null,
+        type: 'file',
+        base64: null,
+        uploadedPath,
+      }
+    } catch (err) {
+      return {
+        id,
+        file,
+        preview: null,
+        type: 'file',
+        base64: null,
+        error: err instanceof Error ? err.message : 'File upload failed',
+      }
+    }
+  }, [appendUploadedFilePrompt, ensureUploadsDirectory])
+
+  const handleFilesSelect = useCallback(async (files: File[]) => {
+    if (files.length === 0) return
+
+    const nextAttachments = await Promise.all(
+      files.map((file) => (isAcceptedImage(file) ? createAttachmentFromFile(file) : uploadAttachmentFile(file))),
+    )
+
+    setAttachments((prev) => [...prev, ...nextAttachments])
+    focusPrompt()
+  }, [focusPrompt, uploadAttachmentFile])
+
   const handleRemoveAttachment = useCallback((id: string) => {
     setAttachments((prev) => prev.filter((a) => a.id !== id))
   }, [])
@@ -177,13 +265,8 @@ function ChatComposerComponent({
     const files = Array.from(event.dataTransfer.files ?? [])
     if (files.length === 0) return
 
-    const imageFiles = files.filter((file) => isAcceptedImage(file))
-    if (imageFiles.length === 0) return
-
-    const newAttachments = await Promise.all(imageFiles.map((file) => createAttachmentFromFile(file)))
-    setAttachments((prev) => [...prev, ...newAttachments])
-    focusPrompt()
-  }, [focusPrompt])
+    await handleFilesSelect(files)
+  }, [handleFilesSelect])
   const setComposerValue = useCallback(
     (nextValue: string) => {
       setValue(nextValue)
@@ -469,7 +552,7 @@ function ChatComposerComponent({
     >
       {isDragActive && (
         <div className="pointer-events-none absolute inset-2 z-20 flex items-center justify-center rounded-2xl border-2 border-dashed border-primary-400 bg-primary-50/90 text-sm font-medium text-primary-700">
-          Drop image here
+          Drop files here
         </div>
       )}
       <PromptInput
@@ -504,7 +587,7 @@ function ChatComposerComponent({
           </div>
           <div className="flex items-center gap-1">
             <AttachmentButton
-              onFileSelect={handleFileSelect}
+              onFilesSelect={handleFilesSelect}
               disabled={disabled}
             />
             <PromptInputAction tooltip={isRecording ? 'Stop recording' : 'Voice input'}>

@@ -3,6 +3,11 @@
 All notable changes to OpenCami are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [Semantic Versioning](https://semver.org/).
 
+## [1.6.1] - 2026-02-15
+
+### Fixed
+- 🔐 **Gateway scope compatibility** — Request full operator scopes (`operator.read`, `operator.write`, `operator.admin`) for OpenClaw v2026.2.14 compatibility. Without this, sessions and models fail to load.
+
 ## [1.6.0] - 2026-02-13
 
 ### Added

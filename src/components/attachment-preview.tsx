@@ -30,7 +30,6 @@ export function AttachmentPreview({
   onRemove,
   className,
 }: AttachmentPreviewProps) {
-  // Cleanup object URL on unmount
   useEffect(() => {
     return () => {
       if (attachment.preview) {
@@ -40,6 +39,27 @@ export function AttachmentPreview({
   }, [attachment.preview])
 
   const hasError = Boolean(attachment.error)
+
+  if (attachment.type === 'file' && !hasError) {
+    return (
+      <div
+        className={cn(
+          'inline-flex max-w-full items-center gap-2 rounded-full border border-primary-200 bg-primary-50 px-3 py-1.5 text-xs text-primary-800',
+          className,
+        )}
+      >
+        <span className="truncate">📄 {attachment.file.name} ({formatFileSize(attachment.file.size)})</span>
+        <button
+          onClick={() => onRemove(attachment.id)}
+          className="shrink-0 text-primary-500 hover:text-primary-800"
+          aria-label="Remove attachment"
+          type="button"
+        >
+          ✕
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div
@@ -51,7 +71,6 @@ export function AttachmentPreview({
         className,
       )}
     >
-      {/* Preview thumbnail or file icon */}
       <div className="relative shrink-0">
         {attachment.type === 'image' && attachment.preview ? (
           <img
@@ -70,7 +89,6 @@ export function AttachmentPreview({
         )}
       </div>
 
-      {/* File info */}
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium text-primary-900">
           {attachment.file.name}
@@ -85,7 +103,6 @@ export function AttachmentPreview({
         )}
       </div>
 
-      {/* Remove button */}
       <Button
         variant="ghost"
         size="icon-sm"
@@ -114,7 +131,7 @@ export function AttachmentPreviewList({
   if (attachments.length === 0) return null
 
   return (
-    <div className={cn('flex flex-col gap-2 px-4', className)}>
+    <div className={cn('flex flex-wrap gap-2 px-4', className)}>
       {attachments.map((attachment) => (
         <AttachmentPreview
           key={attachment.id}

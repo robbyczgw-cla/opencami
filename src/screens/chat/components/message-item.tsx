@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import { memo, useEffect, useMemo, useState } from 'react'
 import {
   getMessageTimestamp,
   getToolCallsFromMessage,
@@ -13,6 +13,10 @@ import { Tool } from '@/components/prompt-kit/tool'
 import { useChatSettings } from '@/hooks/use-chat-settings'
 import { cn } from '@/lib/utils'
 import { SearchSourcesBadge, type SearchSource } from '@/components/search-sources-badge'
+import { HugeiconsIcon } from '@hugeicons/react'
+import { File01Icon } from '@hugeicons/core-free-icons'
+import { useNavigate } from '@tanstack/react-router'
+import { useFileExplorerState } from '@/screens/files/hooks/use-file-explorer-state'
 
 type MessageItemProps = {
   message: GatewayMessage
@@ -177,6 +181,99 @@ function imagesFromMessage(msg: GatewayMessage): ImagePart[] {
   return images
 }
 
+type UploadedFileReference = {
+  path: string
+  filename: string
+}
+
+const UPLOADED_FILE_LINE_REGEX = /^📎 Uploaded file:\s*(\/uploads\/\S+)\s*$/
+
+function formatFileSize(bytes: number | null): string {
+  if (bytes === null || Number.isNaN(bytes)) return 'Unknown size'
+  if (bytes < 1024) return `${bytes} B`
+
+  const units = ['KB', 'MB', 'GB', 'TB']
+  let value = bytes / 1024
+  let unitIndex = 0
+
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024
+    unitIndex++
+  }
+
+  return `${value.toFixed(1)} ${units[unitIndex]}`
+}
+
+function getLeadingUploadedFileLines(text: string): string[] {
+  if (!text) return []
+  const trimmedStart = text.trimStart()
+
+  // Don't parse references inside quoted text or code blocks
+  if (trimmedStart.startsWith('>') || trimmedStart.startsWith('```')) {
+    return []
+  }
+
+  const lines = text.split('\n')
+  const uploadedLines: string[] = []
+
+  for (const line of lines) {
+    if (UPLOADED_FILE_LINE_REGEX.test(line)) {
+      uploadedLines.push(line)
+      continue
+    }
+
+    // Allow empty spacer lines between leading upload lines and the rest of the message
+    if (uploadedLines.length > 0 && line.trim() === '') {
+      uploadedLines.push(line)
+      continue
+    }
+
+    break
+  }
+
+  const firstLine = lines[0] ?? ''
+  if (!UPLOADED_FILE_LINE_REGEX.test(firstLine)) {
+    return []
+  }
+
+  return uploadedLines.filter((line) => UPLOADED_FILE_LINE_REGEX.test(line))
+}
+
+function parseUploadedFileReferences(text: string): UploadedFileReference[] {
+  const refs: UploadedFileReference[] = []
+  const seen = new Set<string>()
+
+  for (const line of getLeadingUploadedFileLines(text)) {
+    const match = line.match(UPLOADED_FILE_LINE_REGEX)
+    const filePath = match?.[1]
+    if (!filePath || seen.has(filePath)) continue
+    seen.add(filePath)
+    refs.push({
+      path: filePath,
+      filename: filePath.split('/').pop() || filePath,
+    })
+  }
+
+  return refs
+}
+
+function stripUploadedFileLines(text: string): string {
+  const lines = text.split('\n')
+  if (!UPLOADED_FILE_LINE_REGEX.test(lines[0] ?? '')) {
+    return text.trim()
+  }
+
+  let index = 0
+  while (index < lines.length && UPLOADED_FILE_LINE_REGEX.test(lines[index])) {
+    index++
+  }
+  while (index < lines.length && lines[index].trim() === '') {
+    index++
+  }
+
+  return lines.slice(index).join('\n').replace(/\n{3,}/g, '\n\n').trim()
+}
+
 function MessageItemComponent({
   message,
   toolResultsByCallId,
@@ -197,6 +294,55 @@ function MessageItemComponent({
   const images = imagesFromMessage(message)
   const isUser = role === 'user'
   const timestamp = getMessageTimestamp(message)
+  const navigate = useNavigate()
+  const openInEditor = useFileExplorerState((state) => state.openInEditor)
+
+  const uploadedFileRefs = useMemo(() => parseUploadedFileReferences(text), [text])
+  const [fileSizes, setFileSizes] = useState<Record<string, number | null>>({})
+  const displayText = useMemo(() => stripUploadedFileLines(text), [text])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadSizes() {
+      const nextSizes: Record<string, number | null> = {}
+
+      await Promise.all(
+        uploadedFileRefs.map(async (ref) => {
+          try {
+            const response = await fetch(`/api/files/info?path=${encodeURIComponent(ref.path)}`)
+            if (!response.ok) {
+              nextSizes[ref.path] = null
+              return
+            }
+            const data = (await response.json()) as { size?: number }
+            nextSizes[ref.path] = typeof data.size === 'number' ? data.size : null
+          } catch {
+            nextSizes[ref.path] = null
+          }
+        }),
+      )
+
+      if (!cancelled) {
+        setFileSizes(nextSizes)
+      }
+    }
+
+    if (uploadedFileRefs.length > 0) {
+      void loadSizes()
+    } else {
+      setFileSizes({})
+    }
+
+    return () => {
+      cancelled = true
+    }
+  }, [uploadedFileRefs])
+
+  const handleOpenFile = async (filePath: string) => {
+    openInEditor(filePath)
+    await navigate({ to: '/files' })
+  }
 
   // Get tool calls from this message (for assistant messages)
   const toolCalls = role === 'assistant' ? getToolCallsFromMessage(message) : []
@@ -246,6 +392,28 @@ function MessageItemComponent({
           ))}
         </div>
       )}
+      {uploadedFileRefs.length > 0 && (
+        <div className={cn('mb-2 flex w-full flex-col gap-2', isUser ? 'items-end' : 'items-start')}>
+          {uploadedFileRefs.map((fileRef) => (
+            <button
+              key={fileRef.path}
+              type="button"
+              onClick={() => {
+                void handleOpenFile(fileRef.path)
+              }}
+              className="flex max-w-full items-center gap-3 rounded-xl border border-primary-200 bg-primary-50 px-3 py-2 text-left hover:bg-primary-100"
+            >
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-100">
+                <HugeiconsIcon icon={File01Icon} size={18} className="text-primary-600" />
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-primary-900">{fileRef.filename}</p>
+                <p className="text-xs text-primary-600">{formatFileSize(fileSizes[fileRef.path] ?? null)}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
       <Message className={cn('min-w-0 max-w-full', isUser ? 'flex-row-reverse' : '')}>
         <MessageContent
           markdown={!isUser}
@@ -257,7 +425,7 @@ function MessageItemComponent({
             !isUser && isStreaming && 'stream-fade-in',
           )}
         >
-          {text}
+          {displayText}
         </MessageContent>
       </Message>
 
