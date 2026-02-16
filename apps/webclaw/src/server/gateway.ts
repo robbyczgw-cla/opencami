@@ -1,5 +1,175 @@
-import { randomUUID } from 'node:crypto'
+import {
+  createHash,
+  createPrivateKey,
+  createPublicKey,
+  generateKeyPairSync,
+  randomUUID,
+  sign,
+} from 'node:crypto'
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from 'node:fs'
+import { dirname, resolve as pathResolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import WebSocket from 'ws'
+import type { KeyObject } from 'node:crypto'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+const DEVICE_KEYS_PATH = pathResolve(__dirname, '../../.device-keys.json')
+const ED25519_SPKI_PREFIX = Buffer.from('302a300506032b6570032100', 'hex')
+
+type StoredDeviceKeys = {
+  version: 2
+  algorithm: 'ed25519'
+  publicKeyPem: string
+  privateKeyPem: string
+  createdAtMs: number
+}
+
+type DeviceIdentity = {
+  deviceId: string
+  privateKey: KeyObject
+  publicKeyRawBase64Url: string
+}
+
+function isStoredDeviceKeys(value: unknown): value is StoredDeviceKeys {
+  if (!value || typeof value !== 'object') return false
+  const candidate = value as Record<string, unknown>
+  return (
+    candidate.version === 2 &&
+    candidate.algorithm === 'ed25519' &&
+    typeof candidate.publicKeyPem === 'string' &&
+    typeof candidate.privateKeyPem === 'string'
+  )
+}
+
+function base64UrlEncode(buf: Uint8Array): string {
+  return Buffer.from(buf)
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '')
+}
+
+function derivePublicKeyRaw(publicKey: KeyObject): Buffer {
+  const spki = publicKey.export({ type: 'spki', format: 'der' }) as Buffer
+  if (
+    spki.length === ED25519_SPKI_PREFIX.length + 32 &&
+    spki.subarray(0, ED25519_SPKI_PREFIX.length).equals(ED25519_SPKI_PREFIX)
+  ) {
+    return spki.subarray(ED25519_SPKI_PREFIX.length)
+  }
+  return spki
+}
+
+function deriveDeviceIdFromRawPublicKey(rawPublicKey: Uint8Array): string {
+  return createHash('sha256').update(rawPublicKey).digest('hex')
+}
+
+function importStoredKeyPair(stored: StoredDeviceKeys): {
+  publicKey: KeyObject
+  privateKey: KeyObject
+} {
+  const publicKey = createPublicKey(stored.publicKeyPem)
+  const privateKey = createPrivateKey(stored.privateKeyPem)
+  return { publicKey, privateKey }
+}
+
+function generateAndPersistKeyPair(): {
+  publicKey: KeyObject
+  privateKey: KeyObject
+} {
+  const keyPair = generateKeyPairSync('ed25519')
+  const publicKeyPem = keyPair.publicKey
+    .export({ type: 'spki', format: 'pem' })
+    .toString()
+  const privateKeyPem = keyPair.privateKey
+    .export({ type: 'pkcs8', format: 'pem' })
+    .toString()
+
+  const payload: StoredDeviceKeys = {
+    version: 2,
+    algorithm: 'ed25519',
+    publicKeyPem,
+    privateKeyPem,
+    createdAtMs: Date.now(),
+  }
+
+  mkdirSync(dirname(DEVICE_KEYS_PATH), { recursive: true })
+  writeFileSync(DEVICE_KEYS_PATH, JSON.stringify(payload, null, 2) + '\n', {
+    mode: 0o600,
+  })
+  try {
+    chmodSync(DEVICE_KEYS_PATH, 0o600)
+  } catch {
+    // ignore chmod errors on unsupported filesystems
+  }
+
+  return { publicKey: keyPair.publicKey, privateKey: keyPair.privateKey }
+}
+
+function loadOrCreateDeviceIdentity(): DeviceIdentity {
+  let keyPair: { publicKey: KeyObject; privateKey: KeyObject } | null = null
+
+  if (existsSync(DEVICE_KEYS_PATH)) {
+    try {
+      const stored = JSON.parse(readFileSync(DEVICE_KEYS_PATH, 'utf8')) as unknown
+      if (isStoredDeviceKeys(stored)) {
+        keyPair = importStoredKeyPair(stored)
+      }
+    } catch {
+      // ignore parse/import errors and regenerate
+    }
+  }
+
+  if (!keyPair) {
+    keyPair = generateAndPersistKeyPair()
+  }
+
+  const rawPublicKey = derivePublicKeyRaw(keyPair.publicKey)
+  const deviceId = deriveDeviceIdFromRawPublicKey(rawPublicKey)
+
+  return {
+    deviceId,
+    privateKey: keyPair.privateKey,
+    publicKeyRawBase64Url: base64UrlEncode(rawPublicKey),
+  }
+}
+
+function signPayload(privateKey: KeyObject, payload: string): string {
+  const signature = sign(null, Buffer.from(payload, 'utf8'), privateKey)
+  return base64UrlEncode(signature)
+}
+
+let _deviceIdentityPromise: Promise<DeviceIdentity> | null = null
+function getDeviceIdentity(): Promise<DeviceIdentity> {
+  if (!_deviceIdentityPromise) {
+    _deviceIdentityPromise = Promise.resolve(loadOrCreateDeviceIdentity())
+  }
+  return _deviceIdentityPromise
+}
+
+function reportPairingRequired(reason?: string) {
+  void getDeviceIdentity()
+    .then((identity) => {
+      console.error(
+        `[gateway-ws] Device auth rejected (${reason || 'policy violation'}). Device ID: ${identity.deviceId}`,
+      )
+      console.error(
+        `[gateway-ws] If pairing is required, run: openclaw devices approve ${identity.deviceId}`,
+      )
+    })
+    .catch(() => {
+      console.error(
+        `[gateway-ws] Device auth rejected (${reason || 'policy violation'}).`,
+      )
+    })
+}
 
 type GatewayFrame =
   | { type: 'req'; id: string; method: string; params?: unknown }
@@ -32,6 +202,13 @@ type ConnectParams = {
   auth?: { token?: string; password?: string }
   role?: 'operator' | 'node'
   scopes?: Array<string>
+  device?: {
+    id: string
+    publicKey: string
+    signature: string
+    signedAt: number
+    nonce?: string
+  }
 }
 
 type GatewayWaiter = {
@@ -57,7 +234,10 @@ type GatewayEventStreamOptions = {
 
 type GatewayClient = {
   connect: () => Promise<void>
-  sendReq: <TPayload = unknown>(method: string, params?: unknown) => Promise<TPayload>
+  sendReq: <TPayload = unknown>(
+    method: string,
+    params?: unknown,
+  ) => Promise<TPayload>
   close: () => void
   setOnEvent: (handler?: (event: GatewayEventFrame) => void) => void
   setOnError: (handler?: (error: Error) => void) => void
@@ -92,32 +272,70 @@ function getGatewayConfig() {
   return { url, token, password }
 }
 
-function buildConnectParams(token: string, password: string): ConnectParams {
-  return {
+async function buildConnectParams(
+  token: string,
+  password: string,
+): Promise<ConnectParams> {
+  const clientId = 'gateway-client'
+  const clientMode = 'ui'
+  const role = 'operator'
+  const scopes = ['operator.admin']
+
+  const params: ConnectParams = {
     minProtocol: 3,
     maxProtocol: 3,
     client: {
-      id: 'gateway-client',
+      id: clientId,
       displayName: 'webclaw',
       version: 'dev',
       platform: process.platform,
-      mode: 'ui',
+      mode: clientMode,
       instanceId: randomUUID(),
     },
     auth: {
       token: token || undefined,
       password: password || undefined,
     },
-    role: 'operator',
-    scopes: ['operator.admin'],
+    role,
+    scopes,
   }
+
+  try {
+    const identity = await getDeviceIdentity()
+    const signedAt = Date.now()
+    const payload = [
+      'v1',
+      identity.deviceId,
+      clientId,
+      clientMode,
+      role,
+      scopes.join(','),
+      String(signedAt),
+      token || '',
+    ].join('|')
+    const signature = await signPayload(identity.privateKey, payload)
+
+    params.device = {
+      id: identity.deviceId,
+      publicKey: identity.publicKeyRawBase64Url,
+      signature,
+      signedAt,
+    }
+  } catch (err) {
+    console.warn(
+      '[gateway-ws] Device auth unavailable, continuing without device signature:',
+      err instanceof Error ? err.message : String(err),
+    )
+  }
+
+  return params
 }
 
 async function connectGateway(ws: WebSocket): Promise<void> {
   const { token, password } = getGatewayConfig()
   await wsOpen(ws)
   const connectId = randomUUID()
-  const connectParams = buildConnectParams(token, password)
+  const connectParams = await buildConnectParams(token, password)
   const connectReq: GatewayFrame = {
     type: 'req',
     id: connectId,
@@ -175,14 +393,21 @@ function createGatewayClient(): GatewayClient {
   function handleError(err: Event) {
     if (onError) {
       onError(
-        new Error(`Gateway client error: ${String((err as any)?.message ?? err)}`),
+        new Error(
+          `Gateway client error: ${String((err as any)?.message ?? err)}`,
+        ),
       )
     }
   }
 
-  function handleClose() {
+  function handleClose(evt?: { code?: number; reason?: string }) {
     if (closed) return
     closed = true
+    if (evt?.code === 1008) {
+      reportPairingRequired(
+        typeof evt.reason === 'string' ? evt.reason : undefined,
+      )
+    }
     rejectAll(new Error('Gateway client closed'))
   }
 
@@ -194,7 +419,7 @@ function createGatewayClient(): GatewayClient {
     if (connected || closed) return
     await wsOpen(ws)
     const connectId = randomUUID()
-    const connectParams = buildConnectParams(token, password)
+    const connectParams = await buildConnectParams(token, password)
     const connectReq: GatewayFrame = {
       type: 'req',
       id: connectId,
@@ -334,14 +559,21 @@ export function gatewayEventStream({
   function handleError(err: Event) {
     if (onError) {
       onError(
-        new Error(`Gateway event stream error: ${String((err as any)?.message ?? err)}`),
+        new Error(
+          `Gateway event stream error: ${String((err as any)?.message ?? err)}`,
+        ),
       )
     }
   }
 
-  function handleClose() {
+  function handleClose(evt?: { code?: number; reason?: string }) {
     if (closed) return
     closed = true
+    if (evt?.code === 1008) {
+      reportPairingRequired(
+        typeof evt.reason === 'string' ? evt.reason : undefined,
+      )
+    }
   }
 
   ws.addEventListener('message', handleMessage)
@@ -473,7 +705,7 @@ export async function gatewayRpc<TPayload = unknown>(
 
     // 1) connect handshake (must be first request)
     const connectId = randomUUID()
-    const connectParams = buildConnectParams(token, password)
+    const connectParams = await buildConnectParams(token, password)
 
     const connectReq: GatewayFrame = {
       type: 'req',
@@ -519,7 +751,7 @@ export async function gatewayConnectCheck(): Promise<void> {
     await wsOpen(ws)
 
     const connectId = randomUUID()
-    const connectParams = buildConnectParams(token, password)
+    const connectParams = await buildConnectParams(token, password)
     const connectReq: GatewayFrame = {
       type: 'req',
       id: connectId,
