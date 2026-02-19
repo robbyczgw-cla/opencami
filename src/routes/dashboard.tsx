@@ -19,7 +19,7 @@ type CronJob = {
   schedule: string
   nextRun: string | null
   lastRun: string | null
-  lastStatus: 'ok' | 'error' | 'unknown'
+  lastStatus: 'ok' | 'error' | 'idle' | 'unknown'
 }
 
 async function fetchJson<T>(url: string): Promise<T> {
