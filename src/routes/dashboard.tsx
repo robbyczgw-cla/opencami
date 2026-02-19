@@ -2,9 +2,15 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 
 type SystemStats = {
-  cpu: { usage: number }
-  ram: { used: number; total: number; percent: number }
-  disk: { used: number; total: number; percent: number }
+  cpu: number
+  ram: { used: number; total: number }
+  disk: { used: number; total: number }
+  load: [number, number, number]
+  uptime: string
+  network: { rx: string; tx: string }
+  topProcesses: Array<{ name: string; cpu: number; mem: number }>
+  cpuModel: string
+  cores: number
 }
 
 type GatewayStats = {
@@ -17,6 +23,7 @@ type CronJob = {
   id: string
   name: string
   schedule: string
+  enabled: boolean
   nextRun: string | null
   lastRun: string | null
   lastStatus: 'ok' | 'error' | 'idle' | 'unknown'
@@ -53,12 +60,19 @@ function formatWhen(value: string | null): string {
   return date.toLocaleString()
 }
 
+function usageColor(percent: number): string {
+  if (percent < 60) return '#10b981'
+  if (percent <= 80) return '#f59e0b'
+  return '#ef4444'
+}
+
 function ProgressBar({ percent }: { percent: number }) {
+  const clamped = Math.max(0, Math.min(100, percent))
   return (
     <div className="h-2 w-full rounded-full bg-primary-200 overflow-hidden">
       <div
-        className="h-full rounded-full bg-[var(--opencami-accent)] transition-all duration-300"
-        style={{ width: `${Math.max(0, Math.min(100, percent))}%` }}
+        className="h-full rounded-full transition-all duration-300"
+        style={{ width: `${clamped}%`, backgroundColor: usageColor(clamped) }}
       />
     </div>
   )
@@ -95,7 +109,9 @@ function DashboardRoute() {
   const cronQuery = useQuery({
     queryKey: ['dashboard', 'crons'],
     queryFn: async () => {
-      const data = await fetchJson<{ jobs: Array<CronJob> }>('/api/dashboard/crons')
+      const data = await fetchJson<{ jobs: Array<CronJob> }>(
+        '/api/dashboard/crons',
+      )
       return data.jobs
     },
     refetchInterval: 10_000,
@@ -104,13 +120,19 @@ function DashboardRoute() {
   const hasError =
     systemQuery.isError || gatewayQuery.isError || cronQuery.isError
 
-  const cpuUsage = systemQuery.data?.cpu.usage ?? 0
-  const cpuColor =
-    cpuUsage < 50
-      ? 'text-green-500'
-      : cpuUsage < 80
-        ? 'text-yellow-500'
-        : 'text-red-500'
+  const cpuUsage = systemQuery.data?.cpu ?? 0
+  const ramPercent =
+    (systemQuery.data?.ram.total ?? 0) > 0
+      ? ((systemQuery.data?.ram.used ?? 0) /
+          (systemQuery.data?.ram.total ?? 1)) *
+        100
+      : 0
+  const diskPercent =
+    (systemQuery.data?.disk.total ?? 0) > 0
+      ? ((systemQuery.data?.disk.used ?? 0) /
+          (systemQuery.data?.disk.total ?? 1)) *
+        100
+      : 0
 
   return (
     <div className="flex h-screen flex-col bg-surface text-primary-900">
@@ -133,12 +155,18 @@ function DashboardRoute() {
             <CardSkeleton />
           ) : (
             <div className="rounded-xl border border-primary-200 bg-primary-100 p-4 space-y-3">
-              <h3 className="text-sm font-semibold">System Stats</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold">💻 System Stats</h3>
+                <span className="text-xs text-primary-500">↻ auto-refresh</span>
+              </div>
 
               <div className="space-y-1">
                 <div className="flex items-center justify-between text-xs text-primary-500">
                   <span>CPU</span>
-                  <span className={cpuColor}>{cpuUsage.toFixed(1)}%</span>
+                  <span>
+                    {cpuUsage.toFixed(1)}% · {systemQuery.data?.cores ?? 0}{' '}
+                    cores
+                  </span>
                 </div>
                 <ProgressBar percent={cpuUsage} />
               </div>
@@ -151,7 +179,7 @@ function DashboardRoute() {
                     {formatGb(systemQuery.data?.ram.total ?? 0)}
                   </span>
                 </div>
-                <ProgressBar percent={systemQuery.data?.ram.percent ?? 0} />
+                <ProgressBar percent={ramPercent} />
               </div>
 
               <div className="space-y-1">
@@ -162,7 +190,59 @@ function DashboardRoute() {
                     {formatGb(systemQuery.data?.disk.total ?? 0)}
                   </span>
                 </div>
-                <ProgressBar percent={systemQuery.data?.disk.percent ?? 0} />
+                <ProgressBar percent={diskPercent} />
+              </div>
+
+              <div className="border-t border-primary-200 pt-3 space-y-1.5 text-xs text-primary-500">
+                <div className="flex items-center justify-between gap-2">
+                  <span>Load (1m/5m/15m)</span>
+                  <span>
+                    {(systemQuery.data?.load?.[0] ?? 0).toFixed(2)} ·{' '}
+                    {(systemQuery.data?.load?.[1] ?? 0).toFixed(2)} ·{' '}
+                    {(systemQuery.data?.load?.[2] ?? 0).toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span>Uptime</span>
+                  <span>{systemQuery.data?.uptime ?? '0m'}</span>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span>Net ↓ / ↑</span>
+                  <span>
+                    {systemQuery.data?.network.rx ?? '0 MB'} /{' '}
+                    {systemQuery.data?.network.tx ?? '0 MB'}
+                  </span>
+                </div>
+                <div
+                  className="truncate"
+                  title={systemQuery.data?.cpuModel ?? ''}
+                >
+                  CPU: {systemQuery.data?.cpuModel ?? 'Unknown CPU'}
+                </div>
+              </div>
+
+              <div className="border-t border-primary-200 pt-3">
+                <div className="text-xs font-semibold text-primary-700 mb-2">
+                  Top Processes
+                </div>
+                <div className="space-y-1 text-xs">
+                  {(systemQuery.data?.topProcesses ?? []).map((proc, idx) => (
+                    <div
+                      key={`${proc.name}-${idx}`}
+                      className="flex items-center justify-between gap-2"
+                    >
+                      <span className="truncate text-primary-700">
+                        {proc.name}
+                      </span>
+                      <span className="text-primary-500 shrink-0">
+                        {proc.cpu.toFixed(1)}% CPU · {proc.mem.toFixed(1)}% MEM
+                      </span>
+                    </div>
+                  ))}
+                  {(systemQuery.data?.topProcesses.length ?? 0) === 0 && (
+                    <div className="text-primary-500">No process data.</div>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -194,22 +274,28 @@ function DashboardRoute() {
           {cronQuery.isLoading ? (
             <CardSkeleton />
           ) : (
-            <div className="rounded-xl border border-primary-200 bg-primary-100 p-4">
-              <h3 className="text-sm font-semibold mb-3">Cron Overview</h3>
-              <div className="space-y-2">
-                {(cronQuery.data ?? []).slice(0, 6).map((job) => (
+            <div className="rounded-xl border border-primary-200 bg-primary-100 p-4 flex flex-col min-h-[340px] max-h-[70vh]">
+              <h3 className="text-sm font-semibold mb-3">
+                🕐 Cron Jobs ({cronQuery.data?.length ?? 0})
+              </h3>
+              <div className="space-y-2 overflow-auto pr-1">
+                {(cronQuery.data ?? []).map((job) => (
                   <div
                     key={job.id}
-                    className="rounded-md border border-primary-200 px-2.5 py-2"
+                    className={`rounded-md border border-primary-200 px-2.5 py-2 ${
+                      job.enabled ? 'opacity-100' : 'opacity-50 grayscale'
+                    }`}
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div className="text-sm truncate">{job.name}</div>
                       <div className="text-xs">
-                        {job.lastStatus === 'ok'
-                          ? '✅'
-                          : job.lastStatus === 'error'
-                            ? '❌'
-                            : '—'}
+                        {!job.enabled
+                          ? '⏸️'
+                          : job.lastStatus === 'ok'
+                            ? '✅'
+                            : job.lastStatus === 'error'
+                              ? '❌'
+                              : '—'}
                       </div>
                     </div>
                     <div className="mt-1 text-xs text-primary-500">
