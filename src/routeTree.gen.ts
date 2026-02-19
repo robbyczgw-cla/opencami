@@ -13,6 +13,7 @@ import { Route as SkillsRouteImport } from './routes/skills'
 import { Route as NewRouteImport } from './routes/new'
 import { Route as MemoryRouteImport } from './routes/memory'
 import { Route as FilesRouteImport } from './routes/files'
+import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ConnectRouteImport } from './routes/connect'
 import { Route as BotsRouteImport } from './routes/bots'
 import { Route as AgentsRouteImport } from './routes/agents'
@@ -42,6 +43,9 @@ import { Route as ApiFilesListRouteImport } from './routes/api/files/list'
 import { Route as ApiFilesInfoRouteImport } from './routes/api/files/info'
 import { Route as ApiFilesDownloadRouteImport } from './routes/api/files/download'
 import { Route as ApiFilesDeleteRouteImport } from './routes/api/files/delete'
+import { Route as ApiDashboardSystemRouteImport } from './routes/api/dashboard/system'
+import { Route as ApiDashboardGatewayRouteImport } from './routes/api/dashboard/gateway'
+import { Route as ApiDashboardCronsRouteImport } from './routes/api/dashboard/crons'
 
 const SkillsRoute = SkillsRouteImport.update({
   id: '/skills',
@@ -61,6 +65,11 @@ const MemoryRoute = MemoryRouteImport.update({
 const FilesRoute = FilesRouteImport.update({
   id: '/files',
   path: '/files',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ConnectRoute = ConnectRouteImport.update({
@@ -208,12 +217,28 @@ const ApiFilesDeleteRoute = ApiFilesDeleteRouteImport.update({
   path: '/api/files/delete',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiDashboardSystemRoute = ApiDashboardSystemRouteImport.update({
+  id: '/api/dashboard/system',
+  path: '/api/dashboard/system',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiDashboardGatewayRoute = ApiDashboardGatewayRouteImport.update({
+  id: '/api/dashboard/gateway',
+  path: '/api/dashboard/gateway',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiDashboardCronsRoute = ApiDashboardCronsRouteImport.update({
+  id: '/api/dashboard/crons',
+  path: '/api/dashboard/crons',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/agents': typeof AgentsRoute
   '/bots': typeof BotsRoute
   '/connect': typeof ConnectRoute
+  '/dashboard': typeof DashboardRoute
   '/files': typeof FilesRoute
   '/memory': typeof MemoryRoute
   '/new': typeof NewRoute
@@ -234,6 +259,9 @@ export interface FileRoutesByFullPath {
   '/api/stt': typeof ApiSttRoute
   '/api/tts': typeof ApiTtsRoute
   '/chat/$sessionKey': typeof ChatSessionKeyRoute
+  '/api/dashboard/crons': typeof ApiDashboardCronsRoute
+  '/api/dashboard/gateway': typeof ApiDashboardGatewayRoute
+  '/api/dashboard/system': typeof ApiDashboardSystemRoute
   '/api/files/delete': typeof ApiFilesDeleteRoute
   '/api/files/download': typeof ApiFilesDownloadRoute
   '/api/files/info': typeof ApiFilesInfoRoute
@@ -249,6 +277,7 @@ export interface FileRoutesByTo {
   '/agents': typeof AgentsRoute
   '/bots': typeof BotsRoute
   '/connect': typeof ConnectRoute
+  '/dashboard': typeof DashboardRoute
   '/files': typeof FilesRoute
   '/memory': typeof MemoryRoute
   '/new': typeof NewRoute
@@ -269,6 +298,9 @@ export interface FileRoutesByTo {
   '/api/stt': typeof ApiSttRoute
   '/api/tts': typeof ApiTtsRoute
   '/chat/$sessionKey': typeof ChatSessionKeyRoute
+  '/api/dashboard/crons': typeof ApiDashboardCronsRoute
+  '/api/dashboard/gateway': typeof ApiDashboardGatewayRoute
+  '/api/dashboard/system': typeof ApiDashboardSystemRoute
   '/api/files/delete': typeof ApiFilesDeleteRoute
   '/api/files/download': typeof ApiFilesDownloadRoute
   '/api/files/info': typeof ApiFilesInfoRoute
@@ -285,6 +317,7 @@ export interface FileRoutesById {
   '/agents': typeof AgentsRoute
   '/bots': typeof BotsRoute
   '/connect': typeof ConnectRoute
+  '/dashboard': typeof DashboardRoute
   '/files': typeof FilesRoute
   '/memory': typeof MemoryRoute
   '/new': typeof NewRoute
@@ -305,6 +338,9 @@ export interface FileRoutesById {
   '/api/stt': typeof ApiSttRoute
   '/api/tts': typeof ApiTtsRoute
   '/chat/$sessionKey': typeof ChatSessionKeyRoute
+  '/api/dashboard/crons': typeof ApiDashboardCronsRoute
+  '/api/dashboard/gateway': typeof ApiDashboardGatewayRoute
+  '/api/dashboard/system': typeof ApiDashboardSystemRoute
   '/api/files/delete': typeof ApiFilesDeleteRoute
   '/api/files/download': typeof ApiFilesDownloadRoute
   '/api/files/info': typeof ApiFilesInfoRoute
@@ -322,6 +358,7 @@ export interface FileRouteTypes {
     | '/agents'
     | '/bots'
     | '/connect'
+    | '/dashboard'
     | '/files'
     | '/memory'
     | '/new'
@@ -342,6 +379,9 @@ export interface FileRouteTypes {
     | '/api/stt'
     | '/api/tts'
     | '/chat/$sessionKey'
+    | '/api/dashboard/crons'
+    | '/api/dashboard/gateway'
+    | '/api/dashboard/system'
     | '/api/files/delete'
     | '/api/files/download'
     | '/api/files/info'
@@ -357,6 +397,7 @@ export interface FileRouteTypes {
     | '/agents'
     | '/bots'
     | '/connect'
+    | '/dashboard'
     | '/files'
     | '/memory'
     | '/new'
@@ -377,6 +418,9 @@ export interface FileRouteTypes {
     | '/api/stt'
     | '/api/tts'
     | '/chat/$sessionKey'
+    | '/api/dashboard/crons'
+    | '/api/dashboard/gateway'
+    | '/api/dashboard/system'
     | '/api/files/delete'
     | '/api/files/download'
     | '/api/files/info'
@@ -392,6 +436,7 @@ export interface FileRouteTypes {
     | '/agents'
     | '/bots'
     | '/connect'
+    | '/dashboard'
     | '/files'
     | '/memory'
     | '/new'
@@ -412,6 +457,9 @@ export interface FileRouteTypes {
     | '/api/stt'
     | '/api/tts'
     | '/chat/$sessionKey'
+    | '/api/dashboard/crons'
+    | '/api/dashboard/gateway'
+    | '/api/dashboard/system'
     | '/api/files/delete'
     | '/api/files/download'
     | '/api/files/info'
@@ -428,6 +476,7 @@ export interface RootRouteChildren {
   AgentsRoute: typeof AgentsRoute
   BotsRoute: typeof BotsRoute
   ConnectRoute: typeof ConnectRoute
+  DashboardRoute: typeof DashboardRoute
   FilesRoute: typeof FilesRoute
   MemoryRoute: typeof MemoryRoute
   NewRoute: typeof NewRoute
@@ -448,6 +497,9 @@ export interface RootRouteChildren {
   ApiSttRoute: typeof ApiSttRoute
   ApiTtsRoute: typeof ApiTtsRoute
   ChatSessionKeyRoute: typeof ChatSessionKeyRoute
+  ApiDashboardCronsRoute: typeof ApiDashboardCronsRoute
+  ApiDashboardGatewayRoute: typeof ApiDashboardGatewayRoute
+  ApiDashboardSystemRoute: typeof ApiDashboardSystemRoute
   ApiFilesDeleteRoute: typeof ApiFilesDeleteRoute
   ApiFilesDownloadRoute: typeof ApiFilesDownloadRoute
   ApiFilesInfoRoute: typeof ApiFilesInfoRoute
@@ -487,6 +539,13 @@ declare module '@tanstack/react-router' {
       path: '/files'
       fullPath: '/files'
       preLoaderRoute: typeof FilesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/connect': {
@@ -692,6 +751,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiFilesDeleteRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/dashboard/system': {
+      id: '/api/dashboard/system'
+      path: '/api/dashboard/system'
+      fullPath: '/api/dashboard/system'
+      preLoaderRoute: typeof ApiDashboardSystemRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/dashboard/gateway': {
+      id: '/api/dashboard/gateway'
+      path: '/api/dashboard/gateway'
+      fullPath: '/api/dashboard/gateway'
+      preLoaderRoute: typeof ApiDashboardGatewayRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/dashboard/crons': {
+      id: '/api/dashboard/crons'
+      path: '/api/dashboard/crons'
+      fullPath: '/api/dashboard/crons'
+      preLoaderRoute: typeof ApiDashboardCronsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -700,6 +780,7 @@ const rootRouteChildren: RootRouteChildren = {
   AgentsRoute: AgentsRoute,
   BotsRoute: BotsRoute,
   ConnectRoute: ConnectRoute,
+  DashboardRoute: DashboardRoute,
   FilesRoute: FilesRoute,
   MemoryRoute: MemoryRoute,
   NewRoute: NewRoute,
@@ -720,6 +801,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSttRoute: ApiSttRoute,
   ApiTtsRoute: ApiTtsRoute,
   ChatSessionKeyRoute: ChatSessionKeyRoute,
+  ApiDashboardCronsRoute: ApiDashboardCronsRoute,
+  ApiDashboardGatewayRoute: ApiDashboardGatewayRoute,
+  ApiDashboardSystemRoute: ApiDashboardSystemRoute,
   ApiFilesDeleteRoute: ApiFilesDeleteRoute,
   ApiFilesDownloadRoute: ApiFilesDownloadRoute,
   ApiFilesInfoRoute: ApiFilesInfoRoute,

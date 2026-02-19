@@ -1,28 +1,37 @@
-import { useState, useEffect, useRef } from 'react'
-import { cn } from '@/lib/utils'
+import { useEffect, useRef, useState } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
+  Add01Icon,
+  AiBrain01Icon,
   Cancel01Icon,
-  ComputerIcon,
-  DropletIcon,
-  Moon01Icon,
-  Sun01Icon,
-  Leaf01Icon,
-  Tick01Icon,
   Cancel02Icon,
+  ComputerIcon,
+  Delete02Icon,
+  DropletIcon,
+  InformationCircleIcon,
+  Leaf01Icon,
+  Link01Icon,
   Loading02Icon,
-  PaintBoardIcon,
   MessageEdit01Icon,
+  Moon01Icon,
+  PaintBoardIcon,
+  Settings02Icon,
+  Sun01Icon,
+  Tick01Icon,
   UserIcon,
   VoiceIcon,
-  AiBrain01Icon,
-  InformationCircleIcon,
-  Link01Icon,
-  Add01Icon,
-  Delete02Icon,
-  Settings02Icon,
 } from '@hugeicons/core-free-icons'
 import type { PathsPayload } from '../types'
+import type {
+  AccentColorMode,
+  BubbleStyleMode,
+  ChatWidthMode,
+  DensityMode,
+  FontFamilyMode,
+  SidebarWidthMode,
+  ThemeMode,
+} from '@/hooks/use-chat-settings'
+import { cn } from '@/lib/utils'
 import {
   DialogClose,
   DialogContent,
@@ -33,17 +42,11 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsList, TabsTab } from '@/components/ui/tabs'
 import { useChatSettings } from '@/hooks/use-chat-settings'
-import type {
-  ThemeMode,
-  FontFamilyMode,
-  DensityMode,
-  AccentColorMode,
-  ChatWidthMode,
-  SidebarWidthMode,
-  BubbleStyleMode,
-} from '@/hooks/use-chat-settings'
 import { Button } from '@/components/ui/button'
-import { useLlmSettings, getLlmProviderDefaults } from '@/hooks/use-llm-settings'
+import {
+  getLlmProviderDefaults,
+  useLlmSettings,
+} from '@/hooks/use-llm-settings'
 
 type SettingsSectionProps = {
   title: string
@@ -52,15 +55,22 @@ type SettingsSectionProps = {
   children: React.ReactNode
 }
 
-function SettingsSection({ title, tabId, activeTab, children }: SettingsSectionProps) {
+function SettingsSection({
+  title,
+  tabId,
+  activeTab,
+  children,
+}: SettingsSectionProps) {
   // On desktop: hide if tabId doesn't match activeTab
   // On mobile: always show (no sidebar)
   const hiddenOnDesktop = tabId && activeTab && tabId !== activeTab
   return (
-    <div className={cn(
-      'border-b border-primary-200 py-2 last:border-0',
-      hiddenOnDesktop && 'md:hidden',
-    )}>
+    <div
+      className={cn(
+        'border-b border-primary-200 py-2 last:border-0',
+        hiddenOnDesktop && 'md:hidden',
+      )}
+    >
       <h3 className="mb-1.5 text-sm font-semibold text-primary-700">{title}</h3>
       <div className="space-y-1.5">{children}</div>
     </div>
@@ -74,12 +84,19 @@ type SettingsRowProps = {
   children: React.ReactNode
 }
 
-function SettingsRow({ label, description, inline, children }: SettingsRowProps) {
+function SettingsRow({
+  label,
+  description,
+  inline,
+  children,
+}: SettingsRowProps) {
   if (inline) {
     return (
       <div className="flex items-center justify-between">
         <div className="flex-1 select-none">
-          <div className="text-[13px] font-medium text-primary-800">{label}</div>
+          <div className="text-[13px] font-medium text-primary-800">
+            {label}
+          </div>
           {description && (
             <div className="text-xs text-primary-500">{description}</div>
           )}
@@ -149,14 +166,62 @@ const densityOptions = [
 ] as const
 
 const accentColorOptions = [
-  { value: 'green', label: 'Green', accent: '#22c55e', hover: '#16a34a', light: 'rgba(34, 197, 94, 0.10)' },
-  { value: 'blue', label: 'Blue', accent: '#3b82f6', hover: '#2563eb', light: 'rgba(59, 130, 246, 0.10)' },
-  { value: 'purple', label: 'Purple', accent: '#8b5cf6', hover: '#7c3aed', light: 'rgba(139, 92, 246, 0.10)' },
-  { value: 'orange', label: 'Orange', accent: '#f97316', hover: '#ea580c', light: 'rgba(249, 115, 22, 0.10)' },
-  { value: 'pink', label: 'Pink', accent: '#ec4899', hover: '#db2777', light: 'rgba(236, 72, 153, 0.10)' },
-  { value: 'red', label: 'Red', accent: '#ef4444', hover: '#dc2626', light: 'rgba(239, 68, 68, 0.10)' },
-  { value: 'cyan', label: 'Cyan', accent: '#06b6d4', hover: '#0891b2', light: 'rgba(6, 182, 212, 0.10)' },
-  { value: 'yellow', label: 'Yellow', accent: '#eab308', hover: '#ca8a04', light: 'rgba(234, 179, 8, 0.10)' },
+  {
+    value: 'green',
+    label: 'Green',
+    accent: '#22c55e',
+    hover: '#16a34a',
+    light: 'rgba(34, 197, 94, 0.10)',
+  },
+  {
+    value: 'blue',
+    label: 'Blue',
+    accent: '#3b82f6',
+    hover: '#2563eb',
+    light: 'rgba(59, 130, 246, 0.10)',
+  },
+  {
+    value: 'purple',
+    label: 'Purple',
+    accent: '#8b5cf6',
+    hover: '#7c3aed',
+    light: 'rgba(139, 92, 246, 0.10)',
+  },
+  {
+    value: 'orange',
+    label: 'Orange',
+    accent: '#f97316',
+    hover: '#ea580c',
+    light: 'rgba(249, 115, 22, 0.10)',
+  },
+  {
+    value: 'pink',
+    label: 'Pink',
+    accent: '#ec4899',
+    hover: '#db2777',
+    light: 'rgba(236, 72, 153, 0.10)',
+  },
+  {
+    value: 'red',
+    label: 'Red',
+    accent: '#ef4444',
+    hover: '#dc2626',
+    light: 'rgba(239, 68, 68, 0.10)',
+  },
+  {
+    value: 'cyan',
+    label: 'Cyan',
+    accent: '#06b6d4',
+    hover: '#0891b2',
+    light: 'rgba(6, 182, 212, 0.10)',
+  },
+  {
+    value: 'yellow',
+    label: 'Yellow',
+    accent: '#eab308',
+    hover: '#ca8a04',
+    light: 'rgba(234, 179, 8, 0.10)',
+  },
 ] as const
 
 const chatWidthOptions = [
@@ -230,7 +295,10 @@ export function SettingsDialog({
   const [activeTab, setActiveTab] = useState('appearance')
   const [apiKeyInput, setApiKeyInput] = useState(llmSettings.llmApiKey)
   const [testingKey, setTestingKey] = useState(false)
-  const [testResult, setTestResult] = useState<{ valid: boolean; error?: string } | null>(null)
+  const [testResult, setTestResult] = useState<{
+    valid: boolean
+    error?: string
+  } | null>(null)
 
   const [textSize, setTextSize] = useState<TextSizeValue>(() => {
     if (typeof window === 'undefined') return '16px'
@@ -257,17 +325,29 @@ export function SettingsDialog({
   // TTS provider state
   const [ttsProvider, setTtsProvider] = useState(() => {
     if (typeof window === 'undefined') return 'auto'
-    try { return localStorage.getItem('opencami-tts-provider') || 'auto' } catch { return 'auto' }
+    try {
+      return localStorage.getItem('opencami-tts-provider') || 'auto'
+    } catch {
+      return 'auto'
+    }
   })
   const [ttsVoice, setTtsVoice] = useState(() => {
     if (typeof window === 'undefined') return 'nova'
-    try { return localStorage.getItem('opencami-tts-voice') || 'nova' } catch { return 'nova' }
+    try {
+      return localStorage.getItem('opencami-tts-voice') || 'nova'
+    } catch {
+      return 'nova'
+    }
   })
 
   // STT provider state
   const [sttProvider, setSttProvider] = useState(() => {
     if (typeof window === 'undefined') return 'auto'
-    try { return localStorage.getItem('opencami-stt-provider') || 'auto' } catch { return 'auto' }
+    try {
+      return localStorage.getItem('opencami-stt-provider') || 'auto'
+    } catch {
+      return 'auto'
+    }
   })
 
   useEffect(() => {
@@ -318,7 +398,9 @@ export function SettingsDialog({
       if (storedSidebarWidth && isSidebarWidthValue(storedSidebarWidth)) {
         applySidebarWidth(storedSidebarWidth)
         if (settings.sidebarWidth !== storedSidebarWidth) {
-          updateSettings({ sidebarWidth: storedSidebarWidth as SidebarWidthMode })
+          updateSettings({
+            sidebarWidth: storedSidebarWidth as SidebarWidthMode,
+          })
         }
       } else {
         applySidebarWidth(settings.sidebarWidth)
@@ -341,7 +423,7 @@ export function SettingsDialog({
       applySidebarWidth(settings.sidebarWidth)
       applyBubbleStyle(settings.bubbleStyle)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -370,17 +452,29 @@ export function SettingsDialog({
 
   const handleTtsProviderChange = (value: string) => {
     setTtsProvider(value)
-    try { localStorage.setItem('opencami-tts-provider', value) } catch { /* ignore */ }
+    try {
+      localStorage.setItem('opencami-tts-provider', value)
+    } catch {
+      /* ignore */
+    }
   }
 
   const handleTtsVoiceChange = (value: string) => {
     setTtsVoice(value)
-    try { localStorage.setItem('opencami-tts-voice', value) } catch { /* ignore */ }
+    try {
+      localStorage.setItem('opencami-tts-voice', value)
+    } catch {
+      /* ignore */
+    }
   }
 
   const handleSttProviderChange = (value: string) => {
     setSttProvider(value)
-    try { localStorage.setItem('opencami-stt-provider', value) } catch { /* ignore */ }
+    try {
+      localStorage.setItem('opencami-stt-provider', value)
+    } catch {
+      /* ignore */
+    }
   }
 
   function applyTextSize(value: TextSizeValue) {
@@ -392,7 +486,10 @@ export function SettingsDialog({
     if (typeof document === 'undefined') return
     const selected = fontFamilyOptions.find((option) => option.value === value)
     const cssValue = selected?.cssValue ?? fontFamilyOptions[0].cssValue
-    document.documentElement.style.setProperty('--opencami-font-family', cssValue)
+    document.documentElement.style.setProperty(
+      '--opencami-font-family',
+      cssValue,
+    )
   }
 
   function applyDensity(value: DensityValue) {
@@ -421,7 +518,9 @@ export function SettingsDialog({
 
   function applyAccentColor(value: AccentColorValue) {
     if (typeof document === 'undefined') return
-    const selected = accentColorOptions.find((option) => option.value === value) ?? accentColorOptions[0]
+    const selected =
+      accentColorOptions.find((option) => option.value === value) ??
+      accentColorOptions[0]
     const root = document.documentElement
     root.style.setProperty('--opencami-accent', selected.accent)
     root.style.setProperty('--opencami-accent-hover', selected.hover)
@@ -430,14 +529,24 @@ export function SettingsDialog({
 
   function applyChatWidth(value: ChatWidthValue) {
     if (typeof document === 'undefined') return
-    const selected = chatWidthOptions.find((option) => option.value === value) ?? chatWidthOptions[2]
-    document.documentElement.style.setProperty('--opencami-chat-width', selected.cssValue)
+    const selected =
+      chatWidthOptions.find((option) => option.value === value) ??
+      chatWidthOptions[2]
+    document.documentElement.style.setProperty(
+      '--opencami-chat-width',
+      selected.cssValue,
+    )
   }
 
   function applySidebarWidth(value: SidebarWidthValue) {
     if (typeof document === 'undefined') return
-    const selected = sidebarWidthOptions.find((option) => option.value === value) ?? sidebarWidthOptions[1]
-    document.documentElement.style.setProperty('--opencami-sidebar-width', selected.cssValue)
+    const selected =
+      sidebarWidthOptions.find((option) => option.value === value) ??
+      sidebarWidthOptions[1]
+    document.documentElement.style.setProperty(
+      '--opencami-sidebar-width',
+      selected.cssValue,
+    )
   }
 
   function applyBubbleStyle(value: BubbleStyleValue) {
@@ -530,10 +639,12 @@ export function SettingsDialog({
       // ignore storage errors
     }
     // Dispatch storage event so MessageActionsBar can react in real-time
-    window.dispatchEvent(new StorageEvent('storage', {
-      key: 'opencami-tts-enabled',
-      newValue: String(checked),
-    }))
+    window.dispatchEvent(
+      new StorageEvent('storage', {
+        key: 'opencami-tts-enabled',
+        newValue: String(checked),
+      }),
+    )
   }
 
   // Personas state
@@ -583,10 +694,12 @@ export function SettingsDialog({
       // ignore storage errors
     }
     // Dispatch storage event so PersonaPicker can react in real-time
-    window.dispatchEvent(new StorageEvent('storage', {
-      key: 'opencami-personas-enabled',
-      newValue: String(checked),
-    }))
+    window.dispatchEvent(
+      new StorageEvent('storage', {
+        key: 'opencami-personas-enabled',
+        newValue: String(checked),
+      }),
+    )
   }
 
   const handleTestApiKey = async () => {
@@ -626,7 +739,15 @@ export function SettingsDialog({
     if (typeof document === 'undefined') return
     const root = document.documentElement
     const media = window.matchMedia('(prefers-color-scheme: dark)')
-    root.classList.remove('light', 'dark', 'system', 'chameleon', 'frost', 'frost-light', 'frost-dark')
+    root.classList.remove(
+      'light',
+      'dark',
+      'system',
+      'chameleon',
+      'frost',
+      'frost-light',
+      'frost-dark',
+    )
     root.style.colorScheme = ''
     root.classList.add(theme)
 
@@ -681,16 +802,22 @@ export function SettingsDialog({
           <div className="mt-2 flex md:flex-row flex-col md:gap-3 gap-0 md:min-h-[400px]">
             {/* Sidebar - desktop only */}
             <nav className="hidden md:flex flex-col gap-0.5 min-w-[160px] border-r border-primary-200 pr-3">
-              {([
-                { id: 'connection', label: 'Connection', icon: Link01Icon },
-                { id: 'appearance', label: 'Appearance', icon: PaintBoardIcon },
-                { id: 'chat', label: 'Chat', icon: MessageEdit01Icon },
-                { id: 'workspace', label: 'Workspace', icon: Settings02Icon },
-                { id: 'personas', label: 'Personas', icon: UserIcon },
-                { id: 'voice', label: 'Voice', icon: VoiceIcon },
-                { id: 'llm', label: 'LLM Features', icon: AiBrain01Icon },
-                { id: 'about', label: 'About', icon: InformationCircleIcon },
-              ] as const).map((tab) => (
+              {(
+                [
+                  { id: 'connection', label: 'Connection', icon: Link01Icon },
+                  {
+                    id: 'appearance',
+                    label: 'Appearance',
+                    icon: PaintBoardIcon,
+                  },
+                  { id: 'chat', label: 'Chat', icon: MessageEdit01Icon },
+                  { id: 'workspace', label: 'Workspace', icon: Settings02Icon },
+                  { id: 'personas', label: 'Personas', icon: UserIcon },
+                  { id: 'voice', label: 'Voice', icon: VoiceIcon },
+                  { id: 'llm', label: 'LLM Features', icon: AiBrain01Icon },
+                  { id: 'about', label: 'About', icon: InformationCircleIcon },
+                ] as const
+              ).map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
@@ -700,7 +827,11 @@ export function SettingsDialog({
                       ? 'text-primary-900 font-medium'
                       : 'text-primary-600 hover:text-primary-900 hover:bg-primary-50',
                   )}
-                  style={activeTab === tab.id ? { backgroundColor: 'var(--opencami-accent-light)' } : undefined}
+                  style={
+                    activeTab === tab.id
+                      ? { backgroundColor: 'var(--opencami-accent-light)' }
+                      : undefined
+                  }
                 >
                   <HugeiconsIcon icon={tab.icon} size={16} strokeWidth={1.5} />
                   {tab.label}
@@ -710,549 +841,754 @@ export function SettingsDialog({
 
             {/* Content area */}
             <div className="flex-1 overflow-y-auto md:max-h-[calc(85vh-90px)] max-h-none">
-
-          <SettingsSection title="Connection" tabId="connection" activeTab={activeTab}>
-            <SettingsRow inline label="Status">
-              <span className="flex items-center gap-1.5 text-sm text-green-600">
-                <span className="size-2 rounded-full bg-green-500" />
-                Connected
-              </span>
-            </SettingsRow>
-          </SettingsSection>
-
-          <SettingsSection title="Appearance" tabId="appearance" activeTab={activeTab}>
-            <SettingsRow label="Theme">
-              <Tabs
-                value={settings.theme}
-                onValueChange={(value) => {
-                  const theme = value as ThemeMode
-                  applyTheme(theme)
-                  updateSettings({ theme })
-                }}
+              <SettingsSection
+                title="Connection"
+                tabId="connection"
+                activeTab={activeTab}
               >
-                <TabsList
-                  variant="default"
-                  className="gap-1.5 flex-wrap *:data-[slot=tab-indicator]:duration-0"
-                >
-                  {themeOptions.map((option) => (
-                    <TabsTab key={option.value} value={option.value} className="text-[11px] px-1 py-0.5 gap-0.5">
-                      {option.icon && (
-                        <HugeiconsIcon
-                          icon={option.icon}
-                          size={13}
-                          strokeWidth={1.5}
-                        />
-                      )}
-                      <span>{option.label}</span>
-                    </TabsTab>
-                  ))}
-                </TabsList>
-              </Tabs>
-            </SettingsRow>
-            <SettingsRow
-              label="Accent Color"
-            >
-              <div className="flex gap-0.5 flex-wrap">
-                {accentColorOptions.map((option) => {
-                  const selected = settings.accentColor === option.value
-                  return (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => handleAccentColorChange(option.value)}
-                      className={cn(
-                        'flex items-center justify-center rounded-md p-1 transition-all duration-150',
-                        selected ? 'scale-110' : 'hover:bg-primary-50 hover:scale-105',
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          'size-6 rounded-full transition-shadow duration-150',
-                          selected ? 'ring-2 ring-offset-2' : 'border-2 border-primary-200',
-                        )}
-                        style={{
-                          backgroundColor: option.accent,
-                          ...(selected ? { '--tw-ring-color': option.accent } as React.CSSProperties : {}),
-                        }}
-                      />
-                    </button>
-                  )
-                })}
-              </div>
-            </SettingsRow>
-            <SettingsRow
-              label="Text Size"
-            >
-              <Tabs value={textSize} onValueChange={handleTextSizeChange}>
-                <TabsList
-                  variant="default"
-                  className="gap-2 *:data-[slot=tab-indicator]:duration-0"
-                >
-                  {textSizeOptions.map((option) => (
-                    <TabsTab key={option.value} value={option.value}>
-                      <span className="tabular-nums text-xs">
-                        {option.label}
-                      </span>
-                    </TabsTab>
-                  ))}
-                </TabsList>
-              </Tabs>
-            </SettingsRow>
-            <SettingsRow inline label="Font">
-              <Tabs value={settings.fontFamily} onValueChange={handleFontFamilyChange}>
-                <TabsList variant="default" className="gap-1 *:data-[slot=tab-indicator]:duration-0">
-                  {fontFamilyOptions.map((option) => (
-                    <TabsTab key={option.value} value={option.value}>
-                      <span className="text-xs" style={{ fontFamily: option.cssValue }}>{option.label}</span>
-                    </TabsTab>
-                  ))}
-                </TabsList>
-              </Tabs>
-            </SettingsRow>
-            <SettingsRow inline label="Density">
-              <Tabs value={settings.density} onValueChange={handleDensityChange}>
-                <TabsList variant="default" className="gap-1 *:data-[slot=tab-indicator]:duration-0">
-                  {densityOptions.map((option) => (
-                    <TabsTab key={option.value} value={option.value}>
-                      <span className="text-xs">{option.label}</span>
-                    </TabsTab>
-                  ))}
-                </TabsList>
-              </Tabs>
-            </SettingsRow>
-            <SettingsRow inline label="Bubbles">
-              <Tabs value={settings.bubbleStyle} onValueChange={handleBubbleStyleChange}>
-                <TabsList variant="default" className="gap-1 *:data-[slot=tab-indicator]:duration-0">
-                  {bubbleStyleOptions.map((option) => (
-                    <TabsTab key={option.value} value={option.value}>
-                      <span className="text-xs">{option.label}</span>
-                    </TabsTab>
-                  ))}
-                </TabsList>
-              </Tabs>
-            </SettingsRow>
-            <SettingsRow inline label="Chat Width">
-              <Tabs value={settings.chatWidth} onValueChange={handleChatWidthChange}>
-                <TabsList variant="default" className="gap-1 *:data-[slot=tab-indicator]:duration-0">
-                  {chatWidthOptions.map((option) => (
-                    <TabsTab key={option.value} value={option.value}>
-                      <span className="text-xs">{option.label}</span>
-                    </TabsTab>
-                  ))}
-                </TabsList>
-              </Tabs>
-            </SettingsRow>
-            <SettingsRow inline label="Sidebar">
-              <Tabs value={settings.sidebarWidth} onValueChange={handleSidebarWidthChange}>
-                <TabsList variant="default" className="gap-1 *:data-[slot=tab-indicator]:duration-0">
-                  {sidebarWidthOptions.map((option) => (
-                    <TabsTab key={option.value} value={option.value}>
-                      <span className="text-xs">{option.label}</span>
-                    </TabsTab>
-                  ))}
-                </TabsList>
-              </Tabs>
-            </SettingsRow>
-          </SettingsSection>
-
-          <SettingsSection title="Chat" tabId="chat" activeTab={activeTab}>
-            <SettingsRow inline label="Show tool messages">
-              <Switch
-                checked={settings.showToolMessages}
-                onCheckedChange={(checked) =>
-                  updateSettings({ showToolMessages: checked })
-                }
-              />
-            </SettingsRow>
-            <SettingsRow inline label="Show reasoning blocks">
-              <Switch
-                checked={settings.showReasoningBlocks}
-                onCheckedChange={(checked) =>
-                  updateSettings({ showReasoningBlocks: checked })
-                }
-              />
-            </SettingsRow>
-            <SettingsRow inline label="Show search sources">
-              <Switch
-                checked={settings.showSearchSources}
-                onCheckedChange={(checked) =>
-                  updateSettings({ showSearchSources: checked })
-                }
-              />
-            </SettingsRow>
-            <SettingsRow inline
-              label="Inline File Preview"
-              description="Make file paths in messages clickable to preview file contents"
-            >
-              <Switch
-                checked={settings.inlineFilePreview}
-                onCheckedChange={(checked) =>
-                  updateSettings({ inlineFilePreview: checked })
-                }
-              />
-            </SettingsRow>
-          </SettingsSection>
-
-          <SettingsSection title="Workspace" tabId="workspace" activeTab={activeTab}>
-            <SettingsRow inline
-              label="File Explorer"
-              description="Browse and edit workspace files from the sidebar"
-            >
-              <Switch
-                checked={(() => { try { const v = localStorage.getItem('opencami-file-explorer'); return v === null ? true : v === 'true' } catch { return true } })()}
-                onCheckedChange={(checked) => {
-                  localStorage.setItem('opencami-file-explorer', String(checked))
-                  window.location.reload()
-                }}
-              />
-            </SettingsRow>
-            <SettingsRow inline
-              label="Memory Viewer"
-              description="Browse and edit MEMORY.md and daily memory files"
-            >
-              <Switch
-                checked={(() => { try { const v = localStorage.getItem('opencami-memory-viewer'); return v === null ? true : v === 'true' } catch { return true } })()}
-                onCheckedChange={(checked) => {
-                  localStorage.setItem('opencami-memory-viewer', String(checked))
-                  window.location.reload()
-                }}
-              />
-            </SettingsRow>
-            <SettingsRow inline
-              label="Agent Manager (Beta)"
-              description="Show Agent Manager in sidebar for creating and managing agents"
-            >
-              <Switch
-                checked={(() => { try { return localStorage.getItem('opencami-agent-manager') === 'true' } catch { return false } })()}
-                onCheckedChange={(checked) => {
-                  localStorage.setItem('opencami-agent-manager', String(checked))
-                  window.location.reload()
-                }}
-              />
-            </SettingsRow>
-            <SettingsRow inline
-              label="Skills Browser (Beta)"
-              description="Browse and install skills from ClawHub"
-            >
-              <Switch
-                checked={(() => { try { return localStorage.getItem('opencami-skills-browser') === 'true' } catch { return false } })()}
-                onCheckedChange={(checked) => {
-                  localStorage.setItem('opencami-skills-browser', String(checked))
-                  window.location.reload()
-                }}
-              />
-            </SettingsRow>
-            <SettingsRow inline
-              label="Cron Jobs Panel (Beta)"
-              description="Show Cron Jobs in sidebar for managing OpenClaw cron schedules"
-            >
-              <Switch
-                checked={(() => { try { return localStorage.getItem('opencami-cron-manager') === 'true' } catch { return false } })()}
-                onCheckedChange={(checked) => {
-                  localStorage.setItem('opencami-cron-manager', String(checked))
-                  window.location.reload()
-                }}
-              />
-            </SettingsRow>
-          </SettingsSection>
-
-          <SettingsSection title="Personas" tabId="personas" activeTab={activeTab}>
-            {personasAvailable ? (
-              <SettingsRow inline
-                label="Persona Picker"
-                description="Show persona picker in chat (20 personalities)"
-              >
-                <Switch
-                  checked={personasEnabled}
-                  onCheckedChange={handlePersonasToggle}
-                />
-              </SettingsRow>
-            ) : (
-              <SettingsRow inline
-                label="Persona Picker"
-                description="Install the Personas skill to unlock 20 AI personalities"
-              >
-                <Switch checked={false} disabled />
-              </SettingsRow>
-            )}
-            {!personasAvailable && (
-              <div className="pt-1">
-                <a
-                  href="https://www.clawhub.ai/robbyczgw-cla/personas"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-primary-600 hover:text-primary-900 hover:underline"
-                >
-                  Get it on ClawHub →
-                </a>
-              </div>
-            )}
-          </SettingsSection>
-
-          <SettingsSection title="Text-to-Speech" tabId="voice" activeTab={activeTab}>
-            <SettingsRow inline
-              label="Voice Playback"
-              description="Add a 🔊 button to AI messages for text-to-speech"
-            >
-              <Switch
-                checked={ttsEnabled}
-                onCheckedChange={handleTtsToggle}
-              />
-            </SettingsRow>
-            <SettingsRow inline
-              label="TTS Provider"
-              description="Choose which service generates speech"
-            >
-              <select
-                value={ttsProvider}
-                onChange={(e) => handleTtsProviderChange(e.target.value)}
-                className="rounded-md border border-primary-200 bg-surface px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-                <option value="auto">Auto</option>
-                <option value="elevenlabs">ElevenLabs</option>
-                <option value="openai">OpenAI</option>
-                <option value="edge">Edge TTS (free)</option>
-              </select>
-            </SettingsRow>
-            {(ttsProvider === 'openai') && (
-              <SettingsRow inline
-                label="Voice"
-                description="OpenAI voice selection"
-              >
-                <select
-                  value={ttsVoice}
-                  onChange={(e) => handleTtsVoiceChange(e.target.value)}
-                  className="rounded-md border border-primary-200 bg-surface px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                >
-                  {['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'].map((v) => (
-                    <option key={v} value={v}>{v.charAt(0).toUpperCase() + v.slice(1)}</option>
-                  ))}
-                </select>
-              </SettingsRow>
-            )}
-          </SettingsSection>
-
-          <SettingsSection title="Speech-to-Text" tabId="voice" activeTab={activeTab}>
-            <SettingsRow inline
-              label="STT Provider"
-              description="Choose which service transcribes your voice"
-            >
-              <select
-                value={sttProvider}
-                onChange={(e) => handleSttProviderChange(e.target.value)}
-                className="rounded-md border border-primary-200 bg-surface px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-                <option value="auto">Auto</option>
-                <option value="elevenlabs">ElevenLabs</option>
-                <option value="openai">OpenAI</option>
-                <option value="browser">Browser (free)</option>
-              </select>
-            </SettingsRow>
-          </SettingsSection>
-
-          <SettingsSection title="LLM Features" tabId="llm" activeTab={activeTab}>
-            <div className="text-xs text-primary-500 mb-3">
-              Enhance session titles and follow-up suggestions using an LLM provider.
-              {llmStatus.hasEnvKey && llmSettings.llmProvider === 'openai' && (
-                <span className="block mt-1 text-green-600">
-                  ✓ Server has OPENAI_API_KEY configured
-                </span>
-              )}
-              {llmStatus.hasOpenRouterKey && llmSettings.llmProvider === 'openrouter' && (
-                <span className="block mt-1 text-green-600">
-                  ✓ Server has OPENROUTER_API_KEY configured
-                </span>
-              )}
-            </div>
-
-            <SettingsRow inline
-              label="Provider"
-              description="Choose LLM provider for titles & follow-ups"
-            >
-              <select
-                value={llmSettings.llmProvider}
-                onChange={(e) => {
-                  const provider = e.target.value as 'openai' | 'openrouter' | 'ollama' | 'custom'
-                  updateLlmSettings({
-                    llmProvider: provider,
-                    llmBaseUrl: '',
-                    llmModel: '',
-                  })
-                }}
-                className="px-2 py-1 text-sm rounded-md border border-primary-200 bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-                <option value="openai">OpenAI</option>
-                <option value="openrouter">OpenRouter</option>
-                <option value="ollama">Ollama (local)</option>
-                <option value="custom">Custom</option>
-              </select>
-            </SettingsRow>
-
-            <SettingsRow inline
-              label="Smart session titles"
-              description="Generate concise titles using AI"
-            >
-              <Switch
-                checked={llmSettings.useLlmTitles}
-                onCheckedChange={(checked) =>
-                  updateLlmSettings({ useLlmTitles: checked })
-                }
-                disabled={!llmStatus.isAvailable}
-              />
-            </SettingsRow>
-
-            <SettingsRow inline
-              label="Smart follow-up suggestions"
-              description="AI-generated contextual follow-ups"
-            >
-              <Switch
-                checked={llmSettings.useLlmFollowUps}
-                onCheckedChange={(checked) =>
-                  updateLlmSettings({ useLlmFollowUps: checked })
-                }
-                disabled={!llmStatus.isAvailable}
-              />
-            </SettingsRow>
-
-            <div className="mt-2 space-y-2">
-              <div>
-                <div className="text-xs text-primary-500 mb-1">Model</div>
-                <input
-                  type="text"
-                  value={llmSettings.llmModel}
-                  onChange={(e) => updateLlmSettings({ llmModel: e.target.value })}
-                  placeholder={getLlmProviderDefaults(llmSettings.llmProvider).model || 'model-name'}
-                  className="w-full px-3 py-1.5 text-sm rounded-md border border-primary-200 bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500"
-                />
-              </div>
-              {(llmSettings.llmProvider === 'custom' || llmSettings.llmProvider === 'ollama') && (
-                <div>
-                  <div className="text-xs text-primary-500 mb-1">Base URL</div>
-                  <input
-                    type="text"
-                    value={llmSettings.llmBaseUrl}
-                    onChange={(e) => updateLlmSettings({ llmBaseUrl: e.target.value })}
-                    placeholder={getLlmProviderDefaults(llmSettings.llmProvider).baseUrl || 'https://...'}
-                    className="w-full px-3 py-1.5 text-sm rounded-md border border-primary-200 bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  />
-                </div>
-              )}
-            </div>
-
-            <div className="mt-4 pt-3 border-t border-primary-100">
-              <div className="text-sm text-primary-800 mb-2">
-                {llmSettings.llmProvider === 'ollama' ? 'API Key (optional)' : 'API Key'}
-              </div>
-              <div className="text-xs text-primary-500 mb-2">
-                {llmSettings.llmProvider === 'ollama'
-                  ? 'Not required for local Ollama'
-                  : llmStatus.hasEnvKey && llmSettings.llmProvider === 'openai'
-                    ? 'Optional: Override server key with your own'
-                    : `Required for ${llmSettings.llmProvider === 'openrouter' ? 'OpenRouter' : 'LLM features'} (stored locally)`}
-              </div>
-              <div className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5 mb-2">
-                ⚠️ <strong>Security Note:</strong> API keys are stored in your browser's localStorage.
-                This is convenient but not secure for shared computers. For production use,
-                configure keys server-side via environment variables (OPENAI_API_KEY, OPENROUTER_API_KEY).
-              </div>
-              <div className="flex gap-2">
-                <input
-                  type="password"
-                  value={apiKeyInput}
-                  onChange={(e) => {
-                    setApiKeyInput(e.target.value)
-                    setTestResult(null)
-                  }}
-                  placeholder="sk-..."
-                  className="flex-1 px-3 py-1.5 text-sm rounded-md border border-primary-200 bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500"
-                />
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleTestApiKey}
-                  disabled={!apiKeyInput.trim() || testingKey}
-                  className="min-w-[60px]"
-                >
-                  {testingKey ? (
-                    <HugeiconsIcon
-                      icon={Loading02Icon}
-                      size={16}
-                      className="animate-spin"
-                    />
-                  ) : (
-                    'Test'
-                  )}
-                </Button>
-              </div>
-
-              {testResult && (
-                <div
-                  className={`mt-2 flex items-center gap-1.5 text-xs ${
-                    testResult.valid ? 'text-green-600' : 'text-red-600'
-                  }`}
-                >
-                  <HugeiconsIcon
-                    icon={testResult.valid ? Tick01Icon : Cancel02Icon}
-                    size={14}
-                  />
-                  {testResult.valid ? 'API key is valid' : testResult.error || 'Invalid API key'}
-                </div>
-              )}
-
-              {llmSettings.llmApiKey && (
-                <div className="mt-2 flex items-center justify-between">
-                  <span className="text-xs text-green-600 flex items-center gap-1">
-                    <HugeiconsIcon icon={Tick01Icon} size={14} />
-                    Key saved
+                <SettingsRow inline label="Status">
+                  <span className="flex items-center gap-1.5 text-sm text-green-600">
+                    <span className="size-2 rounded-full bg-green-500" />
+                    Connected
                   </span>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={handleClearApiKey}
-                    className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+                </SettingsRow>
+              </SettingsSection>
+
+              <SettingsSection
+                title="Appearance"
+                tabId="appearance"
+                activeTab={activeTab}
+              >
+                <SettingsRow label="Theme">
+                  <Tabs
+                    value={settings.theme}
+                    onValueChange={(value) => {
+                      const theme = value as ThemeMode
+                      applyTheme(theme)
+                      updateSettings({ theme })
+                    }}
                   >
-                    Clear
-                  </Button>
-                </div>
-              )}
+                    <TabsList
+                      variant="default"
+                      className="gap-1.5 flex-wrap *:data-[slot=tab-indicator]:duration-0"
+                    >
+                      {themeOptions.map((option) => (
+                        <TabsTab
+                          key={option.value}
+                          value={option.value}
+                          className="text-[11px] px-1 py-0.5 gap-0.5"
+                        >
+                          {option.icon && (
+                            <HugeiconsIcon
+                              icon={option.icon}
+                              size={13}
+                              strokeWidth={1.5}
+                            />
+                          )}
+                          <span>{option.label}</span>
+                        </TabsTab>
+                      ))}
+                    </TabsList>
+                  </Tabs>
+                </SettingsRow>
+                <SettingsRow label="Accent Color">
+                  <div className="flex gap-0.5 flex-wrap">
+                    {accentColorOptions.map((option) => {
+                      const selected = settings.accentColor === option.value
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => handleAccentColorChange(option.value)}
+                          className={cn(
+                            'flex items-center justify-center rounded-md p-1 transition-all duration-150',
+                            selected
+                              ? 'scale-110'
+                              : 'hover:bg-primary-50 hover:scale-105',
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              'size-6 rounded-full transition-shadow duration-150',
+                              selected
+                                ? 'ring-2 ring-offset-2'
+                                : 'border-2 border-primary-200',
+                            )}
+                            style={{
+                              backgroundColor: option.accent,
+                              ...(selected
+                                ? ({
+                                    '--tw-ring-color': option.accent,
+                                  } as React.CSSProperties)
+                                : {}),
+                            }}
+                          />
+                        </button>
+                      )
+                    })}
+                  </div>
+                </SettingsRow>
+                <SettingsRow label="Text Size">
+                  <Tabs value={textSize} onValueChange={handleTextSizeChange}>
+                    <TabsList
+                      variant="default"
+                      className="gap-2 *:data-[slot=tab-indicator]:duration-0"
+                    >
+                      {textSizeOptions.map((option) => (
+                        <TabsTab key={option.value} value={option.value}>
+                          <span className="tabular-nums text-xs">
+                            {option.label}
+                          </span>
+                        </TabsTab>
+                      ))}
+                    </TabsList>
+                  </Tabs>
+                </SettingsRow>
+                <SettingsRow inline label="Font">
+                  <Tabs
+                    value={settings.fontFamily}
+                    onValueChange={handleFontFamilyChange}
+                  >
+                    <TabsList
+                      variant="default"
+                      className="gap-1 *:data-[slot=tab-indicator]:duration-0"
+                    >
+                      {fontFamilyOptions.map((option) => (
+                        <TabsTab key={option.value} value={option.value}>
+                          <span
+                            className="text-xs"
+                            style={{ fontFamily: option.cssValue }}
+                          >
+                            {option.label}
+                          </span>
+                        </TabsTab>
+                      ))}
+                    </TabsList>
+                  </Tabs>
+                </SettingsRow>
+                <SettingsRow inline label="Density">
+                  <Tabs
+                    value={settings.density}
+                    onValueChange={handleDensityChange}
+                  >
+                    <TabsList
+                      variant="default"
+                      className="gap-1 *:data-[slot=tab-indicator]:duration-0"
+                    >
+                      {densityOptions.map((option) => (
+                        <TabsTab key={option.value} value={option.value}>
+                          <span className="text-xs">{option.label}</span>
+                        </TabsTab>
+                      ))}
+                    </TabsList>
+                  </Tabs>
+                </SettingsRow>
+                <SettingsRow inline label="Bubbles">
+                  <Tabs
+                    value={settings.bubbleStyle}
+                    onValueChange={handleBubbleStyleChange}
+                  >
+                    <TabsList
+                      variant="default"
+                      className="gap-1 *:data-[slot=tab-indicator]:duration-0"
+                    >
+                      {bubbleStyleOptions.map((option) => (
+                        <TabsTab key={option.value} value={option.value}>
+                          <span className="text-xs">{option.label}</span>
+                        </TabsTab>
+                      ))}
+                    </TabsList>
+                  </Tabs>
+                </SettingsRow>
+                <SettingsRow inline label="Chat Width">
+                  <Tabs
+                    value={settings.chatWidth}
+                    onValueChange={handleChatWidthChange}
+                  >
+                    <TabsList
+                      variant="default"
+                      className="gap-1 *:data-[slot=tab-indicator]:duration-0"
+                    >
+                      {chatWidthOptions.map((option) => (
+                        <TabsTab key={option.value} value={option.value}>
+                          <span className="text-xs">{option.label}</span>
+                        </TabsTab>
+                      ))}
+                    </TabsList>
+                  </Tabs>
+                </SettingsRow>
+                <SettingsRow inline label="Sidebar">
+                  <Tabs
+                    value={settings.sidebarWidth}
+                    onValueChange={handleSidebarWidthChange}
+                  >
+                    <TabsList
+                      variant="default"
+                      className="gap-1 *:data-[slot=tab-indicator]:duration-0"
+                    >
+                      {sidebarWidthOptions.map((option) => (
+                        <TabsTab key={option.value} value={option.value}>
+                          <span className="text-xs">{option.label}</span>
+                        </TabsTab>
+                      ))}
+                    </TabsList>
+                  </Tabs>
+                </SettingsRow>
+              </SettingsSection>
 
-              {apiKeyInput && apiKeyInput !== llmSettings.llmApiKey && !testResult?.valid && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleSaveApiKey}
-                  className="mt-2 w-full"
+              <SettingsSection title="Chat" tabId="chat" activeTab={activeTab}>
+                <SettingsRow inline label="Show tool messages">
+                  <Switch
+                    checked={settings.showToolMessages}
+                    onCheckedChange={(checked) =>
+                      updateSettings({ showToolMessages: checked })
+                    }
+                  />
+                </SettingsRow>
+                <SettingsRow inline label="Show reasoning blocks">
+                  <Switch
+                    checked={settings.showReasoningBlocks}
+                    onCheckedChange={(checked) =>
+                      updateSettings({ showReasoningBlocks: checked })
+                    }
+                  />
+                </SettingsRow>
+                <SettingsRow inline label="Show search sources">
+                  <Switch
+                    checked={settings.showSearchSources}
+                    onCheckedChange={(checked) =>
+                      updateSettings({ showSearchSources: checked })
+                    }
+                  />
+                </SettingsRow>
+                <SettingsRow
+                  inline
+                  label="Inline File Preview"
+                  description="Make file paths in messages clickable to preview file contents"
                 >
-                  Save without testing
-                </Button>
-              )}
-            </div>
-          </SettingsSection>
+                  <Switch
+                    checked={settings.inlineFilePreview}
+                    onCheckedChange={(checked) =>
+                      updateSettings({ inlineFilePreview: checked })
+                    }
+                  />
+                </SettingsRow>
+              </SettingsSection>
 
-          <SettingsSection title="About" tabId="about" activeTab={activeTab}>
-            <div className="text-sm text-primary-800">OpenCami</div>
-            <div className="flex gap-4 pt-2">
-              <a
-                href="https://github.com/robbyczgw-cla/opencami"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-primary-600 hover:text-primary-900 hover:underline"
+              <SettingsSection
+                title="Workspace"
+                tabId="workspace"
+                activeTab={activeTab}
               >
-                GitHub
-              </a>
-              <a
-                href="https://docs.openclaw.ai"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-primary-600 hover:text-primary-900 hover:underline"
-              >
-                OpenClaw docs
-              </a>
-            </div>
-          </SettingsSection>
+                <SettingsRow
+                  inline
+                  label="File Explorer"
+                  description="Browse and edit workspace files from the sidebar"
+                >
+                  <Switch
+                    checked={(() => {
+                      try {
+                        const v = localStorage.getItem('opencami-file-explorer')
+                        return v === null ? true : v === 'true'
+                      } catch {
+                        return true
+                      }
+                    })()}
+                    onCheckedChange={(checked) => {
+                      localStorage.setItem(
+                        'opencami-file-explorer',
+                        String(checked),
+                      )
+                      window.location.reload()
+                    }}
+                  />
+                </SettingsRow>
+                <SettingsRow
+                  inline
+                  label="Memory Viewer"
+                  description="Browse and edit MEMORY.md and daily memory files"
+                >
+                  <Switch
+                    checked={(() => {
+                      try {
+                        const v = localStorage.getItem('opencami-memory-viewer')
+                        return v === null ? true : v === 'true'
+                      } catch {
+                        return true
+                      }
+                    })()}
+                    onCheckedChange={(checked) => {
+                      localStorage.setItem(
+                        'opencami-memory-viewer',
+                        String(checked),
+                      )
+                      window.location.reload()
+                    }}
+                  />
+                </SettingsRow>
+                <SettingsRow
+                  inline
+                  label="Agent Manager (Beta)"
+                  description="Show Agent Manager in sidebar for creating and managing agents"
+                >
+                  <Switch
+                    checked={(() => {
+                      try {
+                        return (
+                          localStorage.getItem('opencami-agent-manager') ===
+                          'true'
+                        )
+                      } catch {
+                        return false
+                      }
+                    })()}
+                    onCheckedChange={(checked) => {
+                      localStorage.setItem(
+                        'opencami-agent-manager',
+                        String(checked),
+                      )
+                      window.location.reload()
+                    }}
+                  />
+                </SettingsRow>
+                <SettingsRow
+                  inline
+                  label="Skills Browser (Beta)"
+                  description="Browse and install skills from ClawHub"
+                >
+                  <Switch
+                    checked={(() => {
+                      try {
+                        return (
+                          localStorage.getItem('opencami-skills-browser') ===
+                          'true'
+                        )
+                      } catch {
+                        return false
+                      }
+                    })()}
+                    onCheckedChange={(checked) => {
+                      localStorage.setItem(
+                        'opencami-skills-browser',
+                        String(checked),
+                      )
+                      window.location.reload()
+                    }}
+                  />
+                </SettingsRow>
+                <SettingsRow
+                  inline
+                  label="Cron Jobs Panel (Beta)"
+                  description="Show Cron Jobs in sidebar for managing OpenClaw cron schedules"
+                >
+                  <Switch
+                    checked={(() => {
+                      try {
+                        return (
+                          localStorage.getItem('opencami-cron-manager') ===
+                          'true'
+                        )
+                      } catch {
+                        return false
+                      }
+                    })()}
+                    onCheckedChange={(checked) => {
+                      localStorage.setItem(
+                        'opencami-cron-manager',
+                        String(checked),
+                      )
+                      window.location.reload()
+                    }}
+                  />
+                </SettingsRow>
+                <SettingsRow
+                  inline
+                  label="Dashboard (Beta)"
+                  description="Show Dashboard in sidebar with system and gateway widgets"
+                >
+                  <Switch
+                    checked={(() => {
+                      try {
+                        return (
+                          localStorage.getItem('feature_dashboard') === 'true'
+                        )
+                      } catch {
+                        return false
+                      }
+                    })()}
+                    onCheckedChange={(checked) => {
+                      localStorage.setItem('feature_dashboard', String(checked))
+                      window.location.reload()
+                    }}
+                  />
+                </SettingsRow>
+              </SettingsSection>
 
-            </div>{/* end content area */}
-          </div>{/* end flex sidebar+content */}
+              <SettingsSection
+                title="Personas"
+                tabId="personas"
+                activeTab={activeTab}
+              >
+                {personasAvailable ? (
+                  <SettingsRow
+                    inline
+                    label="Persona Picker"
+                    description="Show persona picker in chat (20 personalities)"
+                  >
+                    <Switch
+                      checked={personasEnabled}
+                      onCheckedChange={handlePersonasToggle}
+                    />
+                  </SettingsRow>
+                ) : (
+                  <SettingsRow
+                    inline
+                    label="Persona Picker"
+                    description="Install the Personas skill to unlock 20 AI personalities"
+                  >
+                    <Switch checked={false} disabled />
+                  </SettingsRow>
+                )}
+                {!personasAvailable && (
+                  <div className="pt-1">
+                    <a
+                      href="https://www.clawhub.ai/robbyczgw-cla/personas"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-primary-600 hover:text-primary-900 hover:underline"
+                    >
+                      Get it on ClawHub →
+                    </a>
+                  </div>
+                )}
+              </SettingsSection>
+
+              <SettingsSection
+                title="Text-to-Speech"
+                tabId="voice"
+                activeTab={activeTab}
+              >
+                <SettingsRow
+                  inline
+                  label="Voice Playback"
+                  description="Add a 🔊 button to AI messages for text-to-speech"
+                >
+                  <Switch
+                    checked={ttsEnabled}
+                    onCheckedChange={handleTtsToggle}
+                  />
+                </SettingsRow>
+                <SettingsRow
+                  inline
+                  label="TTS Provider"
+                  description="Choose which service generates speech"
+                >
+                  <select
+                    value={ttsProvider}
+                    onChange={(e) => handleTtsProviderChange(e.target.value)}
+                    className="rounded-md border border-primary-200 bg-surface px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option value="auto">Auto</option>
+                    <option value="elevenlabs">ElevenLabs</option>
+                    <option value="openai">OpenAI</option>
+                    <option value="edge">Edge TTS (free)</option>
+                  </select>
+                </SettingsRow>
+                {ttsProvider === 'openai' && (
+                  <SettingsRow
+                    inline
+                    label="Voice"
+                    description="OpenAI voice selection"
+                  >
+                    <select
+                      value={ttsVoice}
+                      onChange={(e) => handleTtsVoiceChange(e.target.value)}
+                      className="rounded-md border border-primary-200 bg-surface px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    >
+                      {[
+                        'alloy',
+                        'echo',
+                        'fable',
+                        'onyx',
+                        'nova',
+                        'shimmer',
+                      ].map((v) => (
+                        <option key={v} value={v}>
+                          {v.charAt(0).toUpperCase() + v.slice(1)}
+                        </option>
+                      ))}
+                    </select>
+                  </SettingsRow>
+                )}
+              </SettingsSection>
+
+              <SettingsSection
+                title="Speech-to-Text"
+                tabId="voice"
+                activeTab={activeTab}
+              >
+                <SettingsRow
+                  inline
+                  label="STT Provider"
+                  description="Choose which service transcribes your voice"
+                >
+                  <select
+                    value={sttProvider}
+                    onChange={(e) => handleSttProviderChange(e.target.value)}
+                    className="rounded-md border border-primary-200 bg-surface px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option value="auto">Auto</option>
+                    <option value="elevenlabs">ElevenLabs</option>
+                    <option value="openai">OpenAI</option>
+                    <option value="browser">Browser (free)</option>
+                  </select>
+                </SettingsRow>
+              </SettingsSection>
+
+              <SettingsSection
+                title="LLM Features"
+                tabId="llm"
+                activeTab={activeTab}
+              >
+                <div className="text-xs text-primary-500 mb-3">
+                  Enhance session titles and follow-up suggestions using an LLM
+                  provider.
+                  {llmStatus.hasEnvKey &&
+                    llmSettings.llmProvider === 'openai' && (
+                      <span className="block mt-1 text-green-600">
+                        ✓ Server has OPENAI_API_KEY configured
+                      </span>
+                    )}
+                  {llmStatus.hasOpenRouterKey &&
+                    llmSettings.llmProvider === 'openrouter' && (
+                      <span className="block mt-1 text-green-600">
+                        ✓ Server has OPENROUTER_API_KEY configured
+                      </span>
+                    )}
+                </div>
+
+                <SettingsRow
+                  inline
+                  label="Provider"
+                  description="Choose LLM provider for titles & follow-ups"
+                >
+                  <select
+                    value={llmSettings.llmProvider}
+                    onChange={(e) => {
+                      const provider = e.target.value as
+                        | 'openai'
+                        | 'openrouter'
+                        | 'ollama'
+                        | 'custom'
+                      updateLlmSettings({
+                        llmProvider: provider,
+                        llmBaseUrl: '',
+                        llmModel: '',
+                      })
+                    }}
+                    className="px-2 py-1 text-sm rounded-md border border-primary-200 bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option value="openai">OpenAI</option>
+                    <option value="openrouter">OpenRouter</option>
+                    <option value="ollama">Ollama (local)</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                </SettingsRow>
+
+                <SettingsRow
+                  inline
+                  label="Smart session titles"
+                  description="Generate concise titles using AI"
+                >
+                  <Switch
+                    checked={llmSettings.useLlmTitles}
+                    onCheckedChange={(checked) =>
+                      updateLlmSettings({ useLlmTitles: checked })
+                    }
+                    disabled={!llmStatus.isAvailable}
+                  />
+                </SettingsRow>
+
+                <SettingsRow
+                  inline
+                  label="Smart follow-up suggestions"
+                  description="AI-generated contextual follow-ups"
+                >
+                  <Switch
+                    checked={llmSettings.useLlmFollowUps}
+                    onCheckedChange={(checked) =>
+                      updateLlmSettings({ useLlmFollowUps: checked })
+                    }
+                    disabled={!llmStatus.isAvailable}
+                  />
+                </SettingsRow>
+
+                <div className="mt-2 space-y-2">
+                  <div>
+                    <div className="text-xs text-primary-500 mb-1">Model</div>
+                    <input
+                      type="text"
+                      value={llmSettings.llmModel}
+                      onChange={(e) =>
+                        updateLlmSettings({ llmModel: e.target.value })
+                      }
+                      placeholder={
+                        getLlmProviderDefaults(llmSettings.llmProvider).model ||
+                        'model-name'
+                      }
+                      className="w-full px-3 py-1.5 text-sm rounded-md border border-primary-200 bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+                  {(llmSettings.llmProvider === 'custom' ||
+                    llmSettings.llmProvider === 'ollama') && (
+                    <div>
+                      <div className="text-xs text-primary-500 mb-1">
+                        Base URL
+                      </div>
+                      <input
+                        type="text"
+                        value={llmSettings.llmBaseUrl}
+                        onChange={(e) =>
+                          updateLlmSettings({ llmBaseUrl: e.target.value })
+                        }
+                        placeholder={
+                          getLlmProviderDefaults(llmSettings.llmProvider)
+                            .baseUrl || 'https://...'
+                        }
+                        className="w-full px-3 py-1.5 text-sm rounded-md border border-primary-200 bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-primary-100">
+                  <div className="text-sm text-primary-800 mb-2">
+                    {llmSettings.llmProvider === 'ollama'
+                      ? 'API Key (optional)'
+                      : 'API Key'}
+                  </div>
+                  <div className="text-xs text-primary-500 mb-2">
+                    {llmSettings.llmProvider === 'ollama'
+                      ? 'Not required for local Ollama'
+                      : llmStatus.hasEnvKey &&
+                          llmSettings.llmProvider === 'openai'
+                        ? 'Optional: Override server key with your own'
+                        : `Required for ${llmSettings.llmProvider === 'openrouter' ? 'OpenRouter' : 'LLM features'} (stored locally)`}
+                  </div>
+                  <div className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5 mb-2">
+                    ⚠️ <strong>Security Note:</strong> API keys are stored in
+                    your browser's localStorage. This is convenient but not
+                    secure for shared computers. For production use, configure
+                    keys server-side via environment variables (OPENAI_API_KEY,
+                    OPENROUTER_API_KEY).
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="password"
+                      value={apiKeyInput}
+                      onChange={(e) => {
+                        setApiKeyInput(e.target.value)
+                        setTestResult(null)
+                      }}
+                      placeholder="sk-..."
+                      className="flex-1 px-3 py-1.5 text-sm rounded-md border border-primary-200 bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleTestApiKey}
+                      disabled={!apiKeyInput.trim() || testingKey}
+                      className="min-w-[60px]"
+                    >
+                      {testingKey ? (
+                        <HugeiconsIcon
+                          icon={Loading02Icon}
+                          size={16}
+                          className="animate-spin"
+                        />
+                      ) : (
+                        'Test'
+                      )}
+                    </Button>
+                  </div>
+
+                  {testResult && (
+                    <div
+                      className={`mt-2 flex items-center gap-1.5 text-xs ${
+                        testResult.valid ? 'text-green-600' : 'text-red-600'
+                      }`}
+                    >
+                      <HugeiconsIcon
+                        icon={testResult.valid ? Tick01Icon : Cancel02Icon}
+                        size={14}
+                      />
+                      {testResult.valid
+                        ? 'API key is valid'
+                        : testResult.error || 'Invalid API key'}
+                    </div>
+                  )}
+
+                  {llmSettings.llmApiKey && (
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className="text-xs text-green-600 flex items-center gap-1">
+                        <HugeiconsIcon icon={Tick01Icon} size={14} />
+                        Key saved
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={handleClearApiKey}
+                        className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        Clear
+                      </Button>
+                    </div>
+                  )}
+
+                  {apiKeyInput &&
+                    apiKeyInput !== llmSettings.llmApiKey &&
+                    !testResult?.valid && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleSaveApiKey}
+                        className="mt-2 w-full"
+                      >
+                        Save without testing
+                      </Button>
+                    )}
+                </div>
+              </SettingsSection>
+
+              <SettingsSection
+                title="About"
+                tabId="about"
+                activeTab={activeTab}
+              >
+                <div className="text-sm text-primary-800">OpenCami</div>
+                <div className="flex gap-4 pt-2">
+                  <a
+                    href="https://github.com/robbyczgw-cla/opencami"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-primary-600 hover:text-primary-900 hover:underline"
+                  >
+                    GitHub
+                  </a>
+                  <a
+                    href="https://docs.openclaw.ai"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-primary-600 hover:text-primary-900 hover:underline"
+                  >
+                    OpenClaw docs
+                  </a>
+                </div>
+              </SettingsSection>
+            </div>
+            {/* end content area */}
+          </div>
+          {/* end flex sidebar+content */}
 
           <div className="mt-2 flex justify-end">
             <DialogClose onClick={onClose}>Close</DialogClose>

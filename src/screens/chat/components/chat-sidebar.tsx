@@ -1,21 +1,38 @@
-import { HugeiconsIcon } from '@hugeicons/react'
 import {
   AiBrain01Icon,
+  DashboardCircleIcon,
   Folder01Icon,
   PackageOpenIcon,
   PencilEdit02Icon,
+  Search01Icon,
   Settings01Icon,
   SidebarLeft01Icon,
-  Search01Icon,
   SmartPhone01Icon,
 } from '@hugeicons/core-free-icons'
-import { AnimatePresence, motion } from 'motion/react'
-import { lazy, memo, Suspense, useState } from 'react'
-import type { SessionMeta } from '../types'
+import { HugeiconsIcon } from '@hugeicons/react'
 import { useQueryClient } from '@tanstack/react-query'
+import { Link } from '@tanstack/react-router'
+import { AnimatePresence, motion } from 'motion/react'
+import { Suspense, lazy, memo, useState } from 'react'
 import { chatQueryKeys } from '../chat-queries'
-import type { HistoryResponse } from '../types'
-import { exportConversation, type ExportFormat } from '../utils/export-conversation'
+import { useChatSettings } from '../hooks/use-chat-settings'
+import { useDeleteSession } from '../hooks/use-delete-session'
+import { useRenameSession } from '../hooks/use-rename-session'
+import { exportConversation } from '../utils/export-conversation'
+import { SessionDeleteDialog } from './sidebar/session-delete-dialog'
+import { SessionRenameDialog } from './sidebar/session-rename-dialog'
+import { SidebarSessions } from './sidebar/sidebar-sessions'
+import type { HistoryResponse, SessionMeta } from '../types'
+import type { ExportFormat } from '../utils/export-conversation'
+import { cn } from '@/lib/utils'
+import { OpenCamiLogo, OpenCamiText } from '@/components/icons/opencami-logo'
+import {
+  TooltipContent,
+  TooltipProvider,
+  TooltipRoot,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+import { Button, buttonVariants } from '@/components/ui/button'
 
 const SettingsDialog = lazy(() =>
   import('./settings-dialog').then((m) => ({ default: m.SettingsDialog })),
@@ -25,22 +42,6 @@ const SessionExportDialog = lazy(() =>
     default: m.SessionExportDialog,
   })),
 )
-import {
-  TooltipContent,
-  TooltipProvider,
-  TooltipRoot,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
-import { SessionRenameDialog } from './sidebar/session-rename-dialog'
-import { SessionDeleteDialog } from './sidebar/session-delete-dialog'
-import { SidebarSessions } from './sidebar/sidebar-sessions'
-import { cn } from '@/lib/utils'
-import { useChatSettings } from '../hooks/use-chat-settings'
-import { useDeleteSession } from '../hooks/use-delete-session'
-import { useRenameSession } from '../hooks/use-rename-session'
-import { Button, buttonVariants } from '@/components/ui/button'
-import { Link } from '@tanstack/react-router'
-import { OpenCamiLogo, OpenCamiText } from '@/components/icons/opencami-logo'
 
 type ChatSidebarProps = {
   sessions: Array<SessionMeta>
@@ -163,9 +164,7 @@ function ChatSidebarComponent({
         exportFriendlyId,
         exportSessionKey,
       )
-      const historyData = queryClient.getQueryData(historyKey) as
-        | HistoryResponse
-        | undefined
+      const historyData = queryClient.getQueryData(historyKey)
 
       if (historyData?.messages) {
         exportConversation(exportSessionTitle, historyData.messages, format)
@@ -269,7 +268,7 @@ function ChatSidebarComponent({
               )}
             </AnimatePresence>
           </Button>
-          
+
           {(() => {
             try {
               const value = localStorage.getItem('opencami-file-explorer')
@@ -311,9 +310,7 @@ function ChatSidebarComponent({
                   </Link>
                 </TooltipTrigger>
                 {isCollapsed && (
-                  <TooltipContent side="right">
-                    Files
-                  </TooltipContent>
+                  <TooltipContent side="right">Files</TooltipContent>
                 )}
               </TooltipRoot>
             </TooltipProvider>
@@ -360,15 +357,19 @@ function ChatSidebarComponent({
                   </Link>
                 </TooltipTrigger>
                 {isCollapsed && (
-                  <TooltipContent side="right">
-                    Memory
-                  </TooltipContent>
+                  <TooltipContent side="right">Memory</TooltipContent>
                 )}
               </TooltipRoot>
             </TooltipProvider>
           )}
 
-          {(() => { try { return localStorage.getItem('opencami-skills-browser') === 'true' } catch { return false } })() && (
+          {(() => {
+            try {
+              return localStorage.getItem('opencami-skills-browser') === 'true'
+            } catch {
+              return false
+            }
+          })() && (
             <TooltipProvider>
               <TooltipRoot>
                 <TooltipTrigger asChild>
@@ -401,12 +402,20 @@ function ChatSidebarComponent({
                     </AnimatePresence>
                   </Link>
                 </TooltipTrigger>
-                {isCollapsed && <TooltipContent side="right">Skills</TooltipContent>}
+                {isCollapsed && (
+                  <TooltipContent side="right">Skills</TooltipContent>
+                )}
               </TooltipRoot>
             </TooltipProvider>
           )}
 
-          {(() => { try { return localStorage.getItem('opencami-agent-manager') === 'true' } catch { return false } })() && (
+          {(() => {
+            try {
+              return localStorage.getItem('opencami-agent-manager') === 'true'
+            } catch {
+              return false
+            }
+          })() && (
             <TooltipProvider>
               <TooltipRoot>
                 <TooltipTrigger asChild>
@@ -439,12 +448,20 @@ function ChatSidebarComponent({
                     </AnimatePresence>
                   </Link>
                 </TooltipTrigger>
-                {isCollapsed && <TooltipContent side="right">Agents</TooltipContent>}
+                {isCollapsed && (
+                  <TooltipContent side="right">Agents</TooltipContent>
+                )}
               </TooltipRoot>
             </TooltipProvider>
           )}
 
-          {(() => { try { return localStorage.getItem('opencami-cron-manager') === 'true' } catch { return false } })() && (
+          {(() => {
+            try {
+              return localStorage.getItem('opencami-cron-manager') === 'true'
+            } catch {
+              return false
+            }
+          })() && (
             <TooltipProvider>
               <TooltipRoot>
                 <TooltipTrigger asChild>
@@ -477,7 +494,55 @@ function ChatSidebarComponent({
                     </AnimatePresence>
                   </Link>
                 </TooltipTrigger>
-                {isCollapsed && <TooltipContent side="right">Cron Jobs</TooltipContent>}
+                {isCollapsed && (
+                  <TooltipContent side="right">Cron Jobs</TooltipContent>
+                )}
+              </TooltipRoot>
+            </TooltipProvider>
+          )}
+
+          {(() => {
+            try {
+              return localStorage.getItem('feature_dashboard') === 'true'
+            } catch {
+              return false
+            }
+          })() && (
+            <TooltipProvider>
+              <TooltipRoot>
+                <TooltipTrigger asChild>
+                  <Link
+                    to="/dashboard"
+                    className={cn(
+                      buttonVariants({ variant: 'ghost', size: 'sm' }),
+                      'w-full pl-1.5 justify-start',
+                    )}
+                    onClick={onSelectSession}
+                  >
+                    <HugeiconsIcon
+                      icon={DashboardCircleIcon}
+                      size={20}
+                      strokeWidth={1.5}
+                      className="min-w-5"
+                    />
+                    <AnimatePresence initial={false} mode="wait">
+                      {!isCollapsed && (
+                        <motion.span
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          transition={transition}
+                          className="overflow-hidden whitespace-nowrap"
+                        >
+                          Dashboard
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
+                  </Link>
+                </TooltipTrigger>
+                {isCollapsed && (
+                  <TooltipContent side="right">Dashboard</TooltipContent>
+                )}
               </TooltipRoot>
             </TooltipProvider>
           )}
