@@ -3,6 +3,11 @@
 All notable changes to OpenCami are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [Semantic Versioning](https://semver.org/).
 
+## [1.8.0] - 2026-02-19
+
+### Added
+- 📊 **Dashboard Panel (Beta)** — New `/dashboard` route with three live widgets: System Stats (CPU, RAM, Disk with progress bars), Gateway Status (active sessions), and Cron Overview (up to 6 jobs with next run time and last status). Auto-refreshes every 10 seconds. Enable via Settings → "Dashboard (Beta)" toggle.
+
 ## [1.7.0] - 2026-02-15
 
 ### Added
