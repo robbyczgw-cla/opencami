@@ -1365,6 +1365,12 @@ export function SettingsDialog({
                         ✓ Server has OPENROUTER_API_KEY configured
                       </span>
                     )}
+                  {llmStatus.hasKilocodeKey &&
+                    llmSettings.llmProvider === 'kilocode' && (
+                      <span className="block mt-1 text-green-600">
+                        ✓ Server has KILOCODE_API_KEY configured
+                      </span>
+                    )}
                 </div>
 
                 <SettingsRow
@@ -1378,6 +1384,7 @@ export function SettingsDialog({
                       const provider = e.target.value as
                         | 'openai'
                         | 'openrouter'
+                        | 'kilocode'
                         | 'ollama'
                         | 'custom'
                       updateLlmSettings({
@@ -1390,6 +1397,7 @@ export function SettingsDialog({
                   >
                     <option value="openai">OpenAI</option>
                     <option value="openrouter">OpenRouter</option>
+                    <option value="kilocode">Kilo Gateway</option>
                     <option value="ollama">Ollama (local)</option>
                     <option value="custom">Custom</option>
                   </select>
@@ -1473,14 +1481,14 @@ export function SettingsDialog({
                       : llmStatus.hasEnvKey &&
                           llmSettings.llmProvider === 'openai'
                         ? 'Optional: Override server key with your own'
-                        : `Required for ${llmSettings.llmProvider === 'openrouter' ? 'OpenRouter' : 'LLM features'} (stored locally)`}
+                        : `Required for ${llmSettings.llmProvider === 'openrouter' ? 'OpenRouter' : llmSettings.llmProvider === 'kilocode' ? 'Kilo Gateway' : 'LLM features'} (stored locally)`}
                   </div>
                   <div className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5 mb-2">
                     ⚠️ <strong>Security Note:</strong> API keys are stored in
                     your browser's localStorage. This is convenient but not
                     secure for shared computers. For production use, configure
                     keys server-side via environment variables (OPENAI_API_KEY,
-                    OPENROUTER_API_KEY).
+                    OPENROUTER_API_KEY, KILOCODE_API_KEY).
                   </div>
                   <div className="flex gap-2">
                     <input

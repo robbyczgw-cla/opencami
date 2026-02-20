@@ -17,7 +17,7 @@ export type LlmSettings = {
   /** Use LLM for generating follow-up suggestions */
   useLlmFollowUps: boolean
   /** LLM provider selection */
-  llmProvider: 'openai' | 'openrouter' | 'ollama' | 'custom'
+  llmProvider: 'openai' | 'openrouter' | 'kilocode' | 'ollama' | 'custom'
   /** Base URL override (empty uses provider default) */
   llmBaseUrl: string
   /** Model override (empty uses provider default) */
@@ -45,6 +45,10 @@ const LLM_PROVIDER_DEFAULTS: Record<LlmSettings['llmProvider'], LlmProviderDefau
   openrouter: {
     baseUrl: 'https://openrouter.ai/api/v1',
     model: 'openai/gpt-oss-120b',
+  },
+  kilocode: {
+    baseUrl: 'https://api.kilo.ai/api/gateway',
+    model: 'google/gemini-2.5-flash',
   },
   ollama: {
     baseUrl: 'http://localhost:11434/v1',
@@ -90,7 +94,7 @@ function getEffectiveLlmModel(settings: LlmSettings): string {
 function getAvailability(settings: LlmSettings, hasEnvKey: boolean): boolean {
   if (settings.llmProvider === 'ollama') return true
   if (settings.llmProvider === 'custom') {
-    return Boolean(settings.llmApiKey.trim()) || (settings.llmBaseUrl.trim() && settings.llmModel.trim())
+    return Boolean(settings.llmApiKey.trim()) || Boolean(settings.llmBaseUrl.trim() && settings.llmModel.trim())
   }
   return hasEnvKey || Boolean(settings.llmApiKey.trim())
 }
@@ -143,6 +147,7 @@ export const useLlmSettingsStore = create<LlmSettingsState>()(
 type LlmStatus = {
   hasEnvKey: boolean
   hasOpenRouterKey: boolean
+  hasKilocodeKey: boolean
   hasUserKey: boolean
   isAvailable: boolean
   isLoading: boolean
@@ -160,6 +165,7 @@ export function useLlmSettings() {
   const [status, setStatus] = useState<LlmStatus>({
     hasEnvKey: false,
     hasOpenRouterKey: false,
+    hasKilocodeKey: false,
     hasUserKey: Boolean(settings.llmApiKey),
     isAvailable: getAvailability(settings, false),
     isLoading: true,
@@ -175,15 +181,20 @@ export function useLlmSettings() {
         const res = await fetch('/api/llm-features')
         if (!res.ok) throw new Error('Failed to check LLM status')
         
-        const data = await res.json() as { ok: boolean; hasEnvKey: boolean; hasOpenRouterKey?: boolean }
+        const data = await res.json() as { ok: boolean; hasEnvKey: boolean; hasOpenRouterKey?: boolean; hasKilocodeKey?: boolean }
         
         if (cancelled) return
 
         const hasUserKey = Boolean(settings.llmApiKey)
-        const hasProviderKey = settings.llmProvider === 'openrouter' ? Boolean(data.hasOpenRouterKey) : data.hasEnvKey
+        const hasProviderKey = settings.llmProvider === 'openrouter'
+          ? Boolean(data.hasOpenRouterKey)
+          : settings.llmProvider === 'kilocode'
+            ? Boolean(data.hasKilocodeKey)
+            : data.hasEnvKey
         setStatus({
           hasEnvKey: data.hasEnvKey,
           hasOpenRouterKey: Boolean(data.hasOpenRouterKey),
+          hasKilocodeKey: Boolean(data.hasKilocodeKey),
           hasUserKey,
           isAvailable: getAvailability(settings, hasProviderKey),
           isLoading: false,
