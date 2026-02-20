@@ -25,6 +25,8 @@ type FollowUpsRequest = {
 type StatusResponse = {
   ok: boolean
   hasEnvKey: boolean
+  hasOpenRouterKey?: boolean
+  hasKilocodeKey?: boolean
   error?: string
 }
 
@@ -63,9 +65,12 @@ function getLlmConfig(request: Request): LlmConfig {
   const headerKey = request.headers.get('X-OpenAI-API-Key')
   const baseUrl = request.headers.get('X-LLM-Base-URL')?.trim() || null
   const isOpenRouter = baseUrl?.includes('openrouter.ai')
+  const isKilocode = baseUrl?.includes('kilo.ai')
   const envKey = isOpenRouter
     ? (process.env.OPENROUTER_API_KEY?.trim() || process.env.OPENAI_API_KEY?.trim())
-    : process.env.OPENAI_API_KEY?.trim()
+    : isKilocode
+      ? (process.env.KILOCODE_API_KEY?.trim() || process.env.OPENAI_API_KEY?.trim())
+      : process.env.OPENAI_API_KEY?.trim()
   const apiKey = headerKey?.trim() || envKey || null
 
   // Model from header
@@ -131,11 +136,13 @@ export const Route = createFileRoute('/api/llm-features')({
         try {
           const hasEnvKey = Boolean(process.env.OPENAI_API_KEY?.trim())
           const hasOpenRouterKey = Boolean(process.env.OPENROUTER_API_KEY?.trim())
+          const hasKilocodeKey = Boolean(process.env.KILOCODE_API_KEY?.trim())
           
           return json({
             ok: true,
             hasEnvKey,
             hasOpenRouterKey,
+            hasKilocodeKey,
           })
         } catch (err) {
           return json<StatusResponse>({
