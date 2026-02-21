@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/menu'
 import { memo } from 'react'
 import type { SessionMeta, GatewayMessage } from '../../types'
-import { isProtectedSession } from '../../utils'
+import { isProtectedSession, stripInboundMeta } from '../../utils'
 
 function getKindIcon(kind: SessionMeta['kind']) {
   if (kind === 'subagent') return BotIcon
@@ -35,17 +35,10 @@ function previewFromMessage(message: GatewayMessage | null | undefined): string 
   const text = message.content
     .map((part) => (part.type === 'text' ? String(part.text ?? '') : ''))
     .join(' ')
+  const cleaned = stripInboundMeta(text)
     .replace(/\s+/g, ' ')
     .trim()
-  // Strip OpenClaw inbound metadata prefix from user message previews
-  if (message.role === 'user') {
-    return text
-      .replace(/^Conversation info \(untrusted metadata\):[\s\S]*?```\s*/, '')
-      .replace(/^Conversation info \(untrusted metadata\):[\s\S]*?\}\s*/, '')
-      .replace(/^\[[^\]]{5,40}\]\s*/, '')
-      .trim()
-  }
-  return text
+  return cleaned
 }
 
 function normalizeTimestamp(value: unknown): number | null {

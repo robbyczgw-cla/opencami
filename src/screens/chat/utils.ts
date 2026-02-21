@@ -22,20 +22,25 @@ export function deriveFriendlyIdFromKey(key: string | undefined): string {
  * OpenClaw prepends "Conversation info (untrusted metadata):\n```json\n{...}\n```\n"
  * and optional "[Day YYYY-MM-DD HH:MM GMT+N] " timestamp to every message.
  */
+const INBOUND_META_FENCED_REGEX =
+  /^Conversation info \(untrusted metadata\):\s*```(?:json)?\s*[\s\S]*?```\s*/
+const INBOUND_META_INLINE_REGEX =
+  /^Conversation info \(untrusted metadata\):\s*\{[\s\S]*?\}\s*/
+const INBOUND_META_TIMESTAMP_REGEX =
+  /^\[(?:[A-Za-z]{3}\s+)?\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}\s+GMT[+-]?\d+\]\s*/
+
 export function stripInboundMeta(text: string): string {
   let s = text
-  // Remove "Conversation info (untrusted metadata):" block (with or without code fences)
-  s = s.replace(
-    /^Conversation info \(untrusted metadata\):\s*```(?:json)?\s*\{[\s\S]*?\}\s*```\s*/,
-    '',
-  )
-  // Fallback: without code fences
-  s = s.replace(
-    /^Conversation info \(untrusted metadata\):\s*\{[\s\S]*?\}\s*/,
-    '',
-  )
-  // Remove optional timestamp "[Day YYYY-MM-DD HH:MM GMT±N] "
-  s = s.replace(/^\[[^\]]{5,40}\]\s*/, '')
+  const hasFenced = INBOUND_META_FENCED_REGEX.test(s)
+  const hasInline = !hasFenced && INBOUND_META_INLINE_REGEX.test(s)
+  if (hasFenced) {
+    s = s.replace(INBOUND_META_FENCED_REGEX, '')
+  } else if (hasInline) {
+    s = s.replace(INBOUND_META_INLINE_REGEX, '')
+  }
+  if (hasFenced || hasInline) {
+    s = s.replace(INBOUND_META_TIMESTAMP_REGEX, '')
+  }
   return s.trim()
 }
 
@@ -45,9 +50,8 @@ export function textFromMessage(msg: GatewayMessage): string {
     .map((part) => (part.type === 'text' ? String(part.text ?? '') : ''))
     .join('')
     .trim()
-  // Strip OpenClaw metadata prefix from user messages
-  if (msg.role === 'user') return stripInboundMeta(raw)
-  return raw
+  // Strip OpenClaw metadata prefix from any message content that includes it.
+  return stripInboundMeta(raw)
 }
 
 export function getToolCallsFromMessage(
