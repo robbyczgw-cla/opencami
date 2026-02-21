@@ -9,6 +9,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [Semantic Ver
 
 - 🎨 **Artifacts Preview (Beta)** — Live HTML/SVG preview side panel. When AI generates HTML or SVG code, a "Preview" button appears in the code block toolbar. Click to open a sandboxed preview panel beside the chat. Enable via Settings → Workspace → "Artifacts Preview (Beta)".
 
+## [1.8.2] - 2026-02-21
+
+### Fixed
+
+- 🔄 **SSE Streaming** — resolved session key mismatch that caused messages to get stuck on "generating" indefinitely. Stream now starts after `/api/send` response with the correct resolved session key, eliminating race condition on page load.
+- 🛠️ **Tool Calls blocking stream** — `streamFinish` now correctly detects the last `assistant` message even when `toolResult` messages follow it, so the generating spinner always clears after tool use.
+- ✨ **Follow-up suggestions** — fixed three separate issues: hook now triggers correctly after tool calls; `lastTextAssistantIndex` filters to `role === 'assistant'` only (not `toolResult`); server-side env keys (OpenAI, OpenRouter, Kilocode) used as fallback when no user key is configured.
+- 🧹 **Inbound metadata stripping** — OpenClaw metadata prefix (`Conversation info (untrusted metadata): ...`) and timestamps are now stripped from all message rendering paths including chat bubbles, sidebar previews, and all message roles.
+- 🔑 **LLM Settings UI** — all configured server-side keys (OpenAI, OpenRouter, Kilocode) now always shown with ✓ regardless of selected provider.
+- 🚿 **Service Worker** — replaced with self-unregistering stub; old SW actively unregistered on page load to prevent SSE interception.
+- 🔌 **Gateway connection** — stored in `globalThis` to survive Vite HMR reloads without reconnecting.
+
 ## [1.8.1] - 2026-02-19
 
 ### Enhanced
