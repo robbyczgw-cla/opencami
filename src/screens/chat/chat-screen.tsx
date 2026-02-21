@@ -438,9 +438,11 @@ export function ChatScreen({
   const pollingPhaseRef = useRef<'fast' | 'slow'>('fast')
 
   useEffect(() => {
-    const latestMessage = historyMessages[historyMessages.length - 1]
-    if (!latestMessage || latestMessage.role !== 'assistant') return
-    const signature = `${historyMessages.length}:${textFromMessage(latestMessage).slice(-64)}`
+    const lastAssistantMessage = [...historyMessages]
+      .reverse()
+      .find((message) => message.role === 'assistant')
+    if (!lastAssistantMessage) return
+    const signature = `${historyMessages.length}:${textFromMessage(lastAssistantMessage).slice(-64)}`
     if (signature !== lastAssistantSignature.current) {
       lastAssistantSignature.current = signature
 

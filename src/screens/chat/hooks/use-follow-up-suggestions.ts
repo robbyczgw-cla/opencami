@@ -85,8 +85,6 @@ export function useFollowUpSuggestions(
   // Determine if we should use heuristics only
   const heuristicsOnly = forceHeuristicsOnly ?? !useLlmFollowUps
   
-  // Debug logging
-
   const [suggestions, setSuggestions] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -99,7 +97,6 @@ export function useFollowUpSuggestions(
   useEffect(() => {
     // Skip if response is too short
     if (!responseText || responseText.trim().length < minResponseLength) {
-      console.log('[followups] skipped: text too short', responseText?.length ?? 0, '< min', minResponseLength)
       setSuggestions([])
       setSource(null)
       setIsLoading(false)
@@ -110,11 +107,9 @@ export function useFollowUpSuggestions(
     // Skip if we already processed this response
     const responseKey = responseText.slice(0, 200) + responseText.length
     if (responseKey === lastResponseRef.current) {
-      console.log('[followups] skipped: already processed this response')
       return
     }
     lastResponseRef.current = responseKey
-    console.log('[followups] processing, heuristicsOnly=', heuristicsOnly, 'length=', responseText.length)
 
     // Cancel any in-flight request
     if (abortControllerRef.current) {
@@ -151,11 +146,9 @@ export function useFollowUpSuggestions(
     fetchLlmFollowUps(conversationContext, controller.signal)
       .then((llmSuggestions) => {
         if (controller.signal.aborted) {
-          console.log('[followups] LLM request aborted')
           return
         }
 
-        console.log('[followups] LLM result:', llmSuggestions)
         if (llmSuggestions.length > 0) {
           setSuggestions(llmSuggestions)
           setSource('llm')
@@ -164,7 +157,6 @@ export function useFollowUpSuggestions(
       })
       .catch((err) => {
         if (controller.signal.aborted) return
-        console.error('[followups] LLM error:', err)
         // Keep heuristic suggestions on error
         setError(err instanceof Error ? err.message : String(err))
         setIsLoading(false)
