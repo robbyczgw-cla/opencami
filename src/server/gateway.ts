@@ -334,10 +334,18 @@ class PersistentGatewayConnection {
 // Singleton instance
 let _instance: PersistentGatewayConnection | null = null
 
+// Survive Vite SSR HMR program reloads: module-level vars reset but globalThis persists.
+// Without this, every file-save that triggers a program reload creates a NEW connection
+// and drops all existing SSE subscriptions — leaving the browser stuck on "generating".
+const _g = globalThis as typeof globalThis & {
+  __opencamiGatewayInstance?: PersistentGatewayConnection
+}
+
 function getPersistentConnection(): PersistentGatewayConnection {
-  if (!_instance) {
-    _instance = new PersistentGatewayConnection()
+  if (!_g.__opencamiGatewayInstance) {
+    _g.__opencamiGatewayInstance = new PersistentGatewayConnection()
   }
+  _instance = _g.__opencamiGatewayInstance
   return _instance
 }
 

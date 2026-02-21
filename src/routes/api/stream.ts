@@ -90,21 +90,24 @@ export const Route = createFileRoute('/api/stream')({
                 }
               } else if (evt.event === 'chat') {
                 const payload = evt.payload as Record<string, unknown>
-                const kind = payload.kind as string | undefined
+                // Gateway sends `state` (not `kind`) — "delta" or "final"
+                const state = (payload.state ?? payload.kind) as string | undefined
+                const msg = payload.message as Record<string, unknown> | undefined
 
-                if (kind === 'delta' && !gotAgentStream) {
+                if (state === 'delta' && !gotAgentStream) {
                   // Fallback: use chat deltas only if we haven't seen agent
                   // stream events (they would duplicate).
-                  const text =
-                    typeof payload.text === 'string'
-                      ? payload.text
-                      : typeof payload.delta === 'string'
-                        ? payload.delta
-                        : ''
+                  const content = Array.isArray(msg?.content) ? msg.content as Record<string, unknown>[] : []
+                  const firstBlock = content[0]
+                  const text: string =
+                    typeof firstBlock?.text === 'string' ? firstBlock.text
+                    : typeof payload.text === 'string' ? payload.text
+                    : typeof payload.delta === 'string' ? payload.delta
+                    : ''
                   if (text) {
                     sendSSE('delta', { text, sessionKey })
                   }
-                } else if (kind === 'final') {
+                } else if (state === 'final') {
                   // Chat final message — always send done
                   sendSSE('done', { sessionKey, status: 'end' })
                 }
