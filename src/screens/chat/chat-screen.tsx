@@ -675,9 +675,10 @@ export function ChatScreen({
       content: a.base64,
     }))
 
-    // Start SSE streaming BEFORE sending — events arrive immediately after chat.send
+    // Start SSE streaming AFTER sending — use the resolved sessionKey from the
+    // server response to avoid subscribing to the wrong key when activeSessionKey
+    // hasn't loaded yet (race condition on fresh page load).
     streamingNotificationTextRef.current = ''
-    startStream(sessionKey)
     streamStart()
 
     fetch('/api/send', {
@@ -695,6 +696,12 @@ export function ChatScreen({
     })
       .then(async (res) => {
         if (!res.ok) throw new Error(await readError(res))
+        // Parse response to get the actual resolved sessionKey, then start
+        // SSE with the correct key. Server event buffer holds events for 10s
+        // so late subscription still gets all deltas.
+        const data = await res.json() as { sessionKey?: string }
+        const resolvedKey = data.sessionKey || sessionKey || friendlyId
+        startStream(resolvedKey)
       })
       .catch((err) => {
         const messageText = err instanceof Error ? err.message : String(err)
