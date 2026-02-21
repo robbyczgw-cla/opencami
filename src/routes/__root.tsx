@@ -13,6 +13,7 @@ const swRegisterScript = `
   // Skip PWA service worker inside Capacitor native shell — they conflict
   // with the native networking layer and caching.
   if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) return;
+  if (false) { // SW disabled — causes streaming issues
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('/sw.js', { scope: '/' })
@@ -33,6 +34,7 @@ const swRegisterScript = `
         })
         .catch((err) => console.warn('[SW] Registration failed:', err));
     });
+  }
   }
 })()
 `

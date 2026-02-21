@@ -29,6 +29,10 @@ export function useStreaming(options: {
 }) {
   const [state, setState] = useState<StreamingState>(INITIAL_STATE)
   const eventSourceRef = useRef<EventSource | null>(null)
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const pollingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const streamStartRef = useRef<number | null>(null)
+  const doneRef = useRef(false)
   const onDoneRef = useRef(options.onDone)
   const onErrorRef = useRef(options.onError)
   const onAssistantDeltaRef = useRef(options.onAssistantDelta)
@@ -36,7 +40,48 @@ export function useStreaming(options: {
   onErrorRef.current = options.onError
   onAssistantDeltaRef.current = options.onAssistantDelta
 
+  function clearPolling() {
+    if (pollingTimeoutRef.current) {
+      window.clearTimeout(pollingTimeoutRef.current)
+      pollingTimeoutRef.current = null
+    }
+    if (pollingRef.current) {
+      window.clearInterval(pollingRef.current)
+      pollingRef.current = null
+    }
+  }
+
+  function startPolling(sessionKey: string, startedAt: number) {
+    if (pollingRef.current) return
+    pollingRef.current = window.setInterval(async () => {
+      try {
+        const res = await fetch(
+          `/api/history?sessionKey=${encodeURIComponent(sessionKey)}`,
+        )
+        if (!res.ok) return
+        const data = (await res.json()) as {
+          messages?: Array<{ role?: string; timestamp?: number }>
+        }
+        const messages = Array.isArray(data.messages) ? data.messages : []
+        const hasNewAssistant = messages.some((message) => {
+          if (!message || message.role !== 'assistant') return false
+          return typeof message.timestamp === 'number' && message.timestamp > startedAt
+        })
+        if (!hasNewAssistant) return
+        if (eventSourceRef.current) {
+          eventSourceRef.current.close()
+          eventSourceRef.current = null
+        }
+        clearPolling()
+        setState((prev) => ({ ...prev, active: false }))
+        onDoneRef.current(sessionKey)
+      } catch {}
+    }, 2000)
+  }
+
   const stop = useCallback((options?: { preserveState?: boolean }) => {
+    doneRef.current = true
+    clearPolling()
     if (eventSourceRef.current) {
       eventSourceRef.current.close()
       eventSourceRef.current = null
@@ -49,7 +94,10 @@ export function useStreaming(options: {
   }, [])
 
   const start = useCallback(
-    (sessionKey: string) => {
+    function start(sessionKey: string) {
+      doneRef.current = false
+      clearPolling()
+      streamStartRef.current = Date.now()
       // Close any existing connection
       if (eventSourceRef.current) {
         eventSourceRef.current.close()
@@ -101,6 +149,8 @@ export function useStreaming(options: {
       es.addEventListener('done', (e) => {
         try {
           const data = JSON.parse(e.data) as { sessionKey: string; status: string }
+          doneRef.current = true
+          clearPolling()
           es.close()
           eventSourceRef.current = null
           // Mark stream as inactive but keep text/tools so the UI can
@@ -121,6 +171,11 @@ export function useStreaming(options: {
           onErrorRef.current?.('Stream connection lost')
         }
       }
+      pollingTimeoutRef.current = window.setTimeout(() => {
+        if (doneRef.current) return
+        const startedAt = streamStartRef.current ?? Date.now()
+        startPolling(sessionKey, startedAt)
+      }, 12000)
     },
     [],
   )
