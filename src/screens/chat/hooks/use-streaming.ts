@@ -63,9 +63,11 @@ export function useStreaming(options: {
           messages?: Array<{ role?: string; timestamp?: number }>
         }
         const messages = Array.isArray(data.messages) ? data.messages : []
+        // Allow 10s clock-skew tolerance between server and browser
         const hasNewAssistant = messages.some((message) => {
           if (!message || message.role !== 'assistant') return false
-          return typeof message.timestamp === 'number' && message.timestamp > startedAt
+          if (typeof message.timestamp !== 'number') return false
+          return message.timestamp > startedAt - 3_000
         })
         if (!hasNewAssistant) return
         if (eventSourceRef.current) {
@@ -175,7 +177,7 @@ export function useStreaming(options: {
         if (doneRef.current) return
         const startedAt = streamStartRef.current ?? Date.now()
         startPolling(sessionKey, startedAt)
-      }, 12000)
+      }, 3000)
     },
     [],
   )
