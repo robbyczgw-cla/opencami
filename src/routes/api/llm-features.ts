@@ -63,7 +63,9 @@ type LlmConfig = {
 function getLlmConfig(request: Request): LlmConfig {
   // API key: header > env (check both OpenAI and OpenRouter env keys)
   const headerKey = request.headers.get('X-OpenAI-API-Key')
-  const baseUrl = request.headers.get('X-LLM-Base-URL')?.trim() || null
+  const headerBaseUrl = request.headers.get('X-LLM-Base-URL')?.trim() || null
+  // Fall back to env-configured base URL (e.g. Kilocode)
+  const baseUrl = headerBaseUrl || process.env.LLM_BASE_URL?.trim() || null
   const isOpenRouter = baseUrl?.includes('openrouter.ai')
   const isKilocode = baseUrl?.includes('kilo.ai')
   const envKey = isOpenRouter
@@ -73,8 +75,8 @@ function getLlmConfig(request: Request): LlmConfig {
       : process.env.OPENAI_API_KEY?.trim()
   const apiKey = headerKey?.trim() || envKey || null
 
-  // Model from header
-  const model = request.headers.get('X-LLM-Model')?.trim() || null
+  // Model: header > env default
+  const model = request.headers.get('X-LLM-Model')?.trim() || process.env.LLM_MODEL?.trim() || null
 
   return { apiKey, baseUrl, model }
 }
