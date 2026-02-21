@@ -3,13 +3,11 @@ import { HugeiconsIcon } from '@hugeicons/react'
 import {
   Copy01Icon,
   File01Icon,
-  PlayIcon,
   TextWrapIcon,
   Tick02Icon,
 } from '@hugeicons/core-free-icons'
 import type { HighlighterCore, LanguageRegistration } from 'shiki/core'
 import { useResolvedTheme } from '@/hooks/use-chat-settings'
-import { useArtifactsStore } from '@/hooks/use-artifacts'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { formatLanguageName, normalizeLanguage, resolveLanguage } from './utils'
@@ -126,15 +124,11 @@ export function CodeBlock({
   className,
 }: CodeBlockProps) {
   const resolvedTheme = useResolvedTheme()
-  const artifactsEnabled = useArtifactsStore((s) => s.isEnabled)
   const [copied, setCopied] = useState(false)
   const [html, setHtml] = useState<string | null>(null)
   const [resolvedLanguage, setResolvedLanguage] = useState('text')
   const [headerBg, setHeaderBg] = useState<string | undefined>()
   const [wrap, setWrap] = useState(false)
-
-  const normalizedLang = language?.toLowerCase() ?? ''
-  const isPreviewable = artifactsEnabled && (normalizedLang === 'html' || normalizedLang === 'svg')
 
   const fallback = useMemo(() => {
     return content
@@ -240,19 +234,6 @@ export function CodeBlock({
             <HugeiconsIcon icon={TextWrapIcon} size={14} strokeWidth={1.8} />
             {wrap ? 'No wrap' : 'Wrap'}
           </Button>
-          {isPreviewable && (
-            <Button
-              variant="ghost"
-              aria-label="Preview in Artifacts panel"
-              className="h-auto px-0 text-xs font-medium text-primary-500 hover:text-primary-800 hover:bg-transparent"
-              onClick={() => {
-                useArtifactsStore.getState().setArtifact(content, normalizedLang as 'html' | 'svg')
-              }}
-            >
-              <HugeiconsIcon icon={PlayIcon} size={14} strokeWidth={1.8} />
-              Preview
-            </Button>
-          )}
           <Button
             variant="ghost"
             aria-label={ariaLabel ?? 'Copy code'}
