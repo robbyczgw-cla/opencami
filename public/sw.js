@@ -10,9 +10,9 @@
  * - Network-first for navigation (HTML pages)
  */
 
-const CACHE_NAME = 'opencami-v1'
-const STATIC_CACHE = 'opencami-static-v1'
-const API_CACHE = 'opencami-api-v1'
+const CACHE_NAME = 'opencami-v2'
+const STATIC_CACHE = 'opencami-static-v2'
+const API_CACHE = 'opencami-api-v2'
 
 // Assets to precache on install
 const PRECACHE_URLS = [
@@ -122,13 +122,21 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
+  // Network-only for SSE streams (never cache — cloning a stream breaks it)
+  if (url.pathname === '/api/stream') {
+    event.respondWith(fetch(event.request))
+    return
+  }
+
   // Network-first for API calls
   if (isApiCall(url)) {
     event.respondWith(
       caches.open(API_CACHE).then((cache) =>
         fetch(event.request)
           .then((response) => {
-            if (response.ok) {
+            // Never cache streaming/SSE responses
+            const ct = response.headers.get('content-type') || ''
+            if (response.ok && !ct.includes('event-stream')) {
               cache.put(event.request, response.clone())
             }
             return response
