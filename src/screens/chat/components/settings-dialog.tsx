@@ -1375,24 +1375,21 @@ export function SettingsDialog({
                 <div className="text-xs text-primary-500 mb-3">
                   Enhance session titles and follow-up suggestions using an LLM
                   provider.
-                  {llmStatus.hasEnvKey &&
-                    llmSettings.llmProvider === 'openai' && (
-                      <span className="block mt-1 text-green-600">
-                        ✓ Server has OPENAI_API_KEY configured
-                      </span>
-                    )}
-                  {llmStatus.hasOpenRouterKey &&
-                    llmSettings.llmProvider === 'openrouter' && (
-                      <span className="block mt-1 text-green-600">
-                        ✓ Server has OPENROUTER_API_KEY configured
-                      </span>
-                    )}
-                  {llmStatus.hasKilocodeKey &&
-                    llmSettings.llmProvider === 'kilocode' && (
-                      <span className="block mt-1 text-green-600">
-                        ✓ Server has KILOCODE_API_KEY configured
-                      </span>
-                    )}
+                  {llmStatus.hasEnvKey && (
+                    <span className="block mt-1 text-green-600">
+                      ✓ Server has OPENAI_API_KEY configured
+                    </span>
+                  )}
+                  {llmStatus.hasOpenRouterKey && (
+                    <span className="block mt-1 text-green-600">
+                      ✓ Server has OPENROUTER_API_KEY configured
+                    </span>
+                  )}
+                  {llmStatus.hasKilocodeKey && (
+                    <span className="block mt-1 text-green-600">
+                      ✓ Server has KILOCODE_API_KEY configured
+                    </span>
+                  )}
                 </div>
 
                 <SettingsRow
