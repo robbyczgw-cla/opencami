@@ -17,12 +17,37 @@ export function deriveFriendlyIdFromKey(key: string | undefined): string {
   return tailTrimmed.length > 0 ? tailTrimmed : trimmed
 }
 
+/**
+ * Strip OpenClaw inbound metadata prefix from user message text.
+ * OpenClaw prepends "Conversation info (untrusted metadata):\n```json\n{...}\n```\n"
+ * and optional "[Day YYYY-MM-DD HH:MM GMT+N] " timestamp to every message.
+ */
+export function stripInboundMeta(text: string): string {
+  let s = text
+  // Remove "Conversation info (untrusted metadata):" block (with or without code fences)
+  s = s.replace(
+    /^Conversation info \(untrusted metadata\):\s*```(?:json)?\s*\{[\s\S]*?\}\s*```\s*/,
+    '',
+  )
+  // Fallback: without code fences
+  s = s.replace(
+    /^Conversation info \(untrusted metadata\):\s*\{[\s\S]*?\}\s*/,
+    '',
+  )
+  // Remove optional timestamp "[Day YYYY-MM-DD HH:MM GMT±N] "
+  s = s.replace(/^\[[^\]]{5,40}\]\s*/, '')
+  return s.trim()
+}
+
 export function textFromMessage(msg: GatewayMessage): string {
   const parts = Array.isArray(msg.content) ? msg.content : []
-  return parts
+  const raw = parts
     .map((part) => (part.type === 'text' ? String(part.text ?? '') : ''))
     .join('')
     .trim()
+  // Strip OpenClaw metadata prefix from user messages
+  if (msg.role === 'user') return stripInboundMeta(raw)
+  return raw
 }
 
 export function getToolCallsFromMessage(
