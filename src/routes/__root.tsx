@@ -13,6 +13,12 @@ const swRegisterScript = `
   // Skip PWA service worker inside Capacitor native shell — they conflict
   // with the native networking layer and caching.
   if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) return;
+  // Unregister any existing service workers — old SW was breaking SSE streaming
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then((regs) => {
+      regs.forEach((reg) => reg.unregister());
+    });
+  }
   if (false) { // SW disabled — causes streaming issues
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
