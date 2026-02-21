@@ -161,6 +161,11 @@ function ChatMessageListComponent({
     .filter(({ message }) => message.role !== 'user')
     .map(({ index }) => index)
     .pop()
+  const lastTextAssistantIndex = displayMessages
+    .map((message, index) => ({ message, index }))
+    .filter(({ message }) => message.role === 'assistant')
+    .map(({ index }) => index)
+    .pop()
   const lastUserIndex = displayMessages
     .map((message, index) => ({ message, index }))
     .filter(({ message }) => message.role === 'user')
@@ -177,8 +182,8 @@ function ChatMessageListComponent({
 
   // Get the last assistant message text for follow-up suggestions
   const lastAssistantMessage =
-    typeof lastAssistantIndex === 'number'
-      ? displayMessages[lastAssistantIndex]
+    typeof lastTextAssistantIndex === 'number'
+      ? displayMessages[lastTextAssistantIndex]
       : undefined
   const lastAssistantText = lastAssistantMessage
     ? textFromMessage(lastAssistantMessage)
@@ -193,8 +198,8 @@ function ChatMessageListComponent({
     lastAssistantText.length > 0 &&
     onFollowUpClick !== undefined &&
     (typeof lastUserIndex !== 'number' ||
-      typeof lastAssistantIndex !== 'number' ||
-      lastAssistantIndex > lastUserIndex)
+      typeof lastTextAssistantIndex !== 'number' ||
+      lastTextAssistantIndex > lastUserIndex)
 
   useLayoutEffect(() => {
     if (loading) return
