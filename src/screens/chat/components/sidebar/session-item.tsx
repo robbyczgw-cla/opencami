@@ -37,6 +37,14 @@ function previewFromMessage(message: GatewayMessage | null | undefined): string 
     .join(' ')
     .replace(/\s+/g, ' ')
     .trim()
+  // Strip OpenClaw inbound metadata prefix from user message previews
+  if (message.role === 'user') {
+    return text
+      .replace(/^Conversation info \(untrusted metadata\):[\s\S]*?```\s*/, '')
+      .replace(/^Conversation info \(untrusted metadata\):[\s\S]*?\}\s*/, '')
+      .replace(/^\[[^\]]{5,40}\]\s*/, '')
+      .trim()
+  }
   return text
 }
 
