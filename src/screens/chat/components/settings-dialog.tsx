@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useArtifactsStore } from '@/hooks/use-artifacts'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
   Add01Icon,
@@ -1219,6 +1220,27 @@ export function SettingsDialog({
                     onCheckedChange={(checked) => {
                       localStorage.setItem('feature_dashboard', String(checked))
                       window.location.reload()
+                    }}
+                  />
+                </SettingsRow>
+                <SettingsRow
+                  inline
+                  label="Artifacts Preview (Beta)"
+                  description="Show live HTML/SVG preview panel when AI generates code"
+                >
+                  <Switch
+                    checked={(() => {
+                      try {
+                        return (
+                          localStorage.getItem('feature_artifacts') === 'true'
+                        )
+                      } catch {
+                        return false
+                      }
+                    })()}
+                    onCheckedChange={(checked) => {
+                      localStorage.setItem('feature_artifacts', String(checked))
+                      useArtifactsStore.getState().setEnabled(checked)
                     }}
                   />
                 </SettingsRow>

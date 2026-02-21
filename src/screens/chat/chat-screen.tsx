@@ -30,6 +30,8 @@ import {
 } from './chat-queries'
 import { chatUiQueryKey, getChatUiState, setChatUiState } from './chat-ui'
 import { ChatSidebar } from './components/chat-sidebar'
+import { ArtifactsPanel } from '@/components/artifacts-panel'
+import { useArtifactsStore } from '@/hooks/use-artifacts'
 import { ChatHeader } from './components/chat-header'
 import { ChatMessageList } from './components/chat-message-list'
 import { ChatComposer } from './components/chat-composer'
@@ -110,6 +112,7 @@ export function ChatScreen({
   const [isStreaming, setIsStreaming] = useState(false)
   const thinkingLevel = useThinkingLevelStore((state) => state.level)
   const { maybeNotifyAssistantMessage } = useNotifications()
+  const { isEnabled: artifactsEnabled, isPanelOpen: artifactsPanelOpen } = useArtifactsStore()
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
   const streamTimer = useRef<number | null>(null)
   const streamIdleTimer = useRef<number | null>(null)
@@ -980,7 +983,11 @@ export function ChatScreen({
       <div
         className={cn(
           'h-full overflow-hidden',
-          isMobile ? 'relative' : 'grid grid-cols-[auto_minmax(0,1fr)]',
+          isMobile
+            ? 'relative'
+            : artifactsEnabled && artifactsPanelOpen
+              ? 'grid grid-cols-[auto_minmax(0,1fr)_400px]'
+              : 'grid grid-cols-[auto_minmax(0,1fr)]',
         )}
       >
         {hideUi ? null : isMobile ? (
@@ -1054,6 +1061,7 @@ export function ChatScreen({
             </>
           )}
         </main>
+        {artifactsEnabled && artifactsPanelOpen && !isMobile && <ArtifactsPanel />}
       </div>
 
       {showShortcutsHelp && (

@@ -3,6 +3,12 @@
 All notable changes to OpenCami are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [Semantic Versioning](https://semver.org/).
 
+## [1.9.0] - 2026-02-21
+
+### Added
+
+- 🎨 **Artifacts Preview (Beta)** — Live HTML/SVG preview side panel. When AI generates HTML or SVG code, a "Preview" button appears in the code block toolbar. Click to open a sandboxed preview panel beside the chat. Enable via Settings → Workspace → "Artifacts Preview (Beta)".
+
 ## [1.8.1] - 2026-02-19
 
 ### Enhanced
