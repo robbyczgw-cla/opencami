@@ -64,34 +64,50 @@ You need Node.js 18+ and npm. You also need a reachable OpenClaw gateway, plus g
 
 Set `CLAWDBOT_GATEWAY_URL` to your gateway URL (for example `ws://127.0.0.1:18789`) and provide auth via `CLAWDBOT_GATEWAY_TOKEN` or `CLAWDBOT_GATEWAY_PASSWORD`. If you use the CLI, you can also pass `--gateway`, but setting `CLAWDBOT_GATEWAY_URL` explicitly is the most reliable deployment setup.
 
-For remote Tailnet setups, prefer:
+For remote Tailnet setups, use all of the following:
 - `wss://<your-host>.ts.net` (or `:443`)
-- plus `CLAWDBOT_GATEWAY_TOKEN` when gateway auth mode is `token`
+- `CLAWDBOT_GATEWAY_TOKEN` when gateway auth mode is `token`
+- OpenClaw `gateway.controlUi.allowedOrigins` including your exact OpenCami URL
+- OpenCami `OPENCAMI_ORIGIN` set to that exact same URL
 
 </details>
 
 <details>
-<summary><strong>Remote Tailnet connection fails even though UI loads — quick workaround?</strong></summary>
+<summary><strong>Remote Tailnet connection fails even though UI loads — what should I set?</strong></summary>
 
-Temporary workaround (until clean fix):
+Most failures are origin allowlist mismatches. Set:
+
+1. OpenClaw config:
 
 ```json
 "gateway": {
   "controlUi": {
-    "dangerouslyDisableDeviceAuth": true
+    "allowedOrigins": [
+      "https://openclaw-server.tailXXXX.ts.net:3001"
+    ]
   }
 }
 ```
 
-Then restart gateway:
+2. OpenCami env:
+
+```bash
+OPENCAMI_ORIGIN=https://openclaw-server.tailXXXX.ts.net:3001
+```
+
+3. Restart gateway:
 
 ```bash
 openclaw gateway restart
 ```
 
-This often restores remote OpenCami connectivity in Tailnet-only setups.
+If strict device-auth handshake still fails, enable compatibility fallback:
 
-Security tradeoff: this relaxes strict Control UI device identity checks. Usually acceptable short-term in a trusted private Tailnet, but keep device access restricted.
+```bash
+OPENCAMI_DEVICE_AUTH_FALLBACK=true
+```
+
+Use fallback only when needed, and keep Tailnet access restricted.
 
 </details>
 

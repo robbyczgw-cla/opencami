@@ -139,6 +139,8 @@ npm run dev
 
 | Variable | Description | Default |
 |----------|-------------|---------|
+| `OPENCAMI_ORIGIN` | Origin header sent by OpenCami server to gateway (must match allowlisted browser origin for remote setups) | — |
+| `OPENCAMI_DEVICE_AUTH_FALLBACK` | If `true`, retries connect without device identity metadata when strict handshake fails | `false` (strict mode) |
 | `FILES_ROOT` | File explorer root directory | User home |
 | `OPENAI_API_KEY` | For LLM features (smart titles, follow-ups) | — |
 | `ELEVENLABS_API_KEY` | For premium TTS/STT | — |
@@ -155,6 +157,12 @@ CLAWDBOT_GATEWAY_URL=ws://127.0.0.1:18789
 CLAWDBOT_GATEWAY_TOKEN=your_token_here
 
 # Optional
+# Required for remote origin-allowlist setups (must match allowedOrigins entry)
+OPENCAMI_ORIGIN=https://openclaw-server.tailXXXX.ts.net:3001
+
+# Optional compatibility fallback (default strict mode)
+OPENCAMI_DEVICE_AUTH_FALLBACK=true
+
 FILES_ROOT=/home/user/workspace
 OPENAI_API_KEY=sk-...
 ELEVENLABS_API_KEY=...
@@ -377,29 +385,47 @@ tailscale serve --bg --https=443 --set-path=/ http://localhost:3000
 
 Access via `https://<hostname>.tail<tailnet>.ts.net`
 
-### Temporary workaround for remote OpenCami connection issues
+### Remote Tailnet + origin allowlist (required)
 
-If OpenCami loads but cannot connect to gateway over Tailnet, try this temporary compatibility setting in OpenClaw:
+If OpenCami UI loads but gateway connect fails with origin warnings, configure both sides:
+
+1. In OpenClaw config, allow your exact OpenCami origin:
 
 ```json
 "gateway": {
   "controlUi": {
-    "dangerouslyDisableDeviceAuth": true
+    "allowedOrigins": [
+      "https://openclaw-server.tailXXXX.ts.net:3001"
+    ]
   }
 }
 ```
 
-Then restart gateway:
+2. In OpenCami environment, set the same exact origin:
+
+```bash
+OPENCAMI_ORIGIN=https://openclaw-server.tailXXXX.ts.net:3001
+```
+
+3. Restart gateway:
 
 ```bash
 openclaw gateway restart
 ```
 
-And ensure OpenCami uses:
+4. Use secure gateway URL + auth in OpenCami:
 - `wss://<your-host>.ts.net` (or `:443`)
 - `CLAWDBOT_GATEWAY_TOKEN` when gateway auth mode is `token`
 
-> Note: this is a temporary workaround until a clean upstream fix. It reduces strict Control UI device identity checks.
+### Device auth compatibility fallback (optional)
+
+OpenCami runs strict device-auth connect by default. If strict connect fails in your environment, enable fallback mode:
+
+```bash
+OPENCAMI_DEVICE_AUTH_FALLBACK=true
+```
+
+Fallback retries connect without device identity metadata. Keep strict mode as default and use fallback only when needed.
 
 ### Funnel (Public Access)
 
