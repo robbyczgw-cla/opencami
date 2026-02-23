@@ -9,6 +9,22 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [Semantic Ver
 
 - 🎨 **Artifacts Preview (Beta)** — Live HTML/SVG preview side panel. When AI generates HTML or SVG code, a "Preview" button appears in the code block toolbar. Click to open a sandboxed preview panel beside the chat. Enable via Settings → Workspace → "Artifacts Preview (Beta)".
 
+## [1.8.3] - 2026-02-23
+
+### Added
+
+- 🔐 **Device Auth (OpenClaw v2026.2.14+)** — OpenCami now performs the Control UI device identity handshake (Ed25519 device identity, signed connect payload, connect.challenge nonce) for remote/Tailnet compatibility.
+- 🌐 **Origin allowlist support** — OpenCami server can now send a configurable `Origin` header when opening the Gateway WebSocket (use `OPENCAMI_ORIGIN` or `opencami --origin ...`).
+- 🧰 **CLI flags** — `opencami` now supports `--token`, `--password`, and `--origin` to match the installer and simplify setup.
+
+### Fixed
+
+- Remote connect failures like **"origin not allowed"** and **invalid connect params (/device/nonce)** when `dangerouslyDisableDeviceAuth` is disabled.
+
+### Notes
+
+- Optional fallback for older gateways: set `OPENCAMI_DEVICE_AUTH_FALLBACK=1` to retry without device identity.
+
 ## [1.8.2] - 2026-02-21
 
 ### Fixed
