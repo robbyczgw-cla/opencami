@@ -64,6 +64,35 @@ You need Node.js 18+ and npm. You also need a reachable OpenClaw gateway, plus g
 
 Set `CLAWDBOT_GATEWAY_URL` to your gateway URL (for example `ws://127.0.0.1:18789`) and provide auth via `CLAWDBOT_GATEWAY_TOKEN` or `CLAWDBOT_GATEWAY_PASSWORD`. If you use the CLI, you can also pass `--gateway`, but setting `CLAWDBOT_GATEWAY_URL` explicitly is the most reliable deployment setup.
 
+For remote Tailnet setups, prefer:
+- `wss://<your-host>.ts.net` (or `:443`)
+- plus `CLAWDBOT_GATEWAY_TOKEN` when gateway auth mode is `token`
+
+</details>
+
+<details>
+<summary><strong>Remote Tailnet connection fails even though UI loads — quick workaround?</strong></summary>
+
+Temporary workaround (until clean fix):
+
+```json
+"gateway": {
+  "controlUi": {
+    "dangerouslyDisableDeviceAuth": true
+  }
+}
+```
+
+Then restart gateway:
+
+```bash
+openclaw gateway restart
+```
+
+This often restores remote OpenCami connectivity in Tailnet-only setups.
+
+Security tradeoff: this relaxes strict Control UI device identity checks. Usually acceptable short-term in a trusted private Tailnet, but keep device access restricted.
+
 </details>
 
 <details>
