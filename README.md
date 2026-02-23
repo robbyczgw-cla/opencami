@@ -1,7 +1,5 @@
 # OpenCami 🦎
 
-**Version 1.7.0**
-
 A beautiful web client for [OpenClaw](https://github.com/openclaw/openclaw).
 
 [![npm](https://img.shields.io/npm/v/opencami)](https://www.npmjs.com/package/opencami)
@@ -9,128 +7,76 @@ A beautiful web client for [OpenClaw](https://github.com/openclaw/openclaw).
 
 ![OpenCami Chat Interface](docs/screenshots/opencami-chat.jpg)
 
-## Quick Start
+## Install
+
+### Option 1 (recommended)
 
 ```bash
 curl -fsSL https://opencami.xyz/install.sh | bash
 ```
 
-Then open `http://localhost:3000` (or your configured host/port).
-
----
-
-## Install (curl)
-
-The recommended install flow is:
-
-```bash
-curl -fsSL https://opencami.xyz/install.sh | bash
-```
-
-This installs OpenCami and prints next-step instructions for required environment variables.
-
-Alternative install:
+### Option 2
 
 ```bash
 npm install -g opencami
-opencami
 ```
 
-CLI options:
+## Run
 
-| Flag | Description | Default |
-|------|-------------|---------|
-| `--port` | Port to serve on | `3000` |
-| `--gateway` | OpenClaw gateway URL | `ws://127.0.0.1:18789` |
-| `--host` | Bind address | `localhost` |
-| `--no-open` | Don't open browser | — |
-
-> Note: `--gateway` sets `OPENCLAW_GATEWAY` internally. For predictable deployments, set `CLAWDBOT_GATEWAY_URL` explicitly in environment.
-
----
-
-## Configuration (OpenCami environment)
-
-Set these in your shell, service manager, or container environment.
-
-### Required
+### Local (same machine as Gateway)
 
 ```bash
-CLAWDBOT_GATEWAY_URL=ws://127.0.0.1:18789
-# pick ONE auth method:
-CLAWDBOT_GATEWAY_TOKEN=...
-# or
-CLAWDBOT_GATEWAY_PASSWORD=...
+opencami --gateway ws://127.0.0.1:18789 --token <GATEWAY_TOKEN>
 ```
 
-### Required for remote Tailnet / origin allowlist setups
+Then open: `http://localhost:3000`
 
-```bash
-# Must exactly match the browser origin used to access OpenCami
-# Example: https://openclaw-server.tailXXXX.ts.net:3001
-OPENCAMI_ORIGIN=https://openclaw-server.tailXXXX.ts.net:3001
-```
+### Remote over Tailnet (no `dangerouslyDisableDeviceAuth`)
 
-### Optional
-
-```bash
-# Enables compatibility fallback if strict device-auth connect fails
-# Default is strict mode (fallback disabled)
-OPENCAMI_DEVICE_AUTH_FALLBACK=true
-
-FILES_ROOT=/path/to/workspace
-OPENAI_API_KEY=sk-...
-```
-
----
-
-## Remote Tailnet setup (OpenClaw + OpenCami)
-
-If OpenCami loads remotely but you see **"origin not allowed"** or gateway connect failures, configure both sides.
-
-### 1) OpenClaw gateway config (`gateway.controlUi.allowedOrigins`)
-
-In your OpenClaw config, allow the exact OpenCami browser origin:
+1) Allow your OpenCami URL in OpenClaw:
 
 ```json
 {
   "gateway": {
     "controlUi": {
       "allowedOrigins": [
-        "https://openclaw-server.tailXXXX.ts.net:3001"
+        "https://<magicdns>:3001"
       ]
     }
   }
 }
 ```
 
-### 2) OpenCami server env (`OPENCAMI_ORIGIN`)
-
-Set `OPENCAMI_ORIGIN` to the same exact value:
-
-```bash
-OPENCAMI_ORIGIN=https://openclaw-server.tailXXXX.ts.net:3001
-```
-
-### 3) Restart gateway
+2) Restart Gateway:
 
 ```bash
 openclaw gateway restart
 ```
 
-> If you access OpenCami via multiple hostnames/ports, each distinct origin must be listed in `allowedOrigins`.
+3) Run OpenCami with the same Origin:
 
----
+```bash
+opencami \
+  --gateway ws://127.0.0.1:18789 \
+  --token <GATEWAY_TOKEN> \
+  --origin https://<magicdns>:3001
+```
 
-## Device auth notes (strict vs fallback)
+## Configuration
 
-OpenCami uses strict device-auth-compatible connect params by default.
+You can also set env vars instead of flags:
 
-- **Strict mode (default):** `OPENCAMI_DEVICE_AUTH_FALLBACK` unset/false
-- **Fallback mode (compatibility):** set `OPENCAMI_DEVICE_AUTH_FALLBACK=true`
+```bash
+CLAWDBOT_GATEWAY_URL=ws://127.0.0.1:18789
+CLAWDBOT_GATEWAY_TOKEN=...
+OPENCAMI_ORIGIN=https://<magicdns>:3001   # only needed for remote HTTPS
+```
 
-Fallback mode retries connect without device identity metadata if strict handshake fails.
-Use fallback only when needed for compatibility, and prefer strict mode long-term.
+## Troubleshooting (quick)
+
+- **"origin not allowed"** → add the exact URL to `gateway.controlUi.allowedOrigins` *and* pass the same value as `--origin` / `OPENCAMI_ORIGIN`.
+- **Pairing required** → approve the device in OpenClaw (`openclaw devices list/approve`).
+- **Fallback (only if needed):** `OPENCAMI_DEVICE_AUTH_FALLBACK=1`
 
 ---
 
