@@ -1,4 +1,8 @@
 import { randomUUID } from 'node:crypto'
+import crypto from 'node:crypto'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
 import WebSocket from 'ws'
 
 // ─── Types ──────────────────────────────────────────────────────────────
@@ -25,9 +29,19 @@ type ConnectParams = {
     mode: string
     instanceId?: string
   }
-  auth?: { token?: string; password?: string }
+  caps?: Array<string>
+  auth?: { token?: string; password?: string; deviceToken?: string }
   role?: 'operator' | 'node'
   scopes?: Array<string>
+  device?: {
+    id: string
+    publicKey: string
+    signature: string
+    signedAt: number
+    nonce: string
+  }
+  userAgent?: string
+  locale?: string
 }
 
 export type GatewayEvent = {
@@ -54,24 +68,178 @@ function getGatewayConfig() {
   return { url, token, password }
 }
 
-function buildConnectParams(token: string, password: string): ConnectParams {
+const ED25519_SPKI_PREFIX = Buffer.from('302a300506032b6570032100', 'hex')
+
+function base64UrlEncode(buf: Buffer) {
+  return buf
+    .toString('base64')
+    .replaceAll('+', '-')
+    .replaceAll('/', '_')
+    .replace(/=+$/g, '')
+}
+
+function derivePublicKeyRaw(publicKeyPem: string) {
+  const spki = crypto.createPublicKey(publicKeyPem).export({ type: 'spki', format: 'der' }) as Buffer
+  if (
+    spki.length === ED25519_SPKI_PREFIX.length + 32 &&
+    spki.subarray(0, ED25519_SPKI_PREFIX.length).equals(ED25519_SPKI_PREFIX)
+  ) {
+    return spki.subarray(ED25519_SPKI_PREFIX.length)
+  }
+  return spki
+}
+
+function fingerprintPublicKey(publicKeyPem: string) {
+  const raw = derivePublicKeyRaw(publicKeyPem)
+  return crypto.createHash('sha256').update(raw).digest('hex')
+}
+
+function ensureDir(filePath: string) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true })
+}
+
+function resolveDeviceIdentityPath() {
+  // Keep OpenCami identity separate from OpenClaw's; stable per OpenCami install.
+  return path.join(os.homedir(), '.opencami', 'identity', 'device.json')
+}
+
+function loadOrCreateDeviceIdentity(filePath = resolveDeviceIdentityPath()) {
+  try {
+    if (fs.existsSync(filePath)) {
+      const raw = fs.readFileSync(filePath, 'utf8')
+      const parsed = JSON.parse(raw)
+      if (
+        parsed?.version === 1 &&
+        typeof parsed.deviceId === 'string' &&
+        typeof parsed.publicKeyPem === 'string' &&
+        typeof parsed.privateKeyPem === 'string'
+      ) {
+        const derivedId = fingerprintPublicKey(parsed.publicKeyPem)
+        if (derivedId && derivedId !== parsed.deviceId) {
+          const updated = { ...parsed, deviceId: derivedId }
+          fs.writeFileSync(filePath, `${JSON.stringify(updated, null, 2)}\n`, { mode: 0o600 })
+          try { fs.chmodSync(filePath, 0o600) } catch {}
+          return { deviceId: derivedId, publicKeyPem: parsed.publicKeyPem, privateKeyPem: parsed.privateKeyPem }
+        }
+        return { deviceId: parsed.deviceId, publicKeyPem: parsed.publicKeyPem, privateKeyPem: parsed.privateKeyPem }
+      }
+    }
+  } catch {}
+
+  const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519')
+  const publicKeyPem = publicKey.export({ type: 'spki', format: 'pem' }).toString()
+  const privateKeyPem = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString()
+  const deviceId = fingerprintPublicKey(publicKeyPem)
+
+  ensureDir(filePath)
+  const stored = {
+    version: 1,
+    deviceId,
+    publicKeyPem,
+    privateKeyPem,
+    createdAtMs: Date.now(),
+  }
+  fs.writeFileSync(filePath, `${JSON.stringify(stored, null, 2)}\n`, { mode: 0o600 })
+  try { fs.chmodSync(filePath, 0o600) } catch {}
+
+  return { deviceId, publicKeyPem, privateKeyPem }
+}
+
+function signDevicePayload(privateKeyPem: string, payload: string) {
+  const key = crypto.createPrivateKey(privateKeyPem)
+  return base64UrlEncode(crypto.sign(null, Buffer.from(payload, 'utf8'), key))
+}
+
+function publicKeyRawBase64UrlFromPem(publicKeyPem: string) {
+  return base64UrlEncode(derivePublicKeyRaw(publicKeyPem))
+}
+
+function buildDeviceAuthPayload(args: {
+  deviceId: string
+  clientId: string
+  clientMode: string
+  role: string
+  scopes: string[]
+  signedAtMs: number
+  token: string | null
+  nonce: string
+}) {
+  const scopes = args.scopes.join(',')
+  const token = args.token ?? ''
+  // Must match OpenClaw device identity format.
+  return ['v2', args.deviceId, args.clientId, args.clientMode, args.role, scopes, String(args.signedAtMs), token, args.nonce].join('|')
+}
+
+function loadOrCreateInstanceId() {
+  const filePath = path.join(os.homedir(), '.opencami', 'identity', 'instance-id.txt')
+  try {
+    if (fs.existsSync(filePath)) {
+      const v = fs.readFileSync(filePath, 'utf8').trim()
+      if (v) return v
+    }
+  } catch {}
+  const v = randomUUID()
+  ensureDir(filePath)
+  fs.writeFileSync(filePath, `${v}\n`, { mode: 0o600 })
+  try { fs.chmodSync(filePath, 0o600) } catch {}
+  return v
+}
+
+function buildConnectParams(token: string, password: string, nonce: string): ConnectParams {
+  const clientId = 'openclaw-control-ui'
+  const clientMode = 'webchat'
+  const role = 'operator'
+  const scopes = ['operator.read', 'operator.write']
+
+  if (!nonce) {
+    throw new Error(
+      'OpenClaw did not send connect.challenge nonce in time. ' +
+        'If you are connecting cross-origin, ensure your origin is allowed (gateway.controlUi.allowedOrigins).',
+    )
+  }
+
+  const identity = loadOrCreateDeviceIdentity()
+  const signedAtMs = Date.now()
+  const payload = buildDeviceAuthPayload({
+    deviceId: identity.deviceId,
+    clientId,
+    clientMode,
+    role,
+    scopes,
+    signedAtMs,
+    token: token || null,
+    nonce,
+  })
+
+  const signature = signDevicePayload(identity.privateKeyPem, payload)
+
   return {
     minProtocol: 3,
     maxProtocol: 3,
     client: {
-      id: 'gateway-client',
+      id: clientId,
       displayName: 'OpenCami',
       version: 'dev',
       platform: process.platform,
-      mode: 'ui',
-      instanceId: randomUUID(),
+      mode: clientMode,
+      instanceId: loadOrCreateInstanceId(),
     },
+    caps: [],
     auth: {
       token: token || undefined,
       password: password || undefined,
     },
     role: 'operator',
-    scopes: ['operator.read', 'operator.write', 'operator.admin'],
+    scopes,
+    device: {
+      id: identity.deviceId,
+      publicKey: publicKeyRawBase64UrlFromPem(identity.publicKeyPem),
+      signature,
+      signedAt: signedAtMs,
+      nonce,
+    },
+    userAgent: `opencami/${process.env.npm_package_version ?? 'dev'} (node ${process.version})`,
+    locale: process.env.LANG || 'en',
   }
 }
 
@@ -120,7 +288,14 @@ class PersistentGatewayConnection {
     if (this.destroyed) throw new Error('Connection destroyed')
 
     const { url, token, password } = getGatewayConfig()
-    const ws = new WebSocket(url)
+
+    // Some gateway deployments enforce Origin allowlists for Control UI clients.
+    // If OPENCAMI_ORIGIN is set, send it as the WS Origin header so it can be allowlisted via
+    // gateway.controlUi.allowedOrigins.
+    const origin = process.env.OPENCAMI_ORIGIN?.trim()
+    const ws = origin
+      ? new WebSocket(url, { headers: { Origin: origin } })
+      : new WebSocket(url)
     this.ws = ws
 
     // Wait for open
@@ -132,22 +307,109 @@ class PersistentGatewayConnection {
       ws.on('error', onError)
     })
 
-    // Wire message handler
+    // Capture connect.challenge nonce ASAP after open (before generic message handler)
+    const nonce = await new Promise<string>((resolve) => {
+      let done = false
+      const timer = setTimeout(() => {
+        if (done) return
+        done = true
+        resolve('')
+      }, 3000)
+
+      const onMessage = (data: WebSocket.Data) => {
+        try {
+          const str = typeof data === 'string' ? data : data.toString()
+          const parsed = JSON.parse(str) as GatewayFrame
+          if (parsed.type === 'event' && parsed.event === 'connect.challenge') {
+            const n = (parsed.payload as any)?.nonce
+            if (typeof n === 'string' && n.length > 0) {
+              clearTimeout(timer)
+              ws.off('message', onMessage)
+              if (done) return
+              done = true
+              resolve(n)
+            }
+          }
+        } catch {}
+      }
+
+      ws.on('message', onMessage)
+    })
+
+    // Wire generic message handler
     ws.on('message', (data: WebSocket.Data) => this._onMessage(data))
     ws.on('close', () => this._onClose())
     ws.on('error', () => {}) // Prevent unhandled error crash
 
-    // Connect handshake
+    // Connect handshake (supports device identity challenge nonce)
     const connectId = randomUUID()
-    const connectParams = buildConnectParams(token, password)
-    ws.send(JSON.stringify({
-      type: 'req',
-      id: connectId,
-      method: 'connect',
-      params: connectParams,
-    }))
 
-    await this._waitForRes(connectId, 10_000)
+    const shouldFallback =
+      process.env.OPENCAMI_DEVICE_AUTH_FALLBACK === '1' ||
+      process.env.OPENCAMI_DEVICE_AUTH_FALLBACK === 'true'
+
+    try {
+      const connectParams = buildConnectParams(token, password, nonce)
+      ws.send(
+        JSON.stringify({
+          type: 'req',
+          id: connectId,
+          method: 'connect',
+          params: connectParams,
+        }),
+      )
+
+      const hello = await this._waitForRes(connectId, 10_000)
+      // Optional sanity check: ensure operator.read was granted.
+      const grantedScopes = (hello as any)?.auth?.scopes
+      if (Array.isArray(grantedScopes) && !grantedScopes.includes('operator.read')) {
+        throw new Error(
+          `Gateway connected but missing required scope: operator.read (granted: ${grantedScopes.join(', ')})`,
+        )
+      }
+    } catch (err) {
+      if (!shouldFallback) throw err
+
+      console.warn(
+        '[gateway-ws] Device auth connect failed; retrying without device identity (fallback enabled):',
+        err instanceof Error ? err.message : err,
+      )
+
+      const fallbackId = randomUUID()
+      const fallbackParams: ConnectParams = {
+        minProtocol: 3,
+        maxProtocol: 3,
+        client: {
+          id: 'openclaw-control-ui',
+          displayName: 'OpenCami',
+          version: 'dev',
+          platform: process.platform,
+          mode: 'webchat',
+          instanceId: loadOrCreateInstanceId(),
+        },
+        caps: [],
+        auth: {
+          token: token || undefined,
+          password: password || undefined,
+        },
+        role: 'operator',
+        scopes: ['operator.read', 'operator.write'],
+        userAgent: `opencami/${process.env.npm_package_version ?? 'dev'} (node ${process.version})`,
+        locale: process.env.LANG || 'en',
+      }
+
+      ws.send(
+        JSON.stringify({
+          type: 'req',
+          id: fallbackId,
+          method: 'connect',
+          params: fallbackParams,
+        }),
+      )
+
+      await this._waitForRes(fallbackId, 10_000)
+    }
+
     this.connected = true
     this.reconnectDelay = 1000
     console.log('[gateway-ws] Persistent connection established')

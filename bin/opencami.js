@@ -18,6 +18,9 @@ function getArg(name, def) {
 const port = parseInt(getArg('port', '3000'), 10);
 const host = getArg('host', '127.0.0.1');
 const gateway = getArg('gateway', 'ws://127.0.0.1:18789');
+const token = getArg('token', '');
+const password = getArg('password', '');
+const origin = getArg('origin', '');
 const noOpen = args.includes('--no-open');
 
 if (args.includes('--help') || args.includes('-h')) {
@@ -27,17 +30,23 @@ if (args.includes('--help') || args.includes('-h')) {
   Usage: opencami [options]
 
   Options:
-    --port <n>       Port to listen on (default: 3000)
-    --host <addr>    Host to bind to (default: 127.0.0.1)
-    --gateway <url>  OpenClaw gateway URL (default: ws://127.0.0.1:18789)
-    --no-open        Don't open browser on start
-    -h, --help       Show this help
+    --port <n>        Port to listen on (default: 3000)
+    --host <addr>     Host to bind to (default: 127.0.0.1)
+    --gateway <url>   OpenClaw gateway URL (default: ws://127.0.0.1:18789)
+    --token <token>   Gateway token (sets CLAWDBOT_GATEWAY_TOKEN)
+    --password <pw>   Gateway password (sets CLAWDBOT_GATEWAY_PASSWORD)
+    --origin <url>    Origin to send in backend WS (sets OPENCAMI_ORIGIN)
+    --no-open         Don't open browser on start
+    -h, --help        Show this help
 `);
   process.exit(0);
 }
 
 // Set gateway env for the app
-process.env.OPENCLAW_GATEWAY = gateway;
+process.env.CLAWDBOT_GATEWAY_URL = gateway;
+if (token) process.env.CLAWDBOT_GATEWAY_TOKEN = token;
+if (password) process.env.CLAWDBOT_GATEWAY_PASSWORD = password;
+if (origin) process.env.OPENCAMI_ORIGIN = origin;
 
 const MIME_TYPES = {
   '.html': 'text/html',
