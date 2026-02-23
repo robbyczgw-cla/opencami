@@ -23,7 +23,7 @@ npm install -g opencami
 
 ## Run
 
-### Local (same machine as Gateway)
+### ✅ Recommended (OpenCami runs on the same machine as the OpenClaw Gateway)
 
 ```bash
 opencami --gateway ws://127.0.0.1:18789 --token <GATEWAY_TOKEN>
@@ -31,29 +31,29 @@ opencami --gateway ws://127.0.0.1:18789 --token <GATEWAY_TOKEN>
 
 Then open: `http://localhost:3000`
 
-### Remote over Tailnet (no `dangerouslyDisableDeviceAuth`)
+### 🌐 Remote access over Tailscale (keep Gateway local)
 
-1) Allow your OpenCami URL in OpenClaw:
+This is the safest setup: **Gateway stays on loopback**, you access **OpenCami** via `https://<magicdns>:<port>`.
 
-```json
+1) In OpenClaw, allowlist the exact OpenCami URL (**no trailing slash**):
+
+```json5
 {
   "gateway": {
-    "controlUi": {
-      "allowedOrigins": [
-        "https://<magicdns>:3001"
-      ]
+    "controlUI": {
+      "allowedOrigins": ["https://<magicdns>:3001"]
     }
   }
 }
 ```
 
-2) Restart Gateway:
+2) Restart the gateway:
 
 ```bash
 openclaw gateway restart
 ```
 
-3) Run OpenCami with the same Origin:
+3) Start OpenCami with the same origin:
 
 ```bash
 opencami \
@@ -61,6 +61,8 @@ opencami \
   --token <GATEWAY_TOKEN> \
   --origin https://<magicdns>:3001
 ```
+
+> ⚠️ Note: `--gateway` must be `ws://` or `wss://` (not `https://`).
 
 ## CLI options
 
@@ -89,7 +91,7 @@ OPENCAMI_ORIGIN=https://<magicdns>:3001   # only needed for remote HTTPS
 
 ## Troubleshooting (quick)
 
-- **"origin not allowed"** → add the exact URL to `gateway.controlUi.allowedOrigins` *and* pass the same value as `--origin` / `OPENCAMI_ORIGIN`.
+- **"origin not allowed"** → add the exact URL to `gateway.controlUI.allowedOrigins` *and* pass the same value as `--origin` / `OPENCAMI_ORIGIN` (exact match, no trailing `/`).
 - **Pairing required** → approve the device in OpenClaw (`openclaw devices list/approve`).
 - **Fallback (only if needed):** `OPENCAMI_DEVICE_AUTH_FALLBACK=1`
 
@@ -97,10 +99,10 @@ OPENCAMI_ORIGIN=https://<magicdns>:3001   # only needed for remote HTTPS
 
 If you *must* get remote access working immediately, you can temporarily disable Control UI device identity checks:
 
-```json
+```json5
 {
   "gateway": {
-    "controlUi": {
+    "controlUI": {
       "dangerouslyDisableDeviceAuth": true
     }
   }
@@ -134,8 +136,8 @@ openclaw gateway restart
 Cause: gateway rejected browser origin.
 
 Fix:
-1. Add origin to `gateway.controlUi.allowedOrigins`
-2. Set identical `OPENCAMI_ORIGIN` in OpenCami env
+1. Add origin to `gateway.controlUI.allowedOrigins` (exact match, no trailing `/`)
+2. Set identical `OPENCAMI_ORIGIN` (or `--origin`) in OpenCami
 3. Restart gateway (`openclaw gateway restart`)
 
 ### Missing scope `operator.read`
