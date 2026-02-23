@@ -62,6 +62,21 @@ opencami \
   --origin https://<magicdns>:3001
 ```
 
+## CLI options
+
+```text
+opencami [--port <n>] [--host <addr>] [--gateway <ws(s)://...>] [--token <token>] [--password <pw>] [--origin <url>] [--no-open]
+
+--port <n>        Port to listen on (default: 3000)
+--host <addr>     Host to bind to (default: 127.0.0.1)
+--gateway <url>   OpenClaw gateway WS URL (default: ws://127.0.0.1:18789)
+--token <token>   Gateway token (sets CLAWDBOT_GATEWAY_TOKEN)
+--password <pw>   Gateway password (sets CLAWDBOT_GATEWAY_PASSWORD)
+--origin <url>    Origin header for backend WS (sets OPENCAMI_ORIGIN)
+--no-open         Don't open browser on start
+-h, --help        Show help
+```
+
 ## Configuration
 
 You can also set env vars instead of flags:
