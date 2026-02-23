@@ -93,6 +93,27 @@ OPENCAMI_ORIGIN=https://<magicdns>:3001   # only needed for remote HTTPS
 - **Pairing required** → approve the device in OpenClaw (`openclaw devices list/approve`).
 - **Fallback (only if needed):** `OPENCAMI_DEVICE_AUTH_FALLBACK=1`
 
+### Last resort (temporary): `dangerouslyDisableDeviceAuth`
+
+If you *must* get remote access working immediately, you can temporarily disable Control UI device identity checks:
+
+```json
+{
+  "gateway": {
+    "controlUi": {
+      "dangerouslyDisableDeviceAuth": true
+    }
+  }
+}
+```
+
+Restart:
+```bash
+openclaw gateway restart
+```
+
+**Risks:** this relaxes Control UI device identity checks. Only use on a private Tailnet with restricted device/user access, and revert once `allowedOrigins` + `--origin` works.
+
 ---
 
 ## Security notes
