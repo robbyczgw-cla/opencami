@@ -24,6 +24,28 @@ opencami
 
 Opens your browser to the chat interface.
 
+## ⚠️ Temporary Tailnet Workaround (until clean fix)
+
+If OpenCami UI loads but remote gateway connection fails over Tailnet, this workaround helps in many setups:
+
+1. In OpenClaw config set:
+```json
+"gateway": {
+  "controlUi": {
+    "dangerouslyDisableDeviceAuth": true
+  }
+}
+```
+2. Restart gateway:
+```bash
+openclaw gateway restart
+```
+3. Use a secure WS URL in OpenCami:
+- `wss://<your-host>.ts.net` (or `:443`)
+- plus `CLAWDBOT_GATEWAY_TOKEN` when gateway auth mode is `token`
+
+> Security note: this relaxes Control UI device identity checks. On a private Tailnet this is often acceptable short-term, but keep Tailnet device access restricted.
+
 ### Options
 
 | Flag | Description | Default |

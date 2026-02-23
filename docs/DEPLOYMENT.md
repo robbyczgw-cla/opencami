@@ -377,6 +377,30 @@ tailscale serve --bg --https=443 --set-path=/ http://localhost:3000
 
 Access via `https://<hostname>.tail<tailnet>.ts.net`
 
+### Temporary workaround for remote OpenCami connection issues
+
+If OpenCami loads but cannot connect to gateway over Tailnet, try this temporary compatibility setting in OpenClaw:
+
+```json
+"gateway": {
+  "controlUi": {
+    "dangerouslyDisableDeviceAuth": true
+  }
+}
+```
+
+Then restart gateway:
+
+```bash
+openclaw gateway restart
+```
+
+And ensure OpenCami uses:
+- `wss://<your-host>.ts.net` (or `:443`)
+- `CLAWDBOT_GATEWAY_TOKEN` when gateway auth mode is `token`
+
+> Note: this is a temporary workaround until a clean upstream fix. It reduces strict Control UI device identity checks.
+
 ### Funnel (Public Access)
 
 ```bash
