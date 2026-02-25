@@ -1,76 +1,96 @@
-name: Release & Publish
+name: Release
 
 on:
   push:
-    tags: ['v*']
-
-permissions:
-  contents: write
-  packages: write
+    tags:
+      - 'v*'
 
 jobs:
-  release:
-    runs-on: ubuntu-latest
+  build-macos:
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          node-version: 22
-          registry-url: https://registry.npmjs.org
+          node-version: '22'
 
-      - run: npm ci
-      - run: npm run build
-
-      - name: Get version
-        id: version
-        run: echo "version=$(node -p 'require(\"./package.json\").version')" >> "$GITHUB_OUTPUT"
-
-      - name: Extract changelog for this version
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          # Extract section between "## [VERSION]" and next "## ["
-          awk "/^## \\[?${VERSION}\\]?/{found=1; next} /^## /{if(found) exit} found" CHANGELOG.md > release-notes.md
-
-          # Debug: show what was extracted
-          echo "--- Extracted release notes for v${VERSION} ---"
-          cat release-notes.md
-          echo "--- End ---"
-
-          # Fallback if nothing extracted
-          if [ ! -s release-notes.md ]; then
-            echo "⚠️ No CHANGELOG entry found for v${VERSION}. Add one before tagging!" > release-notes.md
-            echo "::warning::No CHANGELOG entry found for v${VERSION}"
-          fi
-
-          # Safety: cap at 50 lines to prevent dumping entire changelog
-          head -50 release-notes.md > release-notes-trimmed.md
-          mv release-notes-trimmed.md release-notes.md
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
         with:
-          body_path: release-notes.md
-          generate_release_notes: false
-          make_latest: true
+          version: 10
 
-      - name: Publish to npm
-        run: npm publish --access public || echo "Version already published on npm, skipping"
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin, x86_64-apple-darwin
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build frontend
+        run: pnpm build
+
+      - name: Build Tauri (Universal)
+        uses: tauri-apps/tauri-action@v0
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - uses: actions/setup-node@v4
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          registry-url: https://npm.pkg.github.com
+          tagName: ${{ github.ref_name }}
+          releaseName: 'OpenCami ${{ github.ref_name }}'
+          releaseBody: 'See CHANGELOG.md for details.'
+          releaseDraft: true
+          prerelease: false
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+          args: --target universal-apple-darwin
 
-      - name: Publish to GitHub Packages
+  build-linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install system dependencies
         run: |
-          node -e "
-            const p = require('./package.json');
-            p.name = '@robbyczgw-cla/opencami';
-            p.publishConfig = { registry: 'https://npm.pkg.github.com' };
-            require('fs').writeFileSync('package.json', JSON.stringify(p, null, 2));
-          "
-          npm publish --access public || echo "Version already published on GitHub Packages, skipping"
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build frontend
+        run: pnpm build
+
+      - name: Build Tauri
+        uses: tauri-apps/tauri-action@v0
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'OpenCami ${{ github.ref_name }}'
+          releaseBody: 'See CHANGELOG.md for details.'
+          releaseDraft: true
+          prerelease: false
