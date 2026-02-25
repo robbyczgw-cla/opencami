@@ -1,6 +1,6 @@
 [package]
 name = "opencami-desktop"
-version = "1.4.0"
+version = "1.8.3"
 description = "OpenCami desktop wrapper"
 authors = ["Robby (robbyczgw-cla)"]
 license = "MIT"
