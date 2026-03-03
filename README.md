@@ -140,24 +140,28 @@ Fix:
 2. Set identical `OPENCAMI_ORIGIN` (or `--origin`) in OpenCami
 3. Restart gateway (`openclaw gateway restart`)
 
-### Missing scope `operator.read`
+### Missing scope `operator.admin`
 
-Cause: gateway auth succeeded but token/permissions did not include required operator scope.
+Cause: gateway auth succeeded but the device was paired with insufficient scopes.
 
-Fix:
-- Use a token/password with operator access
-- Verify gateway auth/scopes in OpenClaw
-- Reconnect after updating credentials
-
-### Pairing required / device auth connect issues
-
-If strict connect fails in your deployment:
+Fix (v1.8.5+): delete the device identity and let OpenCami re-pair automatically:
 
 ```bash
-OPENCAMI_DEVICE_AUTH_FALLBACK=true
+rm ~/.opencami/identity/device.json
+# then restart OpenCami — it will re-pair with full scopes
 ```
 
-Then restart OpenCami and retry. Keep this as a compatibility fallback, not the default.
+### Pairing required / device pending approval
+
+On first connect, OpenCami registers itself as a device on the gateway. Starting with v1.8.5, this happens automatically with full scopes (`operator.admin`, `operator.approvals`, `operator.pairing`) — no manual config required.
+
+If you see a "device pending" error:
+```bash
+openclaw devices list    # find the pending device
+openclaw devices approve <deviceId>
+```
+
+After approval, OpenCami reconnects and stores a `deviceToken` for future sessions (no shared token needed).
 
 ### Can’t connect to gateway at all
 
