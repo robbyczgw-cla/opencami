@@ -1,8 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
-import { execSync } from 'node:child_process'
+import { execFile } from 'node:child_process'
 import { readFileSync, existsSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { promisify } from 'node:util'
 
 const MY_SKILLS_CONFIG = resolve(process.cwd(), '.clawhub-my-skills.json')
 
@@ -19,9 +20,38 @@ const RECOMMENDED_SKILLS = [
   'therapy-mode',
 ]
 
-function runCmd(cmd: string): string {
+const execFileAsync = promisify(execFile)
+const ALLOWED_SORTS = new Set(['trending', 'downloads', 'installs', 'newest'])
+const SLUG_PATTERN = /^[a-zA-Z0-9/_-]+$/
+
+function parsePositiveInt(input: string | null, fallback: number, max: number): number {
+  if (!input) return fallback
+  const parsed = Number.parseInt(input, 10)
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback
+  return Math.min(parsed, max)
+}
+
+function parseSort(input: string | null): string {
+  if (!input) return 'trending'
+  const normalized = input.trim().toLowerCase()
+  return ALLOWED_SORTS.has(normalized) ? normalized : 'trending'
+}
+
+function parseSlug(input: unknown): string | null {
+  if (typeof input !== 'string') return null
+  const slug = input.trim()
+  if (!slug || !SLUG_PATTERN.test(slug)) return null
+  return slug
+}
+
+async function runCmd(args: string[]): Promise<string> {
   try {
-    return execSync(cmd, { encoding: 'utf-8', timeout: 30000 }).trim()
+    const { stdout } = await execFileAsync('clawhub', args, {
+      encoding: 'utf-8',
+      timeout: 30000,
+      maxBuffer: 1024 * 1024 * 8,
+    })
+    return stdout.trim()
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     throw new Error(`Command failed: ${msg}`)
@@ -79,16 +109,14 @@ export const Route = createFileRoute('/api/skills')({
           const action = url.searchParams.get('action') || 'installed'
 
           if (action === 'installed') {
-            const output = runCmd('clawhub list')
+            const output = await runCmd(['list'])
             return json({ ok: true, skills: parseInstalledSkills(output) })
           }
 
           if (action === 'explore') {
-            const sort = url.searchParams.get('sort') || 'trending'
-            const limit = url.searchParams.get('limit') || '25'
-            const safeSort = sort.replace(/[^a-z-]/gi, '')
-            const safeLimit = String(parseInt(limit, 10) || 25)
-            const raw = runCmd(`clawhub explore --json --limit ${safeLimit} --sort ${safeSort}`)
+            const sort = parseSort(url.searchParams.get('sort'))
+            const limit = parsePositiveInt(url.searchParams.get('limit'), 25, 200)
+            const raw = await runCmd(['explore', '--json', '--limit', String(limit), '--sort', sort])
             const output = raw.substring(raw.indexOf('{'))
             try {
               const data = JSON.parse(output)
@@ -100,11 +128,9 @@ export const Route = createFileRoute('/api/skills')({
 
           if (action === 'search') {
             const q = url.searchParams.get('q') || ''
-            const limit = url.searchParams.get('limit') || '10'
+            const limit = parsePositiveInt(url.searchParams.get('limit'), 10, 200)
             if (!q.trim()) return json({ ok: true, skills: [] })
-            const safeLimit = String(parseInt(limit, 10) || 10)
-            const safeQ = q.replace(/"/g, '\\"')
-            const raw = runCmd(`clawhub search "${safeQ}" --limit ${safeLimit}`)
+            const raw = await runCmd(['search', q, '--limit', String(limit)])
             const output = raw.replace(/^- Searching\n?/, '')
             return json({ ok: true, skills: parseSearchResults(output) })
           }
@@ -120,7 +146,7 @@ export const Route = createFileRoute('/api/skills')({
             for (const sort of ['downloads', 'installs', 'newest', 'trending']) {
               if (found.size >= slugSet.size) break
               try {
-                const raw = runCmd(`clawhub explore --json --limit 200 --sort ${sort}`)
+                const raw = await runCmd(['explore', '--json', '--limit', '200', '--sort', sort])
                 const output = raw.substring(raw.indexOf('{'))
                 const data = JSON.parse(output)
                 const items = Array.isArray(data) ? data : data.items || []
@@ -148,18 +174,17 @@ export const Route = createFileRoute('/api/skills')({
         try {
           const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
           const action = typeof body.action === 'string' ? body.action : ''
-          const slug = typeof body.slug === 'string' ? body.slug.trim() : ''
+          const slug = parseSlug(body.slug)
 
-          if (!slug) return json({ ok: false, error: 'slug is required' }, { status: 400 })
-          const safeSlug = slug.replace(/[^a-zA-Z0-9/_-]/g, '')
+          if (!slug) return json({ ok: false, error: 'Valid slug is required' }, { status: 400 })
 
           if (action === 'install') {
-            const output = runCmd(`clawhub install ${safeSlug} --no-input`)
+            const output = await runCmd(['install', slug, '--no-input'])
             return json({ ok: true, output })
           }
 
           if (action === 'update') {
-            const output = runCmd(`clawhub update ${safeSlug} --no-input`)
+            const output = await runCmd(['update', slug, '--no-input'])
             return json({ ok: true, output })
           }
 

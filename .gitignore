@@ -24,3 +24,4 @@ docs/changelog.md
 docs/design-roadmap.md
 docs/FEATURE_WISHLIST.md
 .device-keys.json
+.env.local.backup*
