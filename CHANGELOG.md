@@ -3,6 +3,12 @@
 All notable changes to OpenCami are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [Semantic Versioning](https://semver.org/).
 
+## [1.8.5] - 2026-03-03
+
+### Added
+
+- feat: proper device pairing flow with deviceToken storage and pending state detection
+
 ## [1.8.4] - 2026-03-03
 
 ### Security

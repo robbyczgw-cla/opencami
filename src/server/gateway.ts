@@ -1,5 +1,4 @@
-import { randomUUID } from 'node:crypto'
-import crypto from 'node:crypto'
+import crypto, { randomUUID } from 'node:crypto'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -103,6 +102,45 @@ function resolveDeviceIdentityPath() {
   return path.join(os.homedir(), '.opencami', 'identity', 'device.json')
 }
 
+function resolveDeviceTokensPath() {
+  return path.join(os.homedir(), '.opencami', 'identity', 'device-tokens.json')
+}
+
+function hashGatewayUrl(url: string) {
+  return crypto.createHash('sha256').update(url.trim()).digest('hex')
+}
+
+function loadDeviceToken(deviceId: string, gatewayUrl: string) {
+  const filePath = resolveDeviceTokensPath()
+  try {
+    if (!fs.existsSync(filePath)) return ''
+    const raw = fs.readFileSync(filePath, 'utf8')
+    const parsed = JSON.parse(raw) as Record<string, unknown>
+    const key = `${deviceId}:${hashGatewayUrl(gatewayUrl)}`
+    const token = parsed[key]
+    return typeof token === 'string' ? token : ''
+  } catch {
+    return ''
+  }
+}
+
+function storeDeviceToken(deviceId: string, gatewayUrl: string, token: string) {
+  if (!token) return
+  const filePath = resolveDeviceTokensPath()
+  const key = `${deviceId}:${hashGatewayUrl(gatewayUrl)}`
+  try {
+    let parsed: Record<string, unknown> = {}
+    if (fs.existsSync(filePath)) {
+      const raw = fs.readFileSync(filePath, 'utf8')
+      parsed = JSON.parse(raw) as Record<string, unknown>
+    }
+    parsed[key] = token
+    ensureDir(filePath)
+    fs.writeFileSync(filePath, `${JSON.stringify(parsed, null, 2)}\n`, { mode: 0o600 })
+    try { fs.chmodSync(filePath, 0o600) } catch {}
+  } catch {}
+}
+
 function loadOrCreateDeviceIdentity(filePath = resolveDeviceIdentityPath()) {
   try {
     if (fs.existsSync(filePath)) {
@@ -159,7 +197,7 @@ function buildDeviceAuthPayload(args: {
   clientId: string
   clientMode: string
   role: string
-  scopes: string[]
+  scopes: Array<string>
   signedAtMs: number
   token: string | null
   nonce: string
@@ -185,11 +223,11 @@ function loadOrCreateInstanceId() {
   return v
 }
 
-function buildConnectParams(token: string, password: string, nonce: string): ConnectParams {
+function buildConnectParams(url: string, token: string, password: string, nonce: string): ConnectParams {
   const clientId = 'openclaw-control-ui'
   const clientMode = 'webchat'
   const role = 'operator'
-  const scopes = ['operator.read', 'operator.write', 'operator.admin']
+  const scopes = ['operator.admin', 'operator.approvals', 'operator.pairing']
 
   if (!nonce) {
     throw new Error(
@@ -199,6 +237,7 @@ function buildConnectParams(token: string, password: string, nonce: string): Con
   }
 
   const identity = loadOrCreateDeviceIdentity()
+  const storedToken = loadDeviceToken(identity.deviceId, url)
   const signedAtMs = Date.now()
   const payload = buildDeviceAuthPayload({
     deviceId: identity.deviceId,
@@ -228,6 +267,7 @@ function buildConnectParams(token: string, password: string, nonce: string): Con
     auth: {
       token: token || undefined,
       password: password || undefined,
+      deviceToken: storedToken || undefined,
     },
     role: 'operator',
     scopes,
@@ -251,6 +291,16 @@ type PendingRpc = {
   timer: ReturnType<typeof setTimeout>
 }
 
+class GatewayResponseError extends Error {
+  code?: string
+
+  constructor(message: string, code?: string) {
+    super(message)
+    this.name = 'GatewayResponseError'
+    this.code = code
+  }
+}
+
 class PersistentGatewayConnection {
   private ws: WebSocket | null = null
   private connected = false
@@ -260,16 +310,25 @@ class PersistentGatewayConnection {
   private reconnectDelay = 1000
   private maxReconnectDelay = 30_000
   private destroyed = false
+  private _devicePending = false
+  private _deviceId = ''
 
   // Event listeners keyed by sessionKey — each sessionKey can have multiple listeners
   private sessionListeners = new Map<string, Set<StreamListener>>()
   // Listeners that receive ALL events (for debugging or global subscriptions)
   private globalListeners = new Set<StreamListener>()
   // Event buffer: store recent events per sessionKey so late subscribers don't miss them
-  private eventBuffer = new Map<string, { events: GatewayEvent[]; timer: ReturnType<typeof setTimeout> }>()
+  private eventBuffer = new Map<string, { events: Array<GatewayEvent>; timer: ReturnType<typeof setTimeout> }>()
 
   get isConnected(): boolean {
     return this.connected && this.ws?.readyState === WebSocket.OPEN
+  }
+
+  getDeviceStatus() {
+    return {
+      deviceId: this._deviceId,
+      isPending: this._devicePending,
+    }
   }
 
   /** Ensure the persistent connection is up and authenticated. */
@@ -349,7 +408,8 @@ class PersistentGatewayConnection {
       process.env.OPENCAMI_DEVICE_AUTH_FALLBACK === 'true'
 
     try {
-      const connectParams = buildConnectParams(token, password, nonce)
+      const connectParams = buildConnectParams(url, token, password, nonce)
+      this._deviceId = connectParams.device?.id ?? ''
       ws.send(
         JSON.stringify({
           type: 'req',
@@ -359,15 +419,25 @@ class PersistentGatewayConnection {
         }),
       )
 
-      const hello = await this._waitForRes(connectId, 10_000)
+      const hello = await this._waitForRes(connectId, 10_000) as any
+      if (hello?.auth?.deviceToken) {
+        const identity = loadOrCreateDeviceIdentity()
+        storeDeviceToken(identity.deviceId, url, hello.auth.deviceToken)
+      }
       // Optional sanity check: ensure operator.read was granted.
-      const grantedScopes = (hello as any)?.auth?.scopes
+      const grantedScopes = hello?.auth?.scopes
       if (Array.isArray(grantedScopes) && !grantedScopes.includes('operator.read')) {
         throw new Error(
           `Gateway connected but missing required scope: operator.read (granted: ${grantedScopes.join(', ')})`,
         )
       }
+      this._devicePending = false
     } catch (err) {
+      const code = err instanceof GatewayResponseError ? err.code : ''
+      const message = err instanceof Error ? err.message : String(err)
+      if (code === 'device_pending' || message.toLowerCase().includes('pending')) {
+        this._devicePending = true
+      }
       if (!shouldFallback) throw err
 
       console.warn(
@@ -393,7 +463,7 @@ class PersistentGatewayConnection {
           password: password || undefined,
         },
         role: 'operator',
-        scopes: ['operator.read', 'operator.write', 'operator.admin'],
+        scopes: ['operator.admin', 'operator.approvals', 'operator.pairing'],
         userAgent: `opencami/${process.env.npm_package_version ?? 'dev'} (node ${process.version})`,
         locale: process.env.LANG || 'en',
       }
@@ -408,6 +478,7 @@ class PersistentGatewayConnection {
       )
 
       await this._waitForRes(fallbackId, 10_000)
+      this._devicePending = false
     }
 
     this.connected = true
@@ -428,7 +499,7 @@ class PersistentGatewayConnection {
           if (parsed.ok) {
             pending.resolve(parsed.payload)
           } else {
-            pending.reject(new Error(parsed.error?.message ?? 'gateway error'))
+            pending.reject(new GatewayResponseError(parsed.error?.message ?? 'gateway error', parsed.error?.code))
           }
         }
         return
@@ -476,10 +547,10 @@ class PersistentGatewayConnection {
   private _extractSessionKey(event: GatewayEvent): string | null {
     // Events typically carry sessionKey in the payload
     const payload = event.payload
-    if (typeof payload?.sessionKey === 'string') return payload.sessionKey
-    if (typeof payload?.session === 'string') return payload.session
+    if (typeof payload.sessionKey === 'string') return payload.sessionKey
+    if (typeof payload.session === 'string') return payload.session
     // Some events nest it deeper
-    if (payload?.data && typeof (payload.data as any)?.sessionKey === 'string') {
+    if (payload.data && typeof (payload.data as any)?.sessionKey === 'string') {
       return (payload.data as any).sessionKey
     }
     return null
@@ -564,8 +635,8 @@ class PersistentGatewayConnection {
     }
 
     return () => {
-      listeners!.delete(listener)
-      if (listeners!.size === 0) {
+      listeners.delete(listener)
+      if (listeners.size === 0) {
         this.sessionListeners.delete(sessionKey)
       }
     }
@@ -653,6 +724,11 @@ export function subscribeAllGatewayEvents(
  */
 export function getGatewayConnection(): PersistentGatewayConnection {
   return getPersistentConnection()
+}
+
+export function getDeviceStatus() {
+  const conn = getPersistentConnection()
+  return conn.getDeviceStatus()
 }
 
 /**
