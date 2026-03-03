@@ -5,9 +5,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [Semantic Ver
 
 ## [1.8.5] - 2026-03-03
 
-### Added
+### Fixed
 
-- feat: proper device pairing flow with deviceToken storage and pending state detection
+- 🔐 **Proper device pairing flow** — OpenCami now connects with correct scopes (`operator.admin`, `operator.approvals`, `operator.pairing`) matching the OpenClaw SDK standard. No more `allowInsecureAuth: true` required.
+- 🔐 **deviceToken storage** — After successful pairing, OpenCami stores a device-specific token and uses it for future connections. No shared gateway token needed after first pair.
+- 🔐 **Pending state detection** — `/api/ping` now returns `deviceId` and `isPending` fields. If device is awaiting gateway approval, a helpful `approveCommand` is included in the response.
 
 ## [1.8.4] - 2026-03-03
 
