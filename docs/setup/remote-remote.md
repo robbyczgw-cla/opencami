@@ -40,7 +40,7 @@ OPENCAMI_ORIGIN=https://opencami.example.com
 - **Gateway reachable but auth fails**: wrong/expired token or wrong auth mode.
 - **Gateway URL scheme mismatch**: `https://` accidentally used instead of `wss://`.
 - **Handshake nonce timeout** (`connect.challenge` not seen): often origin/edge proxy issue.
-- **Missing `operator.read` scope**: token authenticated but lacks needed operator permissions.
+- **Missing `operator.admin` scope**: device was paired with insufficient scopes (pre-v1.8.5). Delete `~/.opencami/identity/device.json` and restart to re-pair automatically.
 
 ## Compatibility fallback (only when needed)
 

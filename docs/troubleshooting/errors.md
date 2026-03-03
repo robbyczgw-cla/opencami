@@ -8,10 +8,10 @@ Suggested concise errors OpenCami can display (mapping implementation can be don
 | `OCAMI_GATEWAY_WS_OPEN_FAILED` | Could not open WebSocket to Gateway. | Wrong host/port/DNS, firewall, gateway down, wrong scheme. | Check `openclaw gateway status`, verify URL, use `ws://` local or `wss://` remote. |
 | `OCAMI_GATEWAY_ORIGIN_NOT_ALLOWED` | Origin is not allowed by Gateway. | `OPENCAMI_ORIGIN` and `gateway.controlUi.allowedOrigins` do not match browser origin exactly. | Set exact same origin on both sides; restart gateway. |
 | `OCAMI_GATEWAY_CHALLENGE_TIMEOUT` | Gateway challenge timed out. | `connect.challenge` nonce not received in time (often origin/proxy issue). | Recheck origin allowlist + reverse proxy WS handling; retry. |
-| `OCAMI_GATEWAY_SCOPE_MISSING_OPERATOR_READ` | Connected, but token lacks required operator scope. | Auth succeeded but scopes don’t include `operator.read`. | Use token with operator read/write permissions. |
+| `OCAMI_GATEWAY_SCOPE_MISSING_OPERATOR_READ` | Connected, but device lacks required operator scope. | Device was paired with insufficient scopes (pre-v1.8.5). | Delete `~/.opencami/identity/device.json` and restart — OpenCami will re-pair with full scopes (`operator.admin`, `operator.approvals`, `operator.pairing`) automatically. |
 | `OCAMI_GATEWAY_RPC_TIMEOUT` | Gateway request timed out. | Slow/unreachable gateway or blocked event flow. | Check gateway load/network and retry; inspect server logs. |
 | `OCAMI_GATEWAY_CONNECTION_CLOSED` | Gateway connection closed unexpectedly. | Gateway restart/network flap/proxy idle timeout. | Wait for auto-reconnect; if persistent, inspect proxy/network timeouts. |
-| `OCAMI_DEVICE_AUTH_STRICT_FAILED` | Strict device auth failed. | Device identity handshake incompatibility in current environment. | Temporarily enable `OPENCAMI_DEVICE_AUTH_FALLBACK=true`, then investigate root cause. |
+| `OCAMI_DEVICE_AUTH_STRICT_FAILED` | Strict device auth failed. | Device identity handshake incompatibility (old device identity or gateway mismatch). | Delete `~/.opencami/identity/device.json` and restart to force fresh pairing. Use `OPENCAMI_DEVICE_AUTH_FALLBACK=true` only as a last resort. |
 | `OCAMI_FILES_ROOT_INVALID` | Files root is inaccessible. | `FILES_ROOT` path missing or unreadable for process user. | Set valid readable path and restart OpenCami. |
 
 ## Notes
