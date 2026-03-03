@@ -10,7 +10,7 @@ This page lists config keys used by OpenCami and relevant Gateway-side keys used
 | `CLAWDBOT_GATEWAY_TOKEN` | Yes* | Recommended gateway auth token. |
 | `CLAWDBOT_GATEWAY_PASSWORD` | Yes* | Alternative auth if token not used. |
 | `OPENCAMI_ORIGIN` | No | Origin header OpenCami sends to Gateway WS. Needed for allowlisted remote setups. |
-| `OPENCAMI_DEVICE_AUTH_FALLBACK` | No | `true`/`1` enables connect retry without device identity metadata. |
+| `OPENCAMI_DEVICE_AUTH_FALLBACK` | No | `true`/`1` enables connect retry without device identity metadata. Last resort only — v1.8.5+ handles device pairing automatically. |
 | `FILES_ROOT` | No | File explorer root. If unset, user home is used. |
 | `OPENAI_API_KEY` | No | Enables OpenAI-backed features/routes. |
 | `ELEVENLABS_API_KEY` | No | Enables ElevenLabs voice features. |
