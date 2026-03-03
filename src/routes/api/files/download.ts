@@ -71,12 +71,6 @@ function encodeFilename(filename: string): string {
   return `filename*=UTF-8''${encodedFilename}`
 }
 
-function isStaticAsset(filename: string): boolean {
-  const ext = filename.split('.').pop()?.toLowerCase() || ''
-  const staticExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'css', 'js', 'woff', 'woff2', 'ttf', 'otf']
-  return staticExts.includes(ext)
-}
-
 export const Route = createFileRoute('/api/files/download')({
   server: {
     handlers: {
@@ -112,13 +106,7 @@ export const Route = createFileRoute('/api/files/download')({
             'Content-Type': contentType,
             'Content-Disposition': contentDisposition,
             'Content-Length': content.byteLength.toString(),
-          }
-
-          // Add cache control for static assets
-          if (isStaticAsset(fileInfo.name)) {
-            headers['Cache-Control'] = 'public, max-age=31536000' // 1 year
-          } else {
-            headers['Cache-Control'] = 'no-cache'
+            'Cache-Control': 'private, no-store',
           }
 
           return new Response(content, { headers })

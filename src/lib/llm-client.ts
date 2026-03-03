@@ -184,11 +184,14 @@ Rules:
 /**
  * Test if an API key is valid
  */
-export async function testApiKey(apiKey: string): Promise<boolean> {
+export async function testApiKey(options: LlmClientOptions | string): Promise<boolean> {
+  const llmOptions = typeof options === 'string'
+    ? { apiKey: options }
+    : options
   try {
     await chatCompletion(
       [{ role: 'user', content: 'Hi' }],
-      { apiKey, maxTokens: 1, timeoutMs: 5000 },
+      { ...llmOptions, maxTokens: 1, timeoutMs: 5000 },
     )
     return true
   } catch {

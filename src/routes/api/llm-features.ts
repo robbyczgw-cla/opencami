@@ -58,19 +58,73 @@ type LlmConfig = {
   apiKey: string | null
   baseUrl: string | null
   model: string | null
+  error: string | null
+}
+
+const DEFAULT_OPENAI_BASE_URL = 'https://api.openai.com/v1'
+const PRESET_BASE_URL_ORIGINS = new Set([
+  'https://api.openai.com',
+  'https://openrouter.ai',
+  'https://api.kilo.ai',
+  'http://localhost:11434',
+  'http://127.0.0.1:11434',
+])
+
+function getOrigin(rawBaseUrl: string): string | null {
+  try {
+    return new URL(rawBaseUrl).origin
+  } catch {
+    return null
+  }
+}
+
+function isAllowedClientBaseUrl(rawBaseUrl: string): boolean {
+  const parsed = new URL(rawBaseUrl)
+  if (!['http:', 'https:'].includes(parsed.protocol)) return false
+  if (parsed.username || parsed.password) return false
+
+  const hostname = parsed.hostname.toLowerCase()
+  const isLocalHost = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1'
+  if (!isLocalHost && parsed.protocol !== 'https:') return false
+
+  const origin = parsed.origin
+  if (PRESET_BASE_URL_ORIGINS.has(origin)) return true
+
+  const envBaseUrl = process.env.LLM_BASE_URL?.trim()
+  const envOrigin = envBaseUrl ? getOrigin(envBaseUrl) : null
+  return Boolean(envOrigin && envOrigin === origin)
+}
+
+function detectProvider(rawBaseUrl: string | null): 'openai' | 'openrouter' | 'kilocode' {
+  const baseUrl = rawBaseUrl?.toLowerCase() || ''
+  if (baseUrl.includes('openrouter.ai')) return 'openrouter'
+  if (baseUrl.includes('kilo.ai')) return 'kilocode'
+  return 'openai'
 }
 
 function getLlmConfig(request: Request): LlmConfig {
-  // API key: header > env (check both OpenAI and OpenRouter env keys)
+  // API key: header > env provider key
   const headerKey = request.headers.get('X-OpenAI-API-Key')
   const headerBaseUrl = request.headers.get('X-LLM-Base-URL')?.trim() || null
-  // Fall back to env-configured base URL (e.g. Kilocode)
-  const baseUrl = headerBaseUrl || process.env.LLM_BASE_URL?.trim() || null
-  const isOpenRouter = baseUrl?.includes('openrouter.ai')
-  const isKilocode = baseUrl?.includes('kilo.ai')
-  const envKey = isOpenRouter
+  const envBaseUrl = process.env.LLM_BASE_URL?.trim() || null
+
+  if (headerBaseUrl) {
+    const origin = getOrigin(headerBaseUrl)
+    if (!origin || !isAllowedClientBaseUrl(headerBaseUrl)) {
+      return {
+        apiKey: null,
+        baseUrl: null,
+        model: null,
+        error: 'Disallowed X-LLM-Base-URL value',
+      }
+    }
+  }
+
+  const baseUrl = headerBaseUrl || envBaseUrl || DEFAULT_OPENAI_BASE_URL
+  const provider = detectProvider(baseUrl)
+  const envKey = provider === 'openrouter'
     ? (process.env.OPENROUTER_API_KEY?.trim() || process.env.OPENAI_API_KEY?.trim())
-    : isKilocode
+    : provider === 'kilocode'
       ? (process.env.KILOCODE_API_KEY?.trim() || process.env.OPENAI_API_KEY?.trim())
       : process.env.OPENAI_API_KEY?.trim()
   const apiKey = headerKey?.trim() || envKey || null
@@ -78,7 +132,7 @@ function getLlmConfig(request: Request): LlmConfig {
   // Model: header > env default
   const model = request.headers.get('X-LLM-Model')?.trim() || process.env.LLM_MODEL?.trim() || null
 
-  return { apiKey, baseUrl, model }
+  return { apiKey, baseUrl, model, error: null }
 }
 
 /** @deprecated Use getLlmConfig instead */
@@ -180,6 +234,12 @@ export const Route = createFileRoute('/api/llm-features')({
               }
 
               const llmConfig = getLlmConfig(request)
+              if (llmConfig.error) {
+                return json<TitleResponse>({
+                  ok: false,
+                  error: llmConfig.error,
+                }, { status: 400 })
+              }
               
               // If no API key and no Ollama-style local provider, use heuristic
               if (!llmConfig.apiKey && !llmConfig.baseUrl?.includes('localhost')) {
@@ -227,6 +287,12 @@ export const Route = createFileRoute('/api/llm-features')({
               }
 
               const llmConfig = getLlmConfig(request)
+              if (llmConfig.error) {
+                return json<FollowUpsResponse>({
+                  ok: false,
+                  error: llmConfig.error,
+                }, { status: 400 })
+              }
               
               // If no API key and no local provider, return empty
               if (!llmConfig.apiKey && !llmConfig.baseUrl?.includes('localhost')) {
@@ -261,6 +327,12 @@ export const Route = createFileRoute('/api/llm-features')({
 
             case 'test': {
               const llmConfig = getLlmConfig(request)
+              if (llmConfig.error) {
+                return json<TestKeyResponse>({
+                  ok: false,
+                  error: llmConfig.error,
+                }, { status: 400 })
+              }
               
               if (!llmConfig.apiKey && !llmConfig.baseUrl?.includes('localhost')) {
                 return json<TestKeyResponse>({
@@ -270,7 +342,11 @@ export const Route = createFileRoute('/api/llm-features')({
               }
 
               try {
-                const valid = await testApiKey(llmConfig.apiKey || '')
+                const valid = await testApiKey({
+                  apiKey: llmConfig.apiKey || '',
+                  ...(llmConfig.baseUrl ? { baseUrl: llmConfig.baseUrl } : {}),
+                  ...(llmConfig.model ? { model: llmConfig.model } : {}),
+                })
                 return json<TestKeyResponse>({
                   ok: true,
                   valid,

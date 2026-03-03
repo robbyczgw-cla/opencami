@@ -3,6 +3,16 @@
 All notable changes to OpenCami are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [Semantic Versioning](https://semver.org/).
 
+## [1.8.4] - 2026-03-03
+
+### Security
+
+- 🔒 **Command injection fix** — Skills API (`/api/skills`) replaced `execSync` string interpolation with `execFile` + argument arrays. User input is never passed through a shell string. Input validation added for sort, limit, and slug parameters.
+- 🔒 **SSRF / API key leak fix** — LLM features API (`/api/llm-features`) now validates `X-LLM-Base-URL` against an allowlist. Server env API keys are never forwarded to untrusted hosts.
+- 🔒 **Path traversal consistency** — File info endpoint (`/api/files/info`) now uses the shared `getFileInfo()` helper with consistent jailed path safety, matching the rest of the files API.
+- 🔒 **Private cache headers** — File download endpoint (`/api/files/download`) now sends `Cache-Control: private, no-store` for all user workspace files.
+- 🔐 **Device auth scope fix** — Gateway connection now requests `operator.admin` scope in addition to `operator.read/write`, enabling full session management without `allowInsecureAuth`.
+
 ## [1.9.0] - 2026-02-21
 
 ### Added

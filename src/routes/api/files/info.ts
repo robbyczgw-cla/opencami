@@ -1,9 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
-import { stat } from 'node:fs/promises'
-import { resolve } from 'node:path'
 import { validatePath } from '../../../server/path-utils'
-import type { FileSystemError } from '../../../server/filesystem'
+import { getFileInfo, type FileSystemError } from '../../../server/filesystem'
 
 type InfoResponse = {
   size: number
@@ -35,14 +33,9 @@ export const Route = createFileRoute('/api/files/info')({
           // Validate and sanitize the path
           const path = validatePath(rawPath, 'Path parameter')
 
-          const root = process.env.FILES_ROOT?.trim()
-            ? resolve(process.env.FILES_ROOT)
-            : (process.env.HOME || '/home')
-          const absolutePath = resolve(root, path.replace(/^\/+/, ''))
+          const fileInfo = await getFileInfo(path)
 
-          const stats = await stat(absolutePath)
-
-          return json<InfoResponse>({ size: stats.size })
+          return json<InfoResponse>({ size: fileInfo.size })
         } catch (err) {
           const error = err as Error & FileSystemError
           
