@@ -30,7 +30,7 @@ describe('Settings Persistence Integration', () => {
       vi.resetModules()
       
       // Re-import and verify state was restored
-      const { useChatSettingsStore: reloadedStore } = await import('@/hooks/use-chat-settings')
+      await import('@/hooks/use-chat-settings')
       // Note: Zustand persist requires hydration in real app
       // This test verifies localStorage was written correctly
     })

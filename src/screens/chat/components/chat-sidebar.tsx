@@ -21,6 +21,7 @@ import { useRenameSession } from '../hooks/use-rename-session'
 import { exportConversation } from '../utils/export-conversation'
 import { SessionDeleteDialog } from './sidebar/session-delete-dialog'
 import { SessionRenameDialog } from './sidebar/session-rename-dialog'
+import { ServerStatusDialog } from './sidebar/server-status-dialog'
 import { SidebarSessions } from './sidebar/sidebar-sessions'
 import type { HistoryResponse, SessionMeta } from '../types'
 import type { ExportFormat } from '../utils/export-conversation'
@@ -102,6 +103,8 @@ function ChatSidebarComponent({
   const [exportFriendlyId, setExportFriendlyId] = useState<string | null>(null)
   const [exportSessionTitle, setExportSessionTitle] = useState('')
 
+  const [serverStatusOpen, setServerStatusOpen] = useState(false)
+
   const queryClient = useQueryClient()
 
   function handleOpenRename(session: SessionMeta) {
@@ -164,7 +167,7 @@ function ChatSidebarComponent({
         exportFriendlyId,
         exportSessionKey,
       )
-      const historyData = queryClient.getQueryData(historyKey)
+      const historyData = queryClient.getQueryData<HistoryResponse>(historyKey)
 
       if (historyData?.messages) {
         exportConversation(exportSessionTitle, historyData.messages, format)
@@ -613,14 +616,34 @@ function ChatSidebarComponent({
         <motion.div
           layout
           transition={{ layout: transition }}
-          className="w-full"
+          className="w-full flex items-center gap-1.5"
         >
+          <TooltipProvider>
+            <TooltipRoot>
+              <TooltipTrigger
+                onClick={() => setServerStatusOpen(true)}
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label="Server Status"
+                    title="Server Status"
+                    className="shrink-0"
+                  >
+                    <span className="text-sm" aria-hidden="true">🖥️</span>
+                  </Button>
+                }
+              />
+              <TooltipContent side="right">Server Status</TooltipContent>
+            </TooltipRoot>
+          </TooltipProvider>
+
           <Button
             variant="ghost"
             size="sm"
             onClick={handleOpenSettings}
             title={isCollapsed ? 'Settings' : undefined}
-            className="w-full justify-start pl-1.5"
+            className={cn('justify-start pl-1.5', isCollapsed ? 'w-auto px-2' : 'flex-1')}
           >
             <HugeiconsIcon
               icon={Settings01Icon}
@@ -674,6 +697,11 @@ function ChatSidebarComponent({
         sessionTitle={deleteSessionTitle}
         onConfirm={handleConfirmDelete}
         onCancel={() => setDeleteDialogOpen(false)}
+      />
+
+      <ServerStatusDialog
+        open={serverStatusOpen}
+        onOpenChange={setServerStatusOpen}
       />
 
       {exportDialogOpen && (

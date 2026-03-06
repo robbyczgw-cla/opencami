@@ -2,12 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import { useArtifactsStore } from '@/hooks/use-artifacts'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
-  Add01Icon,
   AiBrain01Icon,
   Cancel01Icon,
   Cancel02Icon,
   ComputerIcon,
-  Delete02Icon,
   DropletIcon,
   InformationCircleIcon,
   Leaf01Icon,
@@ -157,6 +155,24 @@ const fontFamilyOptions = [
     label: 'Roboto',
     cssValue: '"Roboto", sans-serif',
     previewClass: 'font-["Roboto",sans-serif]',
+  },
+  {
+    value: 'ibm-plex-sans',
+    label: 'IBM Plex Sans',
+    cssValue: '"IBM Plex Sans", sans-serif',
+    previewClass: 'font-["IBM_Plex_Sans",sans-serif]',
+  },
+  {
+    value: 'jetbrains-mono',
+    label: 'JetBrains Mono',
+    cssValue: '"JetBrains Mono", monospace',
+    previewClass: 'font-mono',
+  },
+  {
+    value: 'merriweather',
+    label: 'Merriweather',
+    cssValue: '"Merriweather", serif',
+    previewClass: 'font-serif',
   },
 ] as const
 

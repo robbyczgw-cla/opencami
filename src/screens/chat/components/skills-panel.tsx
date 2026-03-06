@@ -5,7 +5,6 @@ import {
   Tick01Icon,
   Loading02Icon,
   Search01Icon,
-  RefreshIcon,
   Shield01Icon,
   ArrowLeft01Icon,
   ArrowUpRight01Icon,

@@ -441,7 +441,7 @@ function MarkdownComponent({
                   <Link
                     to="/files"
                     onClick={() => {
-                      const p = filePreview.status !== 'idle' ? toWorkspacePath(filePreview.path) : ''
+                      const p = toWorkspacePath(filePreview.path)
                       if (p) {
                         const dir = p.includes('/') ? p.slice(0, p.lastIndexOf('/')) || '/' : '/'
                         useFileExplorerState.getState().navigateTo(dir)
@@ -456,7 +456,7 @@ function MarkdownComponent({
                   <Link
                     to="/files"
                     onClick={() => {
-                      const p = filePreview.status !== 'idle' ? toWorkspacePath(filePreview.path) : ''
+                      const p = toWorkspacePath(filePreview.path)
                       if (p) {
                         useFileExplorerState.getState().openInEditor(p)
                       }

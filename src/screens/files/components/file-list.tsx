@@ -10,7 +10,7 @@ import {
   CodeIcon,
 } from '@hugeicons/core-free-icons'
 import { motion } from 'motion/react'
-import { useCallback, useMemo, memo, useState, useRef, useEffect } from 'react'
+import { useCallback, useMemo, memo, useRef, useEffect } from 'react'
 import { useFileExplorerState } from '../hooks/use-file-explorer-state'
 import { FileContextMenu } from './file-context-menu'
 import type { FileListing, FileItem } from '../types'
@@ -383,7 +383,6 @@ export function FileList({ listing, loading, onOpenFile }: FileListProps) {
     toggleFileSelection,
   } = useFileExplorerState()
 
-  const [focusedIndex, setFocusedIndex] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
   const reduceMotion = useReducedMotion()
 
@@ -422,20 +421,10 @@ export function FileList({ listing, loading, onOpenFile }: FileListProps) {
       
       switch (e.key) {
         case 'ArrowDown':
-          e.preventDefault()
-          setFocusedIndex((prev) => Math.min(prev + 1, sortedItems.length - 1))
-          break
         case 'ArrowUp':
-          e.preventDefault()
-          setFocusedIndex((prev) => Math.max(prev - 1, 0))
-          break
         case 'Home':
-          e.preventDefault()
-          setFocusedIndex(0)
-          break
         case 'End':
           e.preventDefault()
-          setFocusedIndex(sortedItems.length - 1)
           break
       }
     }
@@ -473,7 +462,7 @@ export function FileList({ listing, loading, onOpenFile }: FileListProps) {
         aria-label="Files grid"
         tabIndex={0}
       >
-        {sortedItems.map((item, index) => (
+        {sortedItems.map((item) => (
           <div key={item.path} role="gridcell">
             <GridItem
               item={item}
@@ -512,7 +501,7 @@ export function FileList({ listing, loading, onOpenFile }: FileListProps) {
         </div>
         
         {/* Items */}
-        {sortedItems.map((item, index) => (
+        {sortedItems.map((item) => (
           <div key={item.path} role="row">
             <ListItem
               item={item}

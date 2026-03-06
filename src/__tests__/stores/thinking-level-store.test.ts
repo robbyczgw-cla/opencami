@@ -57,7 +57,7 @@ describe('useThinkingLevel hook', () => {
   })
 
   it('should provide level and setLevel', async () => {
-    const { useThinkingLevel, useThinkingLevelStore } = await import('@/hooks/use-thinking-level')
+    const { useThinkingLevelStore } = await import('@/hooks/use-thinking-level')
 
     // Simulated hook access via store
     const level = useThinkingLevelStore.getState().level

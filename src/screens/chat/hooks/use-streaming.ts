@@ -29,8 +29,8 @@ export function useStreaming(options: {
 }) {
   const [state, setState] = useState<StreamingState>(INITIAL_STATE)
   const eventSourceRef = useRef<EventSource | null>(null)
-  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const pollingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pollingRef = useRef<number | null>(null)
+  const pollingTimeoutRef = useRef<number | null>(null)
   const streamStartRef = useRef<number | null>(null)
   const doneRef = useRef(false)
   const onDoneRef = useRef(options.onDone)

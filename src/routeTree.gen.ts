@@ -22,6 +22,7 @@ import { Route as ChatSessionKeyRouteImport } from './routes/chat/$sessionKey'
 import { Route as ApiTtsRouteImport } from './routes/api/tts'
 import { Route as ApiSttRouteImport } from './routes/api/stt'
 import { Route as ApiStreamRouteImport } from './routes/api/stream'
+import { Route as ApiStatusRouteImport } from './routes/api/status'
 import { Route as ApiSkillsRouteImport } from './routes/api/skills'
 import { Route as ApiSessionsRouteImport } from './routes/api/sessions'
 import { Route as ApiSendRouteImport } from './routes/api/send'
@@ -110,6 +111,11 @@ const ApiSttRoute = ApiSttRouteImport.update({
 const ApiStreamRoute = ApiStreamRouteImport.update({
   id: '/api/stream',
   path: '/api/stream',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiStatusRoute = ApiStatusRouteImport.update({
+  id: '/api/status',
+  path: '/api/status',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiSkillsRoute = ApiSkillsRouteImport.update({
@@ -255,6 +261,7 @@ export interface FileRoutesByFullPath {
   '/api/send': typeof ApiSendRoute
   '/api/sessions': typeof ApiSessionsRoute
   '/api/skills': typeof ApiSkillsRoute
+  '/api/status': typeof ApiStatusRoute
   '/api/stream': typeof ApiStreamRoute
   '/api/stt': typeof ApiSttRoute
   '/api/tts': typeof ApiTtsRoute
@@ -294,6 +301,7 @@ export interface FileRoutesByTo {
   '/api/send': typeof ApiSendRoute
   '/api/sessions': typeof ApiSessionsRoute
   '/api/skills': typeof ApiSkillsRoute
+  '/api/status': typeof ApiStatusRoute
   '/api/stream': typeof ApiStreamRoute
   '/api/stt': typeof ApiSttRoute
   '/api/tts': typeof ApiTtsRoute
@@ -334,6 +342,7 @@ export interface FileRoutesById {
   '/api/send': typeof ApiSendRoute
   '/api/sessions': typeof ApiSessionsRoute
   '/api/skills': typeof ApiSkillsRoute
+  '/api/status': typeof ApiStatusRoute
   '/api/stream': typeof ApiStreamRoute
   '/api/stt': typeof ApiSttRoute
   '/api/tts': typeof ApiTtsRoute
@@ -375,6 +384,7 @@ export interface FileRouteTypes {
     | '/api/send'
     | '/api/sessions'
     | '/api/skills'
+    | '/api/status'
     | '/api/stream'
     | '/api/stt'
     | '/api/tts'
@@ -414,6 +424,7 @@ export interface FileRouteTypes {
     | '/api/send'
     | '/api/sessions'
     | '/api/skills'
+    | '/api/status'
     | '/api/stream'
     | '/api/stt'
     | '/api/tts'
@@ -453,6 +464,7 @@ export interface FileRouteTypes {
     | '/api/send'
     | '/api/sessions'
     | '/api/skills'
+    | '/api/status'
     | '/api/stream'
     | '/api/stt'
     | '/api/tts'
@@ -493,6 +505,7 @@ export interface RootRouteChildren {
   ApiSendRoute: typeof ApiSendRoute
   ApiSessionsRoute: typeof ApiSessionsRoute
   ApiSkillsRoute: typeof ApiSkillsRoute
+  ApiStatusRoute: typeof ApiStatusRoute
   ApiStreamRoute: typeof ApiStreamRoute
   ApiSttRoute: typeof ApiSttRoute
   ApiTtsRoute: typeof ApiTtsRoute
@@ -602,6 +615,13 @@ declare module '@tanstack/react-router' {
       path: '/api/stream'
       fullPath: '/api/stream'
       preLoaderRoute: typeof ApiStreamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/status': {
+      id: '/api/status'
+      path: '/api/status'
+      fullPath: '/api/status'
+      preLoaderRoute: typeof ApiStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/skills': {
@@ -797,6 +817,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSendRoute: ApiSendRoute,
   ApiSessionsRoute: ApiSessionsRoute,
   ApiSkillsRoute: ApiSkillsRoute,
+  ApiStatusRoute: ApiStatusRoute,
   ApiStreamRoute: ApiStreamRoute,
   ApiSttRoute: ApiSttRoute,
   ApiTtsRoute: ApiTtsRoute,

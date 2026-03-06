@@ -33,7 +33,7 @@ function ChatHeaderComponent({
           variant="ghost"
           onClick={onOpenSidebar}
           className="mr-2 text-primary-800 hover:bg-primary-100"
-          style={{ WebkitAppRegion: 'no-drag' }}
+          style={{ ['WebkitAppRegion' as string]: 'no-drag' }}
           aria-label="Open sidebar"
         >
           <HugeiconsIcon icon={Menu01Icon} size={18} strokeWidth={1.6} />

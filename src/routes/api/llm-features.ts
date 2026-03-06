@@ -135,10 +135,6 @@ function getLlmConfig(request: Request): LlmConfig {
   return { apiKey, baseUrl, model, error: null }
 }
 
-/** @deprecated Use getLlmConfig instead */
-function getApiKey(request: Request): string | null {
-  return getLlmConfig(request).apiKey
-}
 
 /**
  * Generate heuristic title from first message

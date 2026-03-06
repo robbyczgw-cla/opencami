@@ -10,7 +10,6 @@ import {
   SmartPhone01Icon,
 } from '@hugeicons/core-free-icons'
 import { Link } from '@tanstack/react-router'
-import { cn } from '@/lib/utils'
 import { CronJobTable } from './components/cron-job-table'
 import { BotCard, groupJobsIntoBots } from './components/bot-card'
 import { useCronJobs } from './hooks/use-cron-jobs'

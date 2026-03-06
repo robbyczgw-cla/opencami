@@ -1,9 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
 import { gatewayRpc } from '../../server/gateway'
-import { readFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
-import { homedir } from 'node:os'
+import { homedir, tmpdir } from 'node:os'
 
 function readApiKeysFromConfig(): { elevenlabs?: string; openai?: string } {
   try {
@@ -122,21 +122,27 @@ async function ttsOpenAI(
 async function ttsEdge(text: string, voice?: string): Promise<Response> {
   const { EdgeTTS } = await import('node-edge-tts')
 
-  const tts = new EdgeTTS()
-  await tts.synthesize(
-    text.substring(0, 5000),
-    voice || 'en-US-AriaNeural',
-    {},
-  )
+  const tmpDir = mkdtempSync(join(tmpdir(), 'opencami-tts-'))
+  const audioPath = join(tmpDir, 'speech.mp3')
 
-  const audioBuffer = await tts.toBuffer()
+  try {
+    const tts = new EdgeTTS({
+      voice: voice || 'en-US-AriaNeural',
+      outputFormat: 'audio-24khz-48kbitrate-mono-mp3',
+    })
 
-  return new Response(audioBuffer, {
-    headers: {
-      'Content-Type': 'audio/mpeg',
-      'Cache-Control': 'public, max-age=3600',
-    },
-  })
+    await tts.ttsPromise(text.substring(0, 5000), audioPath)
+    const audioBuffer = readFileSync(audioPath)
+
+    return new Response(audioBuffer, {
+      headers: {
+        'Content-Type': 'audio/mpeg',
+        'Cache-Control': 'public, max-age=3600',
+      },
+    })
+  } finally {
+    rmSync(tmpDir, { recursive: true, force: true })
+  }
 }
 
 export const Route = createFileRoute('/api/tts')({

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { ACCEPTED_IMAGE_TYPES } from '@/components/attachment-button'
 
 describe('attachment-button constants', () => {

@@ -41,7 +41,7 @@ describe('chat-screen-utils - optimistic messages', () => {
           file: new File([''], 'test.png', { type: 'image/png' }),
           type: 'image',
           base64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACklEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg==',
-          previewUrl: 'blob:test',
+          preview: 'blob:test',
         },
       ]
 
@@ -61,7 +61,7 @@ describe('chat-screen-utils - optimistic messages', () => {
           file: new File([''], 'test.png', { type: 'image/png' }),
           type: 'image',
           base64: 'base64data',
-          previewUrl: 'blob:test',
+          preview: 'blob:test',
         },
       ]
 

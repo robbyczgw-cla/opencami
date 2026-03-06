@@ -1,5 +1,6 @@
 'use client'
 
+import * as React from 'react'
 import { Tooltip } from '@base-ui/react/tooltip'
 import { cn } from '@/lib/utils'
 
@@ -17,10 +18,21 @@ function TooltipRoot({ children, ...props }: TooltipRootProps) {
   return <Tooltip.Root {...props}>{children}</Tooltip.Root>
 }
 
-type TooltipTriggerProps = React.ComponentProps<typeof Tooltip.Trigger>
+type TooltipTriggerProps = React.ComponentProps<typeof Tooltip.Trigger> & {
+  asChild?: boolean
+}
 
-function TooltipTrigger({ className, ...props }: TooltipTriggerProps) {
-  return <Tooltip.Trigger className={cn(className)} {...props} />
+function TooltipTrigger({ className, asChild, children, ...props }: TooltipTriggerProps) {
+  const render = asChild && React.isValidElement(children) ? children : undefined
+  return (
+    <Tooltip.Trigger
+      className={cn(className)}
+      {...props}
+      {...(render ? { render } : {})}
+    >
+      {render ? undefined : children}
+    </Tooltip.Trigger>
+  )
 }
 
 type TooltipContentProps = {

@@ -135,7 +135,7 @@ describe('useChatSettingsStore', () => {
 
 describe('useChatSettings hook', () => {
   it('should provide settings and updateSettings', async () => {
-    const { useChatSettings, useChatSettingsStore } = await import('@/hooks/use-chat-settings')
+    const { useChatSettingsStore } = await import('@/hooks/use-chat-settings')
 
     // Get hook result (simulated)
     const settings = useChatSettingsStore.getState().settings

@@ -43,7 +43,7 @@ function FilesSidebarComponent({
 
   const transition = useMemo(() => ({
     duration: reduceMotion ? 0 : 0.15,
-    ease: isCollapsed ? 'easeIn' : 'easeOut',
+    ease: isCollapsed ? ('easeIn' as const) : ('easeOut' as const),
   }), [isCollapsed, reduceMotion])
 
   const handleNavigate = useCallback((path: string) => {
