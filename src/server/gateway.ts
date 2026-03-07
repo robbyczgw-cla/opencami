@@ -670,22 +670,22 @@ class PersistentGatewayConnection {
   }
 }
 
-// Singleton instance
-let _instance: PersistentGatewayConnection | null = null
-
-// Survive Vite SSR HMR program reloads: module-level vars reset but globalThis persists.
-// Without this, every file-save that triggers a program reload creates a NEW connection
-// and drops all existing SSE subscriptions — leaving the browser stuck on "generating".
-const _g = globalThis as typeof globalThis & {
+// Singleton instance — stored on `process` because Vite SSR evaluates server
+// modules inside isolated `node:vm` contexts, each with their OWN `globalThis`.
+// Using `globalThis` therefore created 2+ PersistentGatewayConnection instances
+// (one per VM context), causing duplicate WebSocket connections to the gateway
+// and doubled/tripled streaming text in the browser.
+// `process` is the real Node.js process object shared across ALL VM contexts,
+// making it a reliable singleton carrier.
+const _proc = process as typeof process & {
   __opencamiGatewayInstance?: PersistentGatewayConnection
 }
 
 function getPersistentConnection(): PersistentGatewayConnection {
-  if (!_g.__opencamiGatewayInstance) {
-    _g.__opencamiGatewayInstance = new PersistentGatewayConnection()
+  if (!_proc.__opencamiGatewayInstance) {
+    _proc.__opencamiGatewayInstance = new PersistentGatewayConnection()
   }
-  _instance = _g.__opencamiGatewayInstance
-  return _instance
+  return _proc.__opencamiGatewayInstance
 }
 
 // ─── Public API ─────────────────────────────────────────────────────────
