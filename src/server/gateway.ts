@@ -351,6 +351,12 @@ class PersistentGatewayConnection {
     // Some gateway deployments enforce Origin allowlists for Control UI clients.
     // If OPENCAMI_ORIGIN is set, send it as the WS Origin header so it can be allowlisted via
     // gateway.controlUi.allowedOrigins.
+    // Close existing connection if any
+    if (this.ws) {
+      try { this.ws.close() } catch {}
+      this.ws = null
+    }
+
     const origin = process.env.OPENCAMI_ORIGIN?.trim()
     const ws = origin
       ? new WebSocket(url, { headers: { Origin: origin } })
