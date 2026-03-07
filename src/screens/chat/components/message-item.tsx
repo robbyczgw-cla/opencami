@@ -12,7 +12,10 @@ import { Thinking } from '@/components/prompt-kit/thinking'
 import { Tool } from '@/components/prompt-kit/tool'
 import { useChatSettings } from '@/hooks/use-chat-settings'
 import { cn } from '@/lib/utils'
-import { SearchSourcesBadge, type SearchSource } from '@/components/search-sources-badge'
+import {
+  SearchSourcesBadge,
+  type SearchSource,
+} from '@/components/search-sources-badge'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { File01Icon } from '@hugeicons/core-free-icons'
 import { useNavigate } from '@tanstack/react-router'
@@ -62,7 +65,9 @@ function mapToolCallToToolPart(
     .join('')
     .trim()
 
-  const output = resultMessage?.details ?? (outputText && outputText.length > 0 ? outputText : undefined)
+  const output =
+    resultMessage?.details ??
+    (outputText && outputText.length > 0 ? outputText : undefined)
 
   return {
     type: toolCall.name || 'unknown',
@@ -271,7 +276,11 @@ function stripUploadedFileLines(text: string): string {
     index++
   }
 
-  return lines.slice(index).join('\n').replace(/\n{3,}/g, '\n\n').trim()
+  return lines
+    .slice(index)
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
 }
 
 function MessageItemComponent({
@@ -297,7 +306,10 @@ function MessageItemComponent({
   const navigate = useNavigate()
   const openInEditor = useFileExplorerState((state) => state.openInEditor)
 
-  const uploadedFileRefs = useMemo(() => parseUploadedFileReferences(text), [text])
+  const uploadedFileRefs = useMemo(
+    () => parseUploadedFileReferences(text),
+    [text],
+  )
   const [fileSizes, setFileSizes] = useState<Record<string, number | null>>({})
   const displayText = useMemo(() => stripUploadedFileLines(text), [text])
 
@@ -310,13 +322,16 @@ function MessageItemComponent({
       await Promise.all(
         uploadedFileRefs.map(async (ref) => {
           try {
-            const response = await fetch(`/api/files/info?path=${encodeURIComponent(ref.path)}`)
+            const response = await fetch(
+              `/api/files/info?path=${encodeURIComponent(ref.path)}`,
+            )
             if (!response.ok) {
               nextSizes[ref.path] = null
               return
             }
             const data = (await response.json()) as { size?: number }
-            nextSizes[ref.path] = typeof data.size === 'number' ? data.size : null
+            nextSizes[ref.path] =
+              typeof data.size === 'number' ? data.size : null
           } catch {
             nextSizes[ref.path] = null
           }
@@ -348,7 +363,13 @@ function MessageItemComponent({
   const toolCalls = role === 'assistant' ? getToolCallsFromMessage(message) : []
   const hasToolCalls = toolCalls.length > 0
   // Search sources are shown only on the last assistant message via aggregatedSearchSources
-  const searchSources = isLastAssistant && !isStreaming && settings.showSearchSources && aggregatedSearchSources ? aggregatedSearchSources : []
+  const searchSources =
+    isLastAssistant &&
+    !isStreaming &&
+    settings.showSearchSources &&
+    aggregatedSearchSources
+      ? aggregatedSearchSources
+      : []
 
   return (
     <div
@@ -376,10 +397,12 @@ function MessageItemComponent({
       )}
       {/* Render images if present */}
       {images.length > 0 && (
-        <div className={cn(
-          'flex flex-wrap gap-2 mb-2',
-          isUser ? 'justify-end' : 'justify-start'
-        )}>
+        <div
+          className={cn(
+            'flex flex-wrap gap-2 mb-2',
+            isUser ? 'justify-end' : 'justify-start',
+          )}
+        >
           {images.map((img, idx) => (
             <img
               key={idx}
@@ -393,7 +416,12 @@ function MessageItemComponent({
         </div>
       )}
       {uploadedFileRefs.length > 0 && (
-        <div className={cn('mb-2 flex w-full flex-col gap-2', isUser ? 'items-end' : 'items-start')}>
+        <div
+          className={cn(
+            'mb-2 flex w-full flex-col gap-2',
+            isUser ? 'items-end' : 'items-start',
+          )}
+        >
           {uploadedFileRefs.map((fileRef) => (
             <button
               key={fileRef.path}
@@ -404,19 +432,30 @@ function MessageItemComponent({
               className="flex max-w-full items-center gap-3 rounded-xl border border-primary-200 bg-primary-50 px-3 py-2 text-left hover:bg-primary-100"
             >
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-100">
-                <HugeiconsIcon icon={File01Icon} size={18} className="text-primary-600" />
+                <HugeiconsIcon
+                  icon={File01Icon}
+                  size={18}
+                  className="text-primary-600"
+                />
               </div>
               <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-primary-900">{fileRef.filename}</p>
-                <p className="text-xs text-primary-600">{formatFileSize(fileSizes[fileRef.path] ?? null)}</p>
+                <p className="truncate text-sm font-medium text-primary-900">
+                  {fileRef.filename}
+                </p>
+                <p className="text-xs text-primary-600">
+                  {formatFileSize(fileSizes[fileRef.path] ?? null)}
+                </p>
               </div>
             </button>
           ))}
         </div>
       )}
-      <Message className={cn('min-w-0 max-w-full', isUser ? 'flex-row-reverse' : '')}>
+      <Message
+        className={cn('min-w-0 max-w-full', isUser ? 'flex-row-reverse' : '')}
+      >
         <MessageContent
           markdown={!isUser}
+          isStreaming={!isUser && isStreaming}
           className={cn(
             'text-primary-900 opencami-text-size min-w-0 max-w-full',
             isUser
@@ -476,7 +515,8 @@ function areMessagesEqual(
   }
   if (prevProps.isStreaming !== nextProps.isStreaming) return false
   if (prevProps.isLastAssistant !== nextProps.isLastAssistant) return false
-  if (prevProps.aggregatedSearchSources !== nextProps.aggregatedSearchSources) return false
+  if (prevProps.aggregatedSearchSources !== nextProps.aggregatedSearchSources)
+    return false
   if (prevProps.wrapperClassName !== nextProps.wrapperClassName) return false
   if (prevProps.wrapperRef !== nextProps.wrapperRef) return false
   if (prevProps.wrapperScrollMarginTop !== nextProps.wrapperScrollMarginTop) {
