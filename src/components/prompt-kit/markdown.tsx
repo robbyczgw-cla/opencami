@@ -27,6 +27,7 @@ export type MarkdownProps = {
   id?: string
   className?: string
   components?: Partial<Components>
+  isStreaming?: boolean
 }
 
 type FilePreviewState =
@@ -205,6 +206,7 @@ const BASE_COMPONENTS: Partial<Components> = {
 
 function createDefaultComponents(
   onOpenFilePreview: (path: string) => void,
+  isStreaming = false,
 ): Partial<Components> {
   return {
     ...BASE_COMPONENTS,
@@ -249,16 +251,18 @@ function createDefaultComponents(
             language={language}
             filename={filename}
             className="w-full"
+            isStreaming={isStreaming}
           />
         )
       }
 
       // Check if the inline code content looks like a file path
-      const text = typeof children === 'string'
-        ? children
-        : Array.isArray(children)
-          ? children.filter((c: unknown) => typeof c === 'string').join('')
-          : String(children ?? '')
+      const text =
+        typeof children === 'string'
+          ? children
+          : Array.isArray(children)
+            ? children.filter((c: unknown) => typeof c === 'string').join('')
+            : String(children ?? '')
       if (text && isLikelyFilePath(text)) {
         return (
           <button
@@ -316,32 +320,41 @@ function MarkdownComponent({
   id,
   className,
   components,
+  isStreaming = false,
 }: MarkdownProps) {
   const generatedId = useId()
   const blockId = id ?? generatedId
   const blocks = useMemo(() => parseMarkdownIntoBlocks(children), [children])
-  const [filePreview, setFilePreview] = useState<FilePreviewState>({ status: 'idle' })
+  const [filePreview, setFilePreview] = useState<FilePreviewState>({
+    status: 'idle',
+  })
   const navigate = useNavigate()
 
-  const openDirectoryInExplorer = useCallback((path: string) => {
-    const workspacePath = toWorkspacePath(path)
-    useFileExplorerState.getState().navigateTo(workspacePath)
-    setFilePreview({ status: 'idle' })
-    navigate({ to: '/files' })
-  }, [navigate])
+  const openDirectoryInExplorer = useCallback(
+    (path: string) => {
+      const workspacePath = toWorkspacePath(path)
+      useFileExplorerState.getState().navigateTo(workspacePath)
+      setFilePreview({ status: 'idle' })
+      navigate({ to: '/files' })
+    },
+    [navigate],
+  )
 
-  const onOpenFilePreview = useCallback((path: string) => {
-    const resolvedPath = normalizeClickedPath(path)
-    if (isDirectoryPathHeuristic(resolvedPath)) {
-      openDirectoryInExplorer(resolvedPath)
-      return
-    }
-    setFilePreview({ status: 'loading', path: resolvedPath })
-  }, [openDirectoryInExplorer])
+  const onOpenFilePreview = useCallback(
+    (path: string) => {
+      const resolvedPath = normalizeClickedPath(path)
+      if (isDirectoryPathHeuristic(resolvedPath)) {
+        openDirectoryInExplorer(resolvedPath)
+        return
+      }
+      setFilePreview({ status: 'loading', path: resolvedPath })
+    },
+    [openDirectoryInExplorer],
+  )
 
   const defaultComponents = useMemo(
-    () => createDefaultComponents(onOpenFilePreview),
-    [onOpenFilePreview],
+    () => createDefaultComponents(onOpenFilePreview, isStreaming),
+    [isStreaming, onOpenFilePreview],
   )
 
   const mergedComponents = useMemo(
@@ -366,7 +379,10 @@ function MarkdownComponent({
             openDirectoryInExplorer(path)
             return
           }
-          const error = fileErrorMessageFromResponse(response.status, payload.code)
+          const error = fileErrorMessageFromResponse(
+            response.status,
+            payload.code,
+          )
           setFilePreview({ status: 'error', path, message: error })
           return
         }
@@ -387,7 +403,11 @@ function MarkdownComponent({
       })
       .catch(() => {
         if (controller.signal.aborted) return
-        setFilePreview({ status: 'error', path, message: 'Failed to load file preview' })
+        setFilePreview({
+          status: 'error',
+          path,
+          message: 'Failed to load file preview',
+        })
       })
 
     return () => controller.abort()
@@ -398,13 +418,20 @@ function MarkdownComponent({
   return (
     <>
       <div
-        className={cn('flex min-w-0 max-w-full flex-col gap-2 overflow-x-hidden', className)}
+        className={cn(
+          'flex min-w-0 max-w-full flex-col gap-2 overflow-x-hidden',
+          className,
+        )}
         onClickCapture={(event) => {
           const target = event.target as HTMLElement | null
-          const anchor = target?.closest?.('a[href^="openclaw-file://"]') as HTMLAnchorElement | null
+          const anchor = target?.closest?.(
+            'a[href^="openclaw-file://"]',
+          ) as HTMLAnchorElement | null
           if (!anchor) return
 
-          const filePath = markdownHrefToFilePath(anchor.getAttribute('href') ?? undefined)
+          const filePath = markdownHrefToFilePath(
+            anchor.getAttribute('href') ?? undefined,
+          )
           if (!filePath) return
 
           event.preventDefault()
@@ -432,7 +459,9 @@ function MarkdownComponent({
             <div className="min-w-0">
               <DialogTitle className="text-base">File Preview</DialogTitle>
               {filePreview.status !== 'idle' && (
-                <p className="text-xs text-primary-600 font-mono truncate">{filePreview.path}</p>
+                <p className="text-xs text-primary-600 font-mono truncate">
+                  {filePreview.path}
+                </p>
               )}
             </div>
             <div className="flex items-center gap-2">
@@ -443,12 +472,16 @@ function MarkdownComponent({
                     onClick={() => {
                       const p = filePreview.status !== 'idle' ? toWorkspacePath(filePreview.path) : ''
                       if (p) {
-                        const dir = p.includes('/') ? p.slice(0, p.lastIndexOf('/')) || '/' : '/'
+                        const dir = p.includes('/')
+                          ? p.slice(0, p.lastIndexOf('/')) || '/'
+                          : '/'
                         useFileExplorerState.getState().navigateTo(dir)
                       }
                       setFilePreview({ status: 'idle' })
                     }}
-                  >Open in Explorer</Link>
+                  >
+                    Open in Explorer
+                  </Link>
                 </Button>
               )}
               {filePreview.status !== 'idle' && (
@@ -462,7 +495,9 @@ function MarkdownComponent({
                       }
                       setFilePreview({ status: 'idle' })
                     }}
-                  >Open in Editor</Link>
+                  >
+                    Open in Editor
+                  </Link>
                 </Button>
               )}
               <DialogClose>Close</DialogClose>

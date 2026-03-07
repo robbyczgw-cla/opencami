@@ -18,39 +18,40 @@ type CodeBlockProps = {
   language?: string
   filename?: string
   className?: string
+  isStreaming?: boolean
 }
 
 // Lazy language loaders - only load grammars when needed
 const languageLoaders: Record<string, () => Promise<LanguageRegistration[]>> = {
-  bash: () => import('@shikijs/langs/bash').then(m => m.default),
-  c: () => import('@shikijs/langs/c').then(m => m.default),
-  cpp: () => import('@shikijs/langs/cpp').then(m => m.default),
-  csharp: () => import('@shikijs/langs/csharp').then(m => m.default),
-  css: () => import('@shikijs/langs/css').then(m => m.default),
-  diff: () => import('@shikijs/langs/diff').then(m => m.default),
-  dockerfile: () => import('@shikijs/langs/dockerfile').then(m => m.default),
-  go: () => import('@shikijs/langs/go').then(m => m.default),
-  graphql: () => import('@shikijs/langs/graphql').then(m => m.default),
-  html: () => import('@shikijs/langs/html').then(m => m.default),
-  java: () => import('@shikijs/langs/java').then(m => m.default),
-  javascript: () => import('@shikijs/langs/javascript').then(m => m.default),
-  json: () => import('@shikijs/langs/json').then(m => m.default),
-  jsx: () => import('@shikijs/langs/jsx').then(m => m.default),
-  kotlin: () => import('@shikijs/langs/kotlin').then(m => m.default),
-  markdown: () => import('@shikijs/langs/markdown').then(m => m.default),
-  php: () => import('@shikijs/langs/php').then(m => m.default),
-  python: () => import('@shikijs/langs/python').then(m => m.default),
-  regexp: () => import('@shikijs/langs/regexp').then(m => m.default),
-  ruby: () => import('@shikijs/langs/ruby').then(m => m.default),
-  rust: () => import('@shikijs/langs/rust').then(m => m.default),
-  shell: () => import('@shikijs/langs/shell').then(m => m.default),
-  sql: () => import('@shikijs/langs/sql').then(m => m.default),
-  swift: () => import('@shikijs/langs/swift').then(m => m.default),
-  toml: () => import('@shikijs/langs/toml').then(m => m.default),
-  typescript: () => import('@shikijs/langs/typescript').then(m => m.default),
-  tsx: () => import('@shikijs/langs/tsx').then(m => m.default),
-  xml: () => import('@shikijs/langs/xml').then(m => m.default),
-  yaml: () => import('@shikijs/langs/yaml').then(m => m.default),
+  bash: () => import('@shikijs/langs/bash').then((m) => m.default),
+  c: () => import('@shikijs/langs/c').then((m) => m.default),
+  cpp: () => import('@shikijs/langs/cpp').then((m) => m.default),
+  csharp: () => import('@shikijs/langs/csharp').then((m) => m.default),
+  css: () => import('@shikijs/langs/css').then((m) => m.default),
+  diff: () => import('@shikijs/langs/diff').then((m) => m.default),
+  dockerfile: () => import('@shikijs/langs/dockerfile').then((m) => m.default),
+  go: () => import('@shikijs/langs/go').then((m) => m.default),
+  graphql: () => import('@shikijs/langs/graphql').then((m) => m.default),
+  html: () => import('@shikijs/langs/html').then((m) => m.default),
+  java: () => import('@shikijs/langs/java').then((m) => m.default),
+  javascript: () => import('@shikijs/langs/javascript').then((m) => m.default),
+  json: () => import('@shikijs/langs/json').then((m) => m.default),
+  jsx: () => import('@shikijs/langs/jsx').then((m) => m.default),
+  kotlin: () => import('@shikijs/langs/kotlin').then((m) => m.default),
+  markdown: () => import('@shikijs/langs/markdown').then((m) => m.default),
+  php: () => import('@shikijs/langs/php').then((m) => m.default),
+  python: () => import('@shikijs/langs/python').then((m) => m.default),
+  regexp: () => import('@shikijs/langs/regexp').then((m) => m.default),
+  ruby: () => import('@shikijs/langs/ruby').then((m) => m.default),
+  rust: () => import('@shikijs/langs/rust').then((m) => m.default),
+  shell: () => import('@shikijs/langs/shell').then((m) => m.default),
+  sql: () => import('@shikijs/langs/sql').then((m) => m.default),
+  swift: () => import('@shikijs/langs/swift').then((m) => m.default),
+  toml: () => import('@shikijs/langs/toml').then((m) => m.default),
+  typescript: () => import('@shikijs/langs/typescript').then((m) => m.default),
+  tsx: () => import('@shikijs/langs/tsx').then((m) => m.default),
+  xml: () => import('@shikijs/langs/xml').then((m) => m.default),
+  yaml: () => import('@shikijs/langs/yaml').then((m) => m.default),
 }
 
 // Aliases for common language names
@@ -75,13 +76,18 @@ const loadedLanguages = new Set<string>()
 async function getHighlighter(): Promise<HighlighterCore> {
   if (!highlighterPromise) {
     // Lazy load Shiki core and themes
-    const [{ createHighlighterCore }, { createJavaScriptRegexEngine }, vitesseDark, vitesseLight] = await Promise.all([
+    const [
+      { createHighlighterCore },
+      { createJavaScriptRegexEngine },
+      vitesseDark,
+      vitesseLight,
+    ] = await Promise.all([
       import('shiki/core'),
       import('shiki/engine/javascript'),
-      import('@shikijs/themes/vitesse-dark').then(m => m.default),
-      import('@shikijs/themes/vitesse-light').then(m => m.default),
+      import('@shikijs/themes/vitesse-dark').then((m) => m.default),
+      import('@shikijs/themes/vitesse-light').then((m) => m.default),
     ])
-    
+
     highlighterPromise = createHighlighterCore({
       themes: [vitesseDark, vitesseLight],
       langs: [], // Start with no languages, load on demand
@@ -91,21 +97,24 @@ async function getHighlighter(): Promise<HighlighterCore> {
   return highlighterPromise
 }
 
-async function ensureLanguageLoaded(highlighter: HighlighterCore, lang: string): Promise<string> {
+async function ensureLanguageLoaded(
+  highlighter: HighlighterCore,
+  lang: string,
+): Promise<string> {
   // Resolve aliases
   const resolvedLang = languageAliases[lang] || lang
-  
+
   // If already loaded or no loader exists, return
   if (loadedLanguages.has(resolvedLang)) {
     return resolvedLang
   }
-  
+
   const loader = languageLoaders[resolvedLang]
   if (!loader) {
     // Fall back to plaintext for unknown languages
     return 'text'
   }
-  
+
   try {
     const langModule = await loader()
     await highlighter.loadLanguage(langModule)
@@ -122,6 +131,7 @@ export function CodeBlock({
   language = 'text',
   filename,
   className,
+  isStreaming = false,
 }: CodeBlockProps) {
   const resolvedTheme = useResolvedTheme()
   const [copied, setCopied] = useState(false)
@@ -139,17 +149,27 @@ export function CodeBlock({
 
   useEffect(() => {
     let active = true
-    
+    let highlightTimer: number | null = null
+
+    const baseLang = resolveLanguage(normalizedLanguage)
+    setResolvedLanguage(baseLang)
+
+    if (isStreaming) {
+      setHtml(null)
+      return () => {
+        active = false
+      }
+    }
+
     async function highlight() {
       try {
         const highlighter = await getHighlighter()
         if (!active) return
-        
+
         // Lazy load the specific language needed
-        const baseLang = resolveLanguage(normalizedLanguage)
         const lang = await ensureLanguageLoaded(highlighter, baseLang)
         if (!active) return
-        
+
         const highlighted = highlighter.codeToHtml(content, {
           lang,
           theme: themeName,
@@ -164,13 +184,18 @@ export function CodeBlock({
         if (active) setHtml(null)
       }
     }
-    
-    highlight()
-    
+
+    highlightTimer = window.setTimeout(() => {
+      void highlight()
+    }, 160)
+
     return () => {
       active = false
+      if (highlightTimer) {
+        window.clearTimeout(highlightTimer)
+      }
     }
-  }, [content, normalizedLanguage, themeName])
+  }, [content, isStreaming, normalizedLanguage, themeName])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -267,7 +292,9 @@ export function CodeBlock({
         <pre
           className={cn(
             'w-full min-w-0 max-w-full text-sm px-3 py-3 overflow-x-auto',
-            wrap ? 'whitespace-pre-wrap break-words' : 'whitespace-pre overflow-x-auto',
+            wrap
+              ? 'whitespace-pre-wrap break-words'
+              : 'whitespace-pre overflow-x-auto',
           )}
         >
           <code className="block">{fallback}</code>
