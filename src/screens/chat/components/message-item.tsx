@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useState } from 'react'
+import { Suspense, lazy, memo, useEffect, useMemo, useState } from 'react'
 import {
   getMessageTimestamp,
   getToolCallsFromMessage,
@@ -8,18 +8,26 @@ import { MessageActionsBar } from './message-actions-bar'
 import type { GatewayMessage, ToolCallContent } from '../types'
 import type { ToolPart } from '@/components/prompt-kit/tool'
 import { Message, MessageContent } from '@/components/prompt-kit/message'
-import { Thinking } from '@/components/prompt-kit/thinking'
 import { Tool } from '@/components/prompt-kit/tool'
 import { useChatSettings } from '@/hooks/use-chat-settings'
 import { cn } from '@/lib/utils'
-import {
-  SearchSourcesBadge,
-  type SearchSource,
-} from '@/components/search-sources-badge'
+import type { SearchSource } from '@/components/search-sources-badge'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { File01Icon } from '@hugeicons/core-free-icons'
 import { useNavigate } from '@tanstack/react-router'
 import { useFileExplorerState } from '@/screens/files/hooks/use-file-explorer-state'
+
+const Thinking = lazy(() =>
+  import('@/components/prompt-kit/thinking').then((m) => ({
+    default: m.Thinking,
+  })),
+)
+
+const SearchSourcesBadge = lazy(() =>
+  import('@/components/search-sources-badge').then((m) => ({
+    default: m.SearchSourcesBadge,
+  })),
+)
 
 type MessageItemProps = {
   message: GatewayMessage
@@ -302,6 +310,13 @@ function MessageItemComponent({
   const thinking = thinkingFromMessage(message)
   const images = imagesFromMessage(message)
   const isUser = role === 'user'
+  const imageDataUris = useMemo(
+    () =>
+      images.map(
+        (img) => `data:${img.source.media_type};base64,${img.source.data}`,
+      ),
+    [images],
+  )
   const timestamp = getMessageTimestamp(message)
   const navigate = useNavigate()
   const openInEditor = useFileExplorerState((state) => state.openInEditor)
@@ -392,7 +407,9 @@ function MessageItemComponent({
     >
       {thinking && settings.showReasoningBlocks && (
         <div className="w-full max-w-[var(--opencami-chat-width)]">
-          <Thinking content={thinking} />
+          <Suspense fallback={null}>
+            <Thinking content={thinking} />
+          </Suspense>
         </div>
       )}
       {/* Render images if present */}
@@ -406,10 +423,11 @@ function MessageItemComponent({
           {images.map((img, idx) => (
             <img
               key={idx}
-              src={`data:${img.source.media_type};base64,${img.source.data}`}
+              src={imageDataUris[idx]}
               alt={`Attachment ${idx + 1}`}
               loading="lazy"
               decoding="async"
+              fetchPriority="low"
               className="max-w-[300px] max-h-[300px] rounded-lg object-cover"
             />
           ))}
@@ -490,7 +508,9 @@ function MessageItemComponent({
 
       {searchSources.length > 0 && (
         <div className="w-full max-w-[var(--opencami-chat-width)]">
-          <SearchSourcesBadge sources={searchSources} />
+          <Suspense fallback={null}>
+            <SearchSourcesBadge sources={searchSources} />
+          </Suspense>
         </div>
       )}
 

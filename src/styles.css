@@ -457,6 +457,22 @@ code {
   animation: stream-fade-in 0.25s ease-out;
 }
 
+@media (max-width: 768px) {
+  .stream-fade-in {
+    animation-duration: 0.16s;
+  }
+
+  .opencami-message-highlight {
+    animation-duration: 1s;
+  }
+
+  .group\/scroll-area,
+  [data-radix-scroll-area-viewport],
+  [data-slot='scroll-area-viewport'] {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
 @keyframes message-highlight-pulse {
   0% {
     background-color: color-mix(
@@ -530,6 +546,23 @@ html.tauri .tauri-drag-header {
 .opencami-accent-soft {
   background: var(--opencami-accent-light);
   color: var(--opencami-accent);
+}
+
+.opencami-message-item {
+  contain: content;
+}
+
+.group\/scroll-area,
+[data-radix-scroll-area-viewport],
+[data-slot='scroll-area-viewport'],
+.opencami-scroll-viewport {
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+img[loading='lazy'] {
+  contain: content;
 }
 
 [data-opencami-bubble-style='bubbles'] .opencami-message-assistant {

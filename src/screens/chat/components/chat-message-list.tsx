@@ -1,8 +1,17 @@
-import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import {
+  Suspense,
+  lazy,
+  memo,
+  useDeferredValue,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { getToolCallsFromMessage, textFromMessage } from '../utils'
 import { MessageItem } from './message-item'
 import type { SearchSource } from '@/components/search-sources-badge'
-import { FollowUpSuggestions } from './follow-up-suggestions'
 import type { GatewayMessage } from '../types'
 import {
   ChatContainerContent,
@@ -10,6 +19,12 @@ import {
   ChatContainerScrollAnchor,
 } from '@/components/prompt-kit/chat-container'
 import { TypingIndicator } from '@/components/prompt-kit/typing-indicator'
+
+const FollowUpSuggestions = lazy(() =>
+  import('./follow-up-suggestions').then((m) => ({
+    default: m.FollowUpSuggestions,
+  })),
+)
 
 type ChatMessageListProps = {
   messages: Array<GatewayMessage>
@@ -54,12 +69,16 @@ function ChatMessageListComponent({
   const programmaticScroll = useRef(false)
   const prevPinRef = useRef(pinToTop)
   const prevUserIndexRef = useRef<number | undefined>(undefined)
-  const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null)
+  const [highlightedMessageId, setHighlightedMessageId] = useState<
+    string | null
+  >(null)
 
   // Filter out toolResult messages - they'll be displayed inside their associated tool calls
   const displayMessages = useMemo(() => {
     return messages.filter((msg) => msg.role !== 'toolResult')
   }, [messages])
+
+  const deferredDisplayMessages = useDeferredValue(displayMessages)
 
   const toolResultsByCallId = useMemo(() => {
     const map = new Map<string, GatewayMessage>()
@@ -73,46 +92,11 @@ function ChatMessageListComponent({
     return map
   }, [messages])
 
-  // Aggregate all search sources across all assistant messages for the badge
-  const aggregatedSearchSources = useMemo(() => {
-    // Strip Gateway security tags from search result text
-    const strip = (s: string) => {
-      if (!s) return ''
-      return s
-        .replace(/SECURITY NOTICE:[\s\S]*?<<<EXTERNAL_UNTRUSTED_CONTENT>>>/g, '')
-        .replace(/<<<\/?EXTERNAL_UNTRUSTED_CONTENT>>>/g, '')
-        .replace(/<<<\/?END_EXTERNAL_UNTRUSTED_CONTENT>>>/g, '')
-        .replace(/Source: Web (?:Search|Fetch)\n---/g, '')
-        .replace(/\n{2,}/g, '\n')
-        .trim()
-    }
-    // Try to extract search results from any JSON text
-    const extractResults = (text: string, sources: SearchSource[], seenUrls: Set<string>) => {
-      try {
-        const parsed = JSON.parse(text)
-        // Handle web-search-plus format: { provider, query, results: [...] }
-        // Handle web_search format: { results: [...] } or direct array
-        const items = Array.isArray(parsed) ? parsed
-          : parsed?.results ?? parsed?.web?.results ?? []
-        if (!Array.isArray(items)) return false
-        let found = false
-        for (const item of items) {
-          if (item?.url && item?.title && !seenUrls.has(item.url)) {
-            seenUrls.add(item.url)
-            sources.push({
-              title: strip(item.title),
-              url: item.url,
-              snippet: strip(item.description || item.snippet || item.content || '')
-            })
-            found = true
-          }
-        }
-        return found
-      } catch { return false }
-    }
-    const sources: SearchSource[] = []
-    const seenUrls = new Set<string>()
-    for (const msg of displayMessages) {
+  const deferredToolResultsByCallId = useDeferredValue(toolResultsByCallId)
+
+  const aggregatedSearchSourcesSignature = useMemo(() => {
+    const parts: string[] = []
+    for (const msg of deferredDisplayMessages) {
       if (msg.role !== 'assistant') continue
       const toolCalls = getToolCallsFromMessage(msg)
       for (const tc of toolCalls) {
@@ -121,7 +105,89 @@ function ChatMessageListComponent({
         const isFetch = tc.name === 'web_fetch'
         const isExec = tc.name === 'exec'
         if (!isSearch && !isFetch && !isExec) continue
-        const result = toolResultsByCallId.get(tc.id)
+        const result = deferredToolResultsByCallId.get(tc.id)
+        const text =
+          result?.content
+            ?.map((p: any) => (p.type === 'text' ? String(p.text ?? '') : ''))
+            .join('')
+            .trim() ?? ''
+        parts.push(
+          [
+            tc.id,
+            tc.name ?? '',
+            typeof tc.arguments?.url === 'string' ? tc.arguments.url : '',
+            result?.isError ? '1' : '0',
+            text,
+          ].join('::'),
+        )
+      }
+    }
+    return parts.join('||')
+  }, [deferredDisplayMessages, deferredToolResultsByCallId])
+
+  // Aggregate all search sources across assistant tool outputs for the badge.
+  // Using deferred inputs + a narrow signature avoids reparsing the same JSON
+  // during rapid polling / StrictMode churn.
+  const aggregatedSearchSources = useMemo(() => {
+    // Strip Gateway security tags from search result text
+    const strip = (s: string) => {
+      if (!s) return ''
+      return s
+        .replace(
+          /SECURITY NOTICE:[\s\S]*?<<<EXTERNAL_UNTRUSTED_CONTENT>>>/g,
+          '',
+        )
+        .replace(/<<<\/?EXTERNAL_UNTRUSTED_CONTENT>>>/g, '')
+        .replace(/<<<\/?END_EXTERNAL_UNTRUSTED_CONTENT>>>/g, '')
+        .replace(/Source: Web (?:Search|Fetch)\n---/g, '')
+        .replace(/\n{2,}/g, '\n')
+        .trim()
+    }
+    // Try to extract search results from any JSON text
+    const extractResults = (
+      text: string,
+      sources: SearchSource[],
+      seenUrls: Set<string>,
+    ) => {
+      try {
+        const parsed = JSON.parse(text)
+        // Handle web-search-plus format: { provider, query, results: [...] }
+        // Handle web_search format: { results: [...] } or direct array
+        const items = Array.isArray(parsed)
+          ? parsed
+          : (parsed?.results ?? parsed?.web?.results ?? [])
+        if (!Array.isArray(items)) return false
+        let found = false
+        for (const item of items) {
+          if (item?.url && item?.title && !seenUrls.has(item.url)) {
+            seenUrls.add(item.url)
+            sources.push({
+              title: strip(item.title),
+              url: item.url,
+              snippet: strip(
+                item.description || item.snippet || item.content || '',
+              ),
+            })
+            found = true
+          }
+        }
+        return found
+      } catch {
+        return false
+      }
+    }
+    const sources: SearchSource[] = []
+    const seenUrls = new Set<string>()
+    for (const msg of deferredDisplayMessages) {
+      if (msg.role !== 'assistant') continue
+      const toolCalls = getToolCallsFromMessage(msg)
+      for (const tc of toolCalls) {
+        if (!tc.id) continue
+        const isSearch = tc.name === 'web_search'
+        const isFetch = tc.name === 'web_fetch'
+        const isExec = tc.name === 'exec'
+        if (!isSearch && !isFetch && !isExec) continue
+        const result = deferredToolResultsByCallId.get(tc.id)
         if (!result) continue
         const text = result.content
           ?.map((p: any) => (p.type === 'text' ? String(p.text ?? '') : ''))
@@ -147,14 +213,22 @@ function ChatMessageListComponent({
           if (url && !seenUrls.has(url)) {
             seenUrls.add(url)
             let title: string
-            try { title = new URL(url).hostname } catch { title = url }
+            try {
+              title = new URL(url).hostname
+            } catch {
+              title = url
+            }
             sources.push({ title, url })
           }
         }
       }
     }
     return sources
-  }, [displayMessages, toolResultsByCallId])
+  }, [
+    aggregatedSearchSourcesSignature,
+    deferredDisplayMessages,
+    deferredToolResultsByCallId,
+  ])
 
   const lastAssistantIndex = displayMessages
     .map((message, index) => ({ message, index }))
@@ -239,7 +313,9 @@ function ChatMessageListComponent({
     target.scrollIntoView({ behavior: 'smooth', block: 'center' })
     setHighlightedMessageId(jumpToMessageId)
     const timer = window.setTimeout(() => {
-      setHighlightedMessageId((prev) => (prev === jumpToMessageId ? null : prev))
+      setHighlightedMessageId((prev) =>
+        prev === jumpToMessageId ? null : prev,
+      )
     }, 1800)
 
     return () => window.clearTimeout(timer)
@@ -258,7 +334,9 @@ function ChatMessageListComponent({
               .slice(0, groupStartIndex)
               .map((chatMessage, index) => {
                 const messageId =
-                  typeof chatMessage.id === 'string' ? chatMessage.id : undefined
+                  typeof chatMessage.id === 'string'
+                    ? chatMessage.id
+                    : undefined
                 const messageKey = messageId || index
                 const forceActionsVisible =
                   typeof lastAssistantIndex === 'number' &&
@@ -279,8 +357,12 @@ function ChatMessageListComponent({
                     forceActionsVisible={forceActionsVisible}
                     isStreaming={isLastAssistant && isStreaming}
                     isLastAssistant={isLastAssistant}
-                    aggregatedSearchSources={isLastAssistant ? aggregatedSearchSources : undefined}
-                    messageDomId={messageId ? `message-${messageId}` : undefined}
+                    aggregatedSearchSources={
+                      isLastAssistant ? aggregatedSearchSources : undefined
+                    }
+                    messageDomId={
+                      messageId ? `message-${messageId}` : undefined
+                    }
                     highlighted={highlightedMessageId === messageId}
                   />
                 )
@@ -295,7 +377,9 @@ function ChatMessageListComponent({
                 .map((chatMessage, index) => {
                   const realIndex = groupStartIndex + index
                   const messageId =
-                    typeof chatMessage.id === 'string' ? chatMessage.id : undefined
+                    typeof chatMessage.id === 'string'
+                      ? chatMessage.id
+                      : undefined
                   const messageKey = messageId || realIndex
                   const forceActionsVisible =
                     typeof lastAssistantIndex === 'number' &&
@@ -321,12 +405,16 @@ function ChatMessageListComponent({
                       }
                       forceActionsVisible={forceActionsVisible}
                       isStreaming={isLastAssistant && isStreaming}
-                    isLastAssistant={isLastAssistant}
-                    aggregatedSearchSources={isLastAssistant ? aggregatedSearchSources : undefined}
+                      isLastAssistant={isLastAssistant}
+                      aggregatedSearchSources={
+                        isLastAssistant ? aggregatedSearchSources : undefined
+                      }
                       wrapperRef={wrapperRef}
                       wrapperClassName={wrapperClassName}
                       wrapperScrollMarginTop={wrapperScrollMarginTop}
-                      messageDomId={messageId ? `message-${messageId}` : undefined}
+                      messageDomId={
+                        messageId ? `message-${messageId}` : undefined
+                      }
                       highlighted={highlightedMessageId === messageId}
                     />
                   )
@@ -337,11 +425,13 @@ function ChatMessageListComponent({
                 </div>
               ) : null}
               {showFollowUps && onFollowUpClick ? (
-                <FollowUpSuggestions
-                  responseText={lastAssistantText}
-                  onSuggestionClick={onFollowUpClick}
-                  disabled={waitingForResponse}
-                />
+                <Suspense fallback={null}>
+                  <FollowUpSuggestions
+                    responseText={lastAssistantText}
+                    onSuggestionClick={onFollowUpClick}
+                    disabled={waitingForResponse}
+                  />
+                </Suspense>
               ) : null}
             </div>
           </>
@@ -369,19 +459,23 @@ function ChatMessageListComponent({
                   }
                   forceActionsVisible={forceActionsVisible}
                   isStreaming={isLastAssistant && isStreaming}
-                    isLastAssistant={isLastAssistant}
-                    aggregatedSearchSources={isLastAssistant ? aggregatedSearchSources : undefined}
-                    messageDomId={messageId ? `message-${messageId}` : undefined}
-                    highlighted={highlightedMessageId === messageId}
+                  isLastAssistant={isLastAssistant}
+                  aggregatedSearchSources={
+                    isLastAssistant ? aggregatedSearchSources : undefined
+                  }
+                  messageDomId={messageId ? `message-${messageId}` : undefined}
+                  highlighted={highlightedMessageId === messageId}
                 />
               )
             })}
             {showFollowUps && onFollowUpClick ? (
-              <FollowUpSuggestions
-                responseText={lastAssistantText}
-                onSuggestionClick={onFollowUpClick}
-                disabled={waitingForResponse}
-              />
+              <Suspense fallback={null}>
+                <FollowUpSuggestions
+                  responseText={lastAssistantText}
+                  onSuggestionClick={onFollowUpClick}
+                  disabled={waitingForResponse}
+                />
+              </Suspense>
             ) : null}
           </>
         )}
