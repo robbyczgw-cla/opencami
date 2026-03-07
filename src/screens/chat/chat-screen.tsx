@@ -106,7 +106,9 @@ export function ChatScreen({
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false)
   const [showSearchDialog, setShowSearchDialog] = useState(false)
   const [searchMode, setSearchMode] = useState<'global' | 'current'>('global')
-  const [searchJumpMessageId, setSearchJumpMessageId] = useState<string | null>(null)
+  const [searchJumpMessageId, setSearchJumpMessageId] = useState<string | null>(
+    null,
+  )
   const [isStreaming, setIsStreaming] = useState(false)
   const thinkingLevel = useThinkingLevelStore((state) => state.level)
   const { maybeNotifyAssistantMessage } = useNotifications()
@@ -232,10 +234,10 @@ export function ChatScreen({
   const titleGeneratedRef = useRef<Set<string>>(new Set())
   // Fast-polling interval (ms) used while the assistant is actively generating.
   // 150ms gives a near-real-time feel as Gateway sends block-streamed chunks.
-  const FAST_POLL_MS = 150
+  const FAST_POLL_MS = 2000
   // Normal polling interval once the response is mostly stable but not yet
   // confirmed finished (idle-timeout window).
-  const NORMAL_POLL_MS = 600
+  const NORMAL_POLL_MS = 2000
 
   const streamStart = useCallback(() => {
     if (!activeFriendlyId || isNewChat) return
@@ -274,12 +276,9 @@ export function ChatScreen({
     },
     [historyQuery, queryClient, stopStream, streamFinish],
   )
-  handleStreamErrorRef.current = useCallback(
-    (_err: string) => {
-      console.warn('[stream] SSE error, falling back to polling')
-    },
-    [],
-  )
+  handleStreamErrorRef.current = useCallback((_err: string) => {
+    console.warn('[stream] SSE error, falling back to polling')
+  }, [])
 
   // Build a synthetic "streaming" assistant message from SSE deltas
   const streamingMessage = useMemo<GatewayMessage | null>(() => {
@@ -484,15 +483,18 @@ export function ChatScreen({
     // Skip if new chat or redirecting
     if (isNewChat || isRedirecting) return
     // Skip if no session key
-    const sessionKey = forcedSessionKey || resolvedSessionKey || activeSessionKey
+    const sessionKey =
+      forcedSessionKey || resolvedSessionKey || activeSessionKey
     if (!sessionKey) return
     // Skip if already generated title for this session
     if (titleGeneratedRef.current.has(sessionKey)) return
 
     // Check if we have at least one user message and one assistant response
     const userMessages = historyMessages.filter((m) => m.role === 'user')
-    const assistantMessages = historyMessages.filter((m) => m.role === 'assistant')
-    
+    const assistantMessages = historyMessages.filter(
+      (m) => m.role === 'assistant',
+    )
+
     if (userMessages.length === 0 || assistantMessages.length === 0) return
 
     // Only generate title for the first exchange (session just started)
@@ -510,7 +512,12 @@ export function ChatScreen({
       try {
         const result = await generateTitle(firstUserMessage)
         if (result.title) {
-          await updateSessionLabel(queryClient, sessionKey, activeFriendlyId, result.title)
+          await updateSessionLabel(
+            queryClient,
+            sessionKey,
+            activeFriendlyId,
+            result.title,
+          )
         }
       } catch (err) {
         console.error('[smart-title] Error generating title:', err)
@@ -629,7 +636,13 @@ export function ChatScreen({
     }
     setWaitingForResponse(true)
     setPinToTop(true)
-    sendMessage(pending.sessionKey, pending.friendlyId, pending.message, true, pending.attachments)
+    sendMessage(
+      pending.sessionKey,
+      pending.friendlyId,
+      pending.message,
+      true,
+      pending.attachments,
+    )
   }, [
     activeFriendlyId,
     activeSessionKey,
@@ -649,7 +662,10 @@ export function ChatScreen({
   ) {
     let optimisticClientId = ''
     if (!skipOptimistic) {
-      const { clientId, optimisticMessage } = createOptimisticMessage(body, attachments)
+      const { clientId, optimisticMessage } = createOptimisticMessage(
+        body,
+        attachments,
+      )
       optimisticClientId = clientId
       appendHistoryMessage(
         queryClient,
@@ -701,7 +717,7 @@ export function ChatScreen({
         // Parse response to get the actual resolved sessionKey, then start
         // SSE with the correct key. Server event buffer holds events for 10s
         // so late subscription still gets all deltas.
-        const data = await res.json() as { sessionKey?: string }
+        const data = (await res.json()) as { sessionKey?: string }
         const resolvedKey = data.sessionKey || sessionKey || friendlyId
         startStream(resolvedKey)
       })
@@ -769,7 +785,8 @@ export function ChatScreen({
     (body: string, helpers: ChatComposerHelpers) => {
       const attachments = helpers.attachments
       // Allow submit if there's text OR attachments
-      if (body.length === 0 && (!attachments || attachments.length === 0)) return
+      if (body.length === 0 && (!attachments || attachments.length === 0))
+        return
       helpers.reset()
 
       if (isNewChat) {
@@ -823,7 +840,14 @@ export function ChatScreen({
 
       const sessionKeyForSend =
         forcedSessionKey || resolvedSessionKey || activeSessionKey
-      sendMessage(sessionKeyForSend, activeFriendlyId, body, false, attachments, helpers.model)
+      sendMessage(
+        sessionKeyForSend,
+        activeFriendlyId,
+        body,
+        false,
+        attachments,
+        helpers.model,
+      )
     },
     [
       activeFriendlyId,
@@ -909,7 +933,7 @@ export function ChatScreen({
     const lastAssistantMessage = [...displayMessages]
       .reverse()
       .find((msg) => msg.role === 'assistant')
-    
+
     if (!lastAssistantMessage) return
 
     const textContent = textFromMessage(lastAssistantMessage)
@@ -1107,7 +1131,10 @@ export function ChatScreen({
                 }
               }
 
-              navigate({ to: '/chat/$sessionKey', params: { sessionKey: result.friendlyId } })
+              navigate({
+                to: '/chat/$sessionKey',
+                params: { sessionKey: result.friendlyId },
+              })
             }}
           />
         </Suspense>
