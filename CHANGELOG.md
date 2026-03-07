@@ -3,6 +3,13 @@
 All notable changes to OpenCami are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [Semantic Versioning](https://semver.org/).
 
+## [1.8.6] - 2026-03-07
+
+### Fixed
+
+- 🔌 **Duplicate WebSocket connections fix** — Fixed a Vite SSR issue where multiple `node:vm` contexts each created their own WebSocket connection, causing doubled/tripled streaming text. Singleton carrier moved from `globalThis` to `process` which is shared across all VM contexts.
+- 🔌 **Stale WebSocket cleanup** — New connections now properly close any existing stale WebSocket before reconnecting, preventing ghost connections from accumulating.
+
 ## [1.8.5] - 2026-03-03
 
 ### Fixed

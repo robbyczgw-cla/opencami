@@ -1,6 +1,6 @@
 {
   "name": "opencami",
-  "version": "1.8.5",
+  "version": "1.8.6",
   "type": "module",
   "description": "OpenCami - A beautiful web client for OpenClaw",
   "bin": {
