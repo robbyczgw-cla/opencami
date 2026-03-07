@@ -3,6 +3,20 @@
 All notable changes to OpenCami are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [Semantic Versioning](https://semver.org/).
 
+## [1.8.7] - 2026-03-07
+
+### Performance
+
+- ⚡ **Android PWA overhaul** — Major performance improvements for mobile devices, especially mid-range Android phones.
+- 🚀 **Streaming polling reduced 13×** — History polling during SSE streaming reduced from 150ms (6.6 req/s) to 2000ms (0.5 req/s). SSE handles real-time deltas; polling is now just a safety net. Dramatically reduces CPU, GC pressure, and battery drain on mobile.
+- 🎨 **Render-blocking fonts removed** — Eliminated external Google Fonts `@import` that blocked first paint by 200-800ms on slow connections. The system font stack (`-apple-system`, `BlinkMacSystemFont`, `Segoe UI`) is now used by default.
+- 🧊 **Frost theme optimized for mobile** — Reduced `backdrop-filter` blur from 20px to 8px on touch devices with increased panel opacity. Prevents GPU-intensive real-time blur calculations that dropped frame rates to ~20fps on Android.
+- 💡 **Deferred syntax highlighting** — Shiki code highlighting is now skipped during active streaming and only applied once the response settles. Eliminates jank when streaming code-heavy responses.
+- 🧩 **Lazy-loaded secondary UI** — Follow-up suggestions, thinking indicators, and search source badges are now lazy-loaded, reducing initial render cost.
+- 📦 **CSS containment** — Added `contain: content` to message items and GPU compositing hints to scroll containers for smoother scrolling.
+- 🖼️ **Image optimization** — Memoized base64 data URI assembly and added `fetchPriority="low"` to inline message images.
+- 🔍 **Search sources debounced** — `aggregatedSearchSources` computation narrowed to only recompute on actual message changes, not during streaming churn.
+
 ## [1.8.6] - 2026-03-07
 
 ### Fixed
