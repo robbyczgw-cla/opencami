@@ -331,6 +331,51 @@ html.frost-dark body {
   }
 }
 
+@media (pointer: coarse), (max-width: 768px) {
+  .frost aside,
+  .frost .tauri-drag-header,
+  .frost .DialogPopup,
+  .frost [role='dialog'],
+  .frost .opencami-frost-panel,
+  .frost .bg-surface.cursor-text,
+  .frost [data-slot='tabs-list'],
+  .frost [role='menu'],
+  .frost [data-slot='button'][class*='outline'] {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  .frost aside,
+  .frost .tauri-drag-header,
+  .frost .bg-surface.cursor-text,
+  .frost [role='dialog'],
+  .frost [role='menu'] {
+    background: rgba(255, 255, 255, 0.82) !important;
+    border-color: rgba(255, 255, 255, 0.42) !important;
+  }
+
+  .frost .opencami-message-assistant {
+    background: rgba(255, 255, 255, 0.58);
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+}
+
+@media (pointer: coarse), (max-width: 768px) and (prefers-color-scheme: dark) {
+  .frost:not(.frost-light) aside,
+  .frost:not(.frost-light) .tauri-drag-header,
+  .frost:not(.frost-light) .bg-surface.cursor-text,
+  .frost:not(.frost-light) [role='dialog'],
+  .frost:not(.frost-light) [role='menu'] {
+    background: rgba(15, 15, 15, 0.84) !important;
+    border-color: rgba(255, 255, 255, 0.22) !important;
+  }
+
+  .frost:not(.frost-light) .opencami-message-assistant {
+    background: rgba(22, 24, 30, 0.68);
+    border-color: rgba(255, 255, 255, 0.18);
+  }
+}
+
 /* Accent glow through glass */
 .frost .opencami-accent-bg,
 .frost .opencami-accent-bg-hover:hover,
