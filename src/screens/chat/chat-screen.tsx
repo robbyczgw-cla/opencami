@@ -137,11 +137,6 @@ export function ChatScreen({
     resolvedSessionKey,
     activeCanonicalKey,
     sessionKeyForHistory,
-    hasMore,
-    isLoadingMore,
-    loadMore,
-    registerScrollViewport,
-    setVisibleCount,
   } = useChatHistory({
     activeFriendlyId,
     activeSessionKey,
@@ -704,32 +699,19 @@ export function ChatScreen({
     streamingNotificationTextRef.current = ''
     streamStart()
 
-    const ensureModelPromise = model
-      ? fetch('/api/model', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ sessionKey, friendlyId, model }),
-        }).then(async (res) => {
-          if (!res.ok) throw new Error(await readError(res))
-          return res.json()
-        })
-      : Promise.resolve(null)
-
-    ensureModelPromise
-      .then(() =>
-        fetch('/api/send', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({
-            sessionKey,
-            friendlyId,
-            message: body,
-            thinking: thinkingLevel,
-            idempotencyKey: crypto.randomUUID(),
-            attachments: attachmentsPayload,
-          }),
-        }),
-      )
+    fetch('/api/send', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        sessionKey,
+        friendlyId,
+        message: body,
+        thinking: thinkingLevel,
+        idempotencyKey: crypto.randomUUID(),
+        attachments: attachmentsPayload,
+        model: model || undefined,
+      }),
+    })
       .then(async (res) => {
         if (!res.ok) throw new Error(await readError(res))
         // Parse response to get the actual resolved sessionKey, then start
@@ -962,20 +944,6 @@ export function ChatScreen({
     })
   }, [displayMessages])
 
-  useEffect(() => {
-    if (!searchJumpMessageId) return
-
-    const targetIndex = historyMessages.findIndex((message) => {
-      return message.id === searchJumpMessageId
-    })
-    if (targetIndex < 0) return
-
-    const nextVisibleCount = historyMessages.length - targetIndex
-    setVisibleCount((currentCount) => {
-      return currentCount >= nextVisibleCount ? currentCount : nextVisibleCount
-    })
-  }, [historyMessages, searchJumpMessageId, setVisibleCount])
-
   const handleShowHelp = useCallback(() => {
     setShowShortcutsHelp(true)
   }, [])
@@ -1108,17 +1076,11 @@ export function ChatScreen({
                 contentStyle={stableContentStyle}
                 onFollowUpClick={handleFollowUpClick}
                 jumpToMessageId={searchJumpMessageId}
-                hasMore={hasMore}
-                isLoadingMore={isLoadingMore}
-                onLoadMore={loadMore}
-                viewportRef={registerScrollViewport}
               />
               <ChatComposer
                 onSubmit={send}
                 isLoading={sending}
                 disabled={sending}
-                sessionKey={isNewChat ? undefined : activeCanonicalKey}
-                friendlyId={isNewChat ? undefined : activeFriendlyId}
                 wrapperRef={composerRef}
                 inputRef={inputRef}
               />

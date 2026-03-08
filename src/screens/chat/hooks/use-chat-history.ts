@@ -1,17 +1,9 @@
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useMemo, useRef } from 'react'
+import { useQuery, type QueryClient } from '@tanstack/react-query'
 
 import { chatQueryKeys, fetchHistory } from '../chat-queries'
 import { getMessageTimestamp, textFromMessage } from '../utils'
 import type { GatewayMessage, HistoryResponse } from '../types'
-import type { QueryClient } from '@tanstack/react-query'
 
 type UseChatHistoryInput = {
   activeFriendlyId: string
@@ -23,14 +15,6 @@ type UseChatHistoryInput = {
   sessionsReady: boolean
   queryClient: QueryClient
 }
-
-type ScrollRestoreState = {
-  scrollTop: number
-  scrollHeight: number
-}
-
-const INITIAL_VISIBLE_MESSAGE_COUNT = 50
-const HISTORY_PAGE_SIZE = 50
 
 export function useChatHistory({
   activeFriendlyId,
@@ -48,15 +32,12 @@ export function useChatHistory({
     activeFriendlyId,
     sessionKeyForHistory,
   )
-  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_MESSAGE_COUNT)
-  const [isLoadingMore, setIsLoadingMore] = useState(false)
-  const scrollViewportRef = useRef<HTMLDivElement | null>(null)
-  const pendingScrollRestoreRef = useRef<ScrollRestoreState | null>(null)
-
   const historyQuery = useQuery({
     queryKey: historyKey,
     queryFn: async function fetchHistoryForSession() {
-      const cached = queryClient.getQueryData<HistoryResponse>(historyKey)
+      const cached = queryClient.getQueryData(historyKey) as
+        | HistoryResponse
+        | undefined
       const optimisticMessages = Array.isArray(cached?.messages)
         ? cached.messages.filter((message) => {
             if (message.status === 'sending') return true
@@ -92,69 +73,18 @@ export function useChatHistory({
     gcTime: 1000 * 60 * 10,
   })
 
-  useEffect(() => {
-    setVisibleCount(INITIAL_VISIBLE_MESSAGE_COUNT)
-    setIsLoadingMore(false)
-    pendingScrollRestoreRef.current = null
-  }, [activeFriendlyId, historyKey, sessionKeyForHistory])
-
-  useLayoutEffect(() => {
-    if (isLoadingMore) return
-    const pending = pendingScrollRestoreRef.current
-    const viewport = scrollViewportRef.current
-    if (!pending || !viewport) return
-
-    const heightDelta = viewport.scrollHeight - pending.scrollHeight
-    viewport.scrollTop = pending.scrollTop + Math.max(0, heightDelta)
-    pendingScrollRestoreRef.current = null
-  }, [historyQuery.data?.messages, isLoadingMore])
-
-  const registerScrollViewport = useCallback((node: HTMLDivElement | null) => {
-    scrollViewportRef.current = node
-  }, [])
-
-  const loadMore = useCallback(() => {
-    if (isLoadingMore || historyQuery.isLoading) return
-
-    const viewport = scrollViewportRef.current
-    const totalMessages = Array.isArray(historyQuery.data?.messages)
-      ? historyQuery.data.messages.length
-      : 0
-    if (visibleCount >= totalMessages) return
-
-    if (viewport) {
-      pendingScrollRestoreRef.current = {
-        scrollTop: viewport.scrollTop,
-        scrollHeight: viewport.scrollHeight,
-      }
-    }
-
-    setIsLoadingMore(true)
-    setVisibleCount((currentCount) => {
-      return Math.min(totalMessages, currentCount + HISTORY_PAGE_SIZE)
-    })
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        setIsLoadingMore(false)
-      })
-    })
-  }, [
-    historyQuery.data?.messages,
-    historyQuery.isLoading,
-    isLoadingMore,
-    visibleCount,
-  ])
-
   const stableHistorySignatureRef = useRef('')
   const stableHistoryMessagesRef = useRef<Array<GatewayMessage>>([])
   const historyMessages = useMemo(() => {
     const messages = Array.isArray(historyQuery.data?.messages)
       ? historyQuery.data.messages
       : []
-    const last = messages.at(-1)
-    const lastId = typeof last?.id === 'string' ? last.id : ''
-    const lastText = last ? textFromMessage(last) : ''
-    const signature = `${messages.length}:${last?.role ?? ''}:${lastId}:${lastText.slice(-32)}`
+    const last = messages[messages.length - 1]
+    const lastId =
+      last && typeof (last as { id?: string }).id === 'string'
+        ? (last as { id?: string }).id
+        : ''
+    const signature = `${messages.length}:${last?.role ?? ''}:${lastId}:${textFromMessage(last ?? { role: 'user', content: [] }).slice(-32)}`
     if (signature === stableHistorySignatureRef.current) {
       return stableHistoryMessagesRef.current
     }
@@ -162,11 +92,6 @@ export function useChatHistory({
     stableHistoryMessagesRef.current = messages
     return messages
   }, [historyQuery.data?.messages])
-  const displayMessages = useMemo(() => {
-    if (visibleCount >= historyMessages.length) return historyMessages
-    return historyMessages.slice(-visibleCount)
-  }, [historyMessages, visibleCount])
-  const hasMore = displayMessages.length < historyMessages.length
 
   const historyError =
     historyQuery.error instanceof Error ? historyQuery.error.message : null
@@ -183,16 +108,11 @@ export function useChatHistory({
   return {
     historyQuery,
     historyMessages,
-    displayMessages,
+    displayMessages: historyMessages,
     historyError,
     resolvedSessionKey,
     activeCanonicalKey,
     sessionKeyForHistory,
-    hasMore,
-    isLoadingMore,
-    loadMore,
-    registerScrollViewport,
-    setVisibleCount,
   }
 }
 

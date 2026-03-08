@@ -19,7 +19,6 @@ import {
   ChatContainerScrollAnchor,
 } from '@/components/prompt-kit/chat-container'
 import { TypingIndicator } from '@/components/prompt-kit/typing-indicator'
-import { Button } from '@/components/ui/button'
 
 const FollowUpSuggestions = lazy(() =>
   import('./follow-up-suggestions').then((m) => ({
@@ -46,10 +45,6 @@ type ChatMessageListProps = {
   onFollowUpClick?: (suggestion: string) => void
   /** Message id to scroll to and briefly highlight */
   jumpToMessageId?: string | null
-  hasMore?: boolean
-  isLoadingMore?: boolean
-  onLoadMore?: () => void
-  viewportRef?: React.Ref<HTMLDivElement>
 }
 
 function ChatMessageListComponent({
@@ -68,17 +63,11 @@ function ChatMessageListComponent({
   contentStyle,
   onFollowUpClick,
   jumpToMessageId,
-  hasMore = false,
-  isLoadingMore = false,
-  onLoadMore,
-  viewportRef,
 }: ChatMessageListProps) {
   const anchorRef = useRef<HTMLDivElement | null>(null)
   const lastUserRef = useRef<HTMLDivElement | null>(null)
   const programmaticScroll = useRef(false)
-  const suppressAutoScrollRef = useRef(false)
   const prevPinRef = useRef(pinToTop)
-  const prevIsLoadingMoreRef = useRef(isLoadingMore)
   const prevUserIndexRef = useRef<number | undefined>(undefined)
   const [highlightedMessageId, setHighlightedMessageId] = useState<
     string | null
@@ -106,7 +95,7 @@ function ChatMessageListComponent({
   const deferredToolResultsByCallId = useDeferredValue(toolResultsByCallId)
 
   const aggregatedSearchSourcesSignature = useMemo(() => {
-    const parts: Array<string> = []
+    const parts: string[] = []
     for (const msg of deferredDisplayMessages) {
       if (msg.role !== 'assistant') continue
       const toolCalls = getToolCallsFromMessage(msg)
@@ -157,7 +146,7 @@ function ChatMessageListComponent({
     // Try to extract search results from any JSON text
     const extractResults = (
       text: string,
-      sources: Array<SearchSource>,
+      sources: SearchSource[],
       seenUrls: Set<string>,
     ) => {
       try {
@@ -187,7 +176,7 @@ function ChatMessageListComponent({
         return false
       }
     }
-    const sources: Array<SearchSource> = []
+    const sources: SearchSource[] = []
     const seenUrls = new Set<string>()
     for (const msg of deferredDisplayMessages) {
       if (msg.role !== 'assistant') continue
@@ -287,25 +276,7 @@ function ChatMessageListComponent({
       lastTextAssistantIndex > lastUserIndex)
 
   useLayoutEffect(() => {
-    const wasLoadingMore = prevIsLoadingMoreRef.current
-    if (isLoadingMore) {
-      suppressAutoScrollRef.current = true
-    } else if (wasLoadingMore) {
-      // Keep suppression for one post-load render so preserved scroll position wins.
-      suppressAutoScrollRef.current = true
-    }
-    prevIsLoadingMoreRef.current = isLoadingMore
-  }, [isLoadingMore])
-
-  useLayoutEffect(() => {
     if (loading) return
-    if (isLoadingMore) {
-      return
-    }
-    if (suppressAutoScrollRef.current) {
-      suppressAutoScrollRef.current = false
-      return
-    }
     if (pinToTop) {
       const shouldPin =
         !prevPinRef.current || prevUserIndexRef.current !== lastUserIndex
@@ -330,14 +301,7 @@ function ChatMessageListComponent({
         programmaticScroll.current = false
       }, 0)
     }
-  }, [
-    isLoadingMore,
-    loading,
-    displayMessages.length,
-    sessionKey,
-    pinToTop,
-    lastUserIndex,
-  ])
+  }, [loading, displayMessages.length, sessionKey, pinToTop, lastUserIndex])
 
   useEffect(() => {
     if (!jumpToMessageId || loading) return
@@ -359,26 +323,9 @@ function ChatMessageListComponent({
 
   return (
     // mt-2 is to fix the prompt-input cut off
-    <ChatContainerRoot
-      className="flex-1 min-h-0 -mb-4"
-      viewportRef={viewportRef}
-    >
+    <ChatContainerRoot className="flex-1 min-h-0 -mb-4">
       <ChatContainerContent className="pt-6" style={contentStyle}>
         {notice && noticePosition === 'start' ? notice : null}
-        {hasMore ? (
-          <div className="flex justify-center pb-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onLoadMore}
-              disabled={isLoadingMore || !onLoadMore}
-            >
-              {isLoadingMore
-                ? 'Loading older messages...'
-                : 'Load older messages'}
-            </Button>
-          </div>
-        ) : null}
         {empty && !notice ? (
           (emptyState ?? <div aria-hidden></div>)
         ) : hasGroup ? (
@@ -477,7 +424,7 @@ function ChatMessageListComponent({
                   <TypingIndicator />
                 </div>
               ) : null}
-              {showFollowUps ? (
+              {showFollowUps && onFollowUpClick ? (
                 <Suspense fallback={null}>
                   <FollowUpSuggestions
                     responseText={lastAssistantText}
@@ -521,7 +468,7 @@ function ChatMessageListComponent({
                 />
               )
             })}
-            {showFollowUps ? (
+            {showFollowUps && onFollowUpClick ? (
               <Suspense fallback={null}>
                 <FollowUpSuggestions
                   responseText={lastAssistantText}
@@ -560,11 +507,7 @@ function areChatMessageListEqual(
     prev.headerHeight === next.headerHeight &&
     prev.contentStyle === next.contentStyle &&
     prev.onFollowUpClick === next.onFollowUpClick &&
-    prev.jumpToMessageId === next.jumpToMessageId &&
-    prev.hasMore === next.hasMore &&
-    prev.isLoadingMore === next.isLoadingMore &&
-    prev.onLoadMore === next.onLoadMore &&
-    prev.viewportRef === next.viewportRef
+    prev.jumpToMessageId === next.jumpToMessageId
   )
 }
 
