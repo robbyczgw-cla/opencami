@@ -3,6 +3,15 @@
 All notable changes to OpenCami are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [Semantic Versioning](https://semver.org/).
 
+## [1.8.9] - 2026-03-08
+
+### Fixed
+
+- 🔕 **Notification permission** — Removed aggressive auto-prompt on first interaction; permission now only requested when user explicitly enables notifications in settings
+- 📎 **Attachment cleanup** — Removing an uploaded file chip now also clears the injected `📎 Uploaded file:` text from the composer
+- 📊 **Dashboard polling** — All dashboard queries now pause polling when the browser tab is hidden, saving bandwidth and CPU
+- 🔌 **Port alignment** — Dev server port unified to 3003 across `package.json` and `vite.config.ts`
+
 ## [1.8.8] - 2026-03-08
 
 ### Fixed
