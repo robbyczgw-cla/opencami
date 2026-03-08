@@ -47,70 +47,77 @@ export function ModelSelector({
   const [isSwitching, setIsSwitching] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const onModelChangeRef = useRef(onModelChange)
-  onModelChangeRef.current = onModelChange
   const abortControllerRef = useRef<AbortController | null>(null)
 
-  const loadState = useCallback(async () => {
+  useEffect(() => {
+    onModelChangeRef.current = onModelChange
+  }, [onModelChange])
+
+  useEffect(() => {
     abortControllerRef.current?.abort()
     const controller = new AbortController()
     abortControllerRef.current = controller
 
-    try {
-      setIsLoading(true)
-      setError(null)
+    const loadState = async () => {
+      try {
+        setIsLoading(true)
+        setError(null)
 
-      const params = new URLSearchParams()
-      if (sessionKey) params.set('sessionKey', sessionKey)
-      if (friendlyId) params.set('friendlyId', friendlyId)
+        const params = new URLSearchParams()
+        if (sessionKey) params.set('sessionKey', sessionKey)
+        if (friendlyId) params.set('friendlyId', friendlyId)
 
-      const [modelsResponse, currentModelResponse] = await Promise.all([
-        fetch('/api/models', { signal: controller.signal }),
-        fetch(`/api/model${params.size > 0 ? `?${params.toString()}` : ''}`, {
-          signal: controller.signal,
-        }),
-      ])
+        const [modelsResponse, currentModelResponse] = await Promise.all([
+          fetch('/api/models', { signal: controller.signal }),
+          fetch(`/api/model${params.size > 0 ? `?${params.toString()}` : ''}`, {
+            signal: controller.signal,
+          }),
+        ])
 
-      if (!modelsResponse.ok) {
-        throw new Error('Failed to fetch models')
-      }
-      if (!currentModelResponse.ok) {
-        throw new Error('Failed to fetch current model')
-      }
+        if (!modelsResponse.ok) {
+          throw new Error('Failed to fetch models')
+        }
+        if (!currentModelResponse.ok) {
+          throw new Error('Failed to fetch current model')
+        }
 
-      const modelsData = (await modelsResponse.json()) as ModelsResponse
-      const currentModelData = (await currentModelResponse.json()) as CurrentModelResponse
+        const modelsData = (await modelsResponse.json()) as ModelsResponse
+        const currentModelData =
+          (await currentModelResponse.json()) as CurrentModelResponse
 
-      if (!modelsData.ok || modelsData.models.length === 0) {
-        throw new Error('No models available')
-      }
+        if (!modelsData.ok || modelsData.models.length === 0) {
+          throw new Error('No models available')
+        }
 
-      const serverModel = currentModelData.model?.trim() || ''
-      const initialModel =
-        serverModel && modelsData.models.some((model) => model.id === serverModel)
-          ? serverModel
-          : modelsData.defaultModel
+        const serverModel = currentModelData.model?.trim() || ''
+        const initialModel =
+          serverModel && modelsData.models.some((model) => model.id === serverModel)
+            ? serverModel
+            : modelsData.defaultModel
 
-      setModels(modelsData.models)
-      setSelectedModel(initialModel)
-      onModelChangeRef.current?.(initialModel || undefined)
-    } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') return
-      console.error('[model-selector] Error loading state:', err)
-      setError(err instanceof Error ? err.message : 'Failed to load models')
-    } finally {
-      if (!controller.signal.aborted) {
-        setIsLoading(false)
+        setModels(modelsData.models)
+        setSelectedModel(initialModel)
+        onModelChangeRef.current?.(initialModel || undefined)
+      } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') return
+        console.error('[model-selector] Error loading state:', err)
+        setError(err instanceof Error ? err.message : 'Failed to load models')
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsLoading(false)
+        }
       }
     }
-  }, [friendlyId, sessionKey])
 
-  useEffect(() => {
     loadState()
 
     return () => {
-      abortControllerRef.current?.abort()
+      controller.abort()
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null
+      }
     }
-  }, [loadState])
+  }, [friendlyId, sessionKey])
 
   const handleModelSelect = useCallback(
     async (modelId: string) => {

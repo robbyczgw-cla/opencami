@@ -78,6 +78,7 @@ function ChatMessageListComponent({
   const programmaticScroll = useRef(false)
   const suppressAutoScrollRef = useRef(false)
   const prevPinRef = useRef(pinToTop)
+  const prevIsLoadingMoreRef = useRef(isLoadingMore)
   const prevUserIndexRef = useRef<number | undefined>(undefined)
   const [highlightedMessageId, setHighlightedMessageId] = useState<
     string | null
@@ -286,8 +287,23 @@ function ChatMessageListComponent({
       lastTextAssistantIndex > lastUserIndex)
 
   useLayoutEffect(() => {
+    const wasLoadingMore = prevIsLoadingMoreRef.current
+    if (isLoadingMore) {
+      suppressAutoScrollRef.current = true
+    } else if (wasLoadingMore) {
+      // Keep suppression for one post-load render so preserved scroll position wins.
+      suppressAutoScrollRef.current = true
+    }
+    prevIsLoadingMoreRef.current = isLoadingMore
+  }, [isLoadingMore])
+
+  useLayoutEffect(() => {
     if (loading) return
     if (isLoadingMore) {
+      return
+    }
+    if (suppressAutoScrollRef.current) {
+      suppressAutoScrollRef.current = false
       return
     }
     if (pinToTop) {
