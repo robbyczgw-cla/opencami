@@ -3,6 +3,22 @@
 All notable changes to OpenCami are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [Semantic Versioning](https://semver.org/).
 
+## [1.8.8] - 2026-03-08
+
+### Fixed
+
+- 🔧 **Chat polling** — `streamStart()` now only fires after `/api/send` succeeds, reducing duplicate history fetches
+- 🔇 **Hidden tab polling** — Session polling pauses when browser tab is not visible
+- 🎤 **Mic error UX** — Replaced blocking `alert()` dialogs with inline toast-style error messages
+
+### Changed
+
+- 🗑️ **Model picker removed** — Non-functional picker removed from composer; proper implementation via `sessions.patch` coming in a future release
+
+### Chore
+
+- Removed unused dependencies: `@tanstack/react-router-devtools`, `@tanstack/react-router-ssr-query`, `vite-plugin-pwa`, `web-vitals`
+
 ## [1.8.7] - 2026-03-07
 
 ### Performance
