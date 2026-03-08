@@ -10,6 +10,7 @@ type SessionsResolveResponse = {
 type SessionListEntry = {
   key?: string
   model?: string
+  modelOverride?: string
   modelProvider?: string
   resolved?: {
     model?: string
@@ -35,15 +36,6 @@ type SessionsPatchResponse = {
   }
 }
 
-type ModelPayload = {
-  ok: boolean
-  sessionKey: string
-  model: string | null
-  modelProvider: string | null
-}
-
-const recentSelections = new Map<string, { model: string | null; modelProvider: string | null }>()
-
 async function resolveSessionKey(sessionKey: string, friendlyId: string) {
   if (sessionKey) return sessionKey
   if (!friendlyId) return 'main'
@@ -62,29 +54,12 @@ async function resolveSessionKey(sessionKey: string, friendlyId: string) {
   return resolvedKey
 }
 
-function normalizeModelPayload(
-  sessionKey: string,
-  payload:
-    | SessionListEntry
-    | SessionsPatchResponse
-    | { model?: string | null; modelProvider?: string | null }
-    | undefined,
-): ModelPayload {
-  const model =
-    ('resolved' in (payload ?? {})
-      ? payload?.resolved?.model
-      : undefined) ?? payload?.model ?? null
-  const modelProvider =
-    ('resolved' in (payload ?? {})
-      ? payload?.resolved?.modelProvider
-      : undefined) ?? payload?.modelProvider ?? null
-
-  return {
-    ok: true,
-    sessionKey,
-    model: typeof model === 'string' ? model.trim() || null : null,
-    modelProvider: typeof modelProvider === 'string' ? modelProvider.trim() || null : null,
-  }
+function pickModel(entry: SessionListEntry | SessionsPatchResponse['entry'] | undefined) {
+  if (!entry) return null
+  const direct = typeof entry.modelOverride === 'string' ? entry.modelOverride.trim() : ''
+  if (direct) return direct
+  const fallback = typeof entry.model === 'string' ? entry.model.trim() : ''
+  return fallback || null
 }
 
 export const Route = createFileRoute('/api/model')({
@@ -97,11 +72,6 @@ export const Route = createFileRoute('/api/model')({
           const friendlyId = url.searchParams.get('friendlyId')?.trim() ?? ''
           const sessionKey = await resolveSessionKey(rawSessionKey, friendlyId)
 
-          const recent = recentSelections.get(sessionKey)
-          if (recent) {
-            return json(normalizeModelPayload(sessionKey, recent))
-          }
-
           const payload = await gatewayRpc<SessionsListResponse>('sessions.list', {
             limit: 500,
             includeGlobal: true,
@@ -109,7 +79,15 @@ export const Route = createFileRoute('/api/model')({
           })
 
           const entry = payload.sessions?.find((session) => session.key === sessionKey)
-          return json(normalizeModelPayload(sessionKey, entry))
+          const model = pickModel(entry)
+          const modelProvider = entry?.modelProvider ?? entry?.resolved?.modelProvider ?? null
+
+          return json({
+            ok: true,
+            sessionKey,
+            model,
+            modelProvider,
+          })
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err)
           const status = message === 'session not found' ? 404 : 500
@@ -129,14 +107,11 @@ export const Route = createFileRoute('/api/model')({
             model: model || null,
           })
 
-          const response = normalizeModelPayload(sessionKey, payload)
-          recentSelections.set(response.sessionKey, {
-            model: response.model,
-            modelProvider: response.modelProvider,
-          })
-
           return json({
-            ...response,
+            ok: true,
+            sessionKey: payload.key ?? sessionKey,
+            model: payload.resolved?.model ?? pickModel(payload.entry),
+            modelProvider: payload.resolved?.modelProvider ?? payload.entry?.modelProvider ?? null,
             entry: payload.entry,
           })
         } catch (err) {
