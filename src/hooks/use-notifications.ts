@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 
 const ENABLED_KEY = 'opencami-browser-notifications-enabled'
-const ASKED_KEY = 'opencami-browser-notifications-permission-asked'
 const NOTIFICATION_DEBOUNCE_MS = 5000
 
 function isSupported() {
@@ -42,11 +41,6 @@ export function useNotifications() {
 
     if (nextEnabled && isSupported() && Notification.permission === 'default') {
       await requestPermission()
-      try {
-        localStorage.setItem(ASKED_KEY, 'true')
-      } catch {
-        // ignore storage errors
-      }
     }
   }, [requestPermission])
 
@@ -74,38 +68,6 @@ export function useNotifications() {
       notification.close()
     }
   }, [enabled, navigate])
-
-  useEffect(() => {
-    if (!isSupported()) return
-
-    const onFirstInteraction = () => {
-      if (Notification.permission !== 'default') return
-      let asked = false
-      try {
-        asked = localStorage.getItem(ASKED_KEY) === 'true'
-      } catch {
-        asked = false
-      }
-      if (asked) return
-
-      void requestPermission().finally(() => {
-        try {
-          localStorage.setItem(ASKED_KEY, 'true')
-        } catch {
-          // ignore storage errors
-        }
-      })
-    }
-
-    const options: AddEventListenerOptions = { once: true, passive: true }
-    window.addEventListener('pointerdown', onFirstInteraction, options)
-    window.addEventListener('keydown', onFirstInteraction, { once: true })
-
-    return () => {
-      window.removeEventListener('pointerdown', onFirstInteraction)
-      window.removeEventListener('keydown', onFirstInteraction)
-    }
-  }, [requestPermission])
 
   useEffect(() => {
     const sync = () => setEnabledState(getNotificationsEnabled())
