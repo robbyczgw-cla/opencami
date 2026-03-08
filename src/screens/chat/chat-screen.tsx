@@ -137,6 +137,11 @@ export function ChatScreen({
     resolvedSessionKey,
     activeCanonicalKey,
     sessionKeyForHistory,
+    hasMore,
+    isLoadingMore,
+    loadMore,
+    registerScrollViewport,
+    setVisibleCount,
   } = useChatHistory({
     activeFriendlyId,
     activeSessionKey,
@@ -957,6 +962,20 @@ export function ChatScreen({
     })
   }, [displayMessages])
 
+  useEffect(() => {
+    if (!searchJumpMessageId) return
+
+    const targetIndex = historyMessages.findIndex((message) => {
+      return message.id === searchJumpMessageId
+    })
+    if (targetIndex < 0) return
+
+    const nextVisibleCount = historyMessages.length - targetIndex
+    setVisibleCount((currentCount) => {
+      return currentCount >= nextVisibleCount ? currentCount : nextVisibleCount
+    })
+  }, [historyMessages, searchJumpMessageId, setVisibleCount])
+
   const handleShowHelp = useCallback(() => {
     setShowShortcutsHelp(true)
   }, [])
@@ -1089,6 +1108,10 @@ export function ChatScreen({
                 contentStyle={stableContentStyle}
                 onFollowUpClick={handleFollowUpClick}
                 jumpToMessageId={searchJumpMessageId}
+                hasMore={hasMore}
+                isLoadingMore={isLoadingMore}
+                onLoadMore={loadMore}
+                viewportRef={registerScrollViewport}
               />
               <ChatComposer
                 onSubmit={send}
