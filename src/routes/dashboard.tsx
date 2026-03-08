@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
+import { useEffect, useState } from 'react'
 
 type SystemStats = {
   cpu: number
@@ -94,16 +95,35 @@ export const Route = createFileRoute('/dashboard')({
 })
 
 function DashboardRoute() {
+  const [isDocumentVisible, setIsDocumentVisible] = useState(() => {
+    if (typeof document === 'undefined') return true
+    return document.visibilityState === 'visible'
+  })
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return undefined
+
+    function handleVisibilityChange() {
+      setIsDocumentVisible(document.visibilityState === 'visible')
+    }
+
+    handleVisibilityChange()
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [])
+
   const systemQuery = useQuery({
     queryKey: ['dashboard', 'system'],
     queryFn: () => fetchJson<SystemStats>('/api/dashboard/system'),
-    refetchInterval: 10_000,
+    refetchInterval: isDocumentVisible ? 10_000 : false,
   })
 
   const gatewayQuery = useQuery({
     queryKey: ['dashboard', 'gateway'],
     queryFn: () => fetchJson<GatewayStats>('/api/dashboard/gateway'),
-    refetchInterval: 10_000,
+    refetchInterval: isDocumentVisible ? 10_000 : false,
   })
 
   const cronQuery = useQuery({
@@ -114,7 +134,7 @@ function DashboardRoute() {
       )
       return data.jobs
     },
-    refetchInterval: 10_000,
+    refetchInterval: isDocumentVisible ? 10_000 : false,
   })
 
   const hasError =
