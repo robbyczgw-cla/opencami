@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 
 import { chatQueryKeys, fetchSessions } from '../chat-queries'
@@ -16,10 +16,29 @@ export function useChatSessions({
   isNewChat,
   forcedSessionKey,
 }: UseChatSessionsInput) {
+  const [isDocumentVisible, setIsDocumentVisible] = useState(() => {
+    if (typeof document === 'undefined') return true
+    return document.visibilityState === 'visible'
+  })
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return undefined
+
+    const handleVisibilityChange = () => {
+      setIsDocumentVisible(document.visibilityState === 'visible')
+    }
+
+    handleVisibilityChange()
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [])
+
   const sessionsQuery = useQuery({
     queryKey: chatQueryKeys.sessions,
     queryFn: fetchSessions,
-    refetchInterval: 30000,
+    refetchInterval: isDocumentVisible ? 30000 : false,
   })
 
   const sessions = useMemo(() => {

@@ -108,6 +108,7 @@ function ChatComposerComponent({
   const [isRecording, setIsRecording] = useState(false)
   const [recordingTime, setRecordingTime] = useState(0)
   const [sttLoading, setSttLoading] = useState(false)
+  const [micError, setMicError] = useState<string | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const recordingChunksRef = useRef<Blob[]>([])
   const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -144,6 +145,9 @@ function ChatComposerComponent({
     window.requestAnimationFrame(() => {
       promptRef.current?.focus()
     })
+  }, [])
+  const showMicError = useCallback((message: string) => {
+    setMicError(message)
   }, [])
   const reset = useCallback(() => {
     setValue('')
@@ -396,6 +400,7 @@ function ChatComposerComponent({
   }, [])
 
   const startRecording = useCallback(async () => {
+    setMicError(null)
     const provider = getSttProvider()
 
     // Browser Web Speech API path
@@ -403,7 +408,7 @@ function ChatComposerComponent({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
       if (!SpeechRecognition) {
-        alert('Web Speech API is not supported in this browser.')
+        showMicError('Web Speech API is not supported in this browser.')
         return
       }
       const recognition = new SpeechRecognition()
@@ -438,6 +443,7 @@ function ChatComposerComponent({
         setRecordingTime(0)
         if (recordingTimerRef.current) clearInterval(recordingTimerRef.current)
         if (transcript.trim()) {
+          setMicError(null)
           setValue((prev) => prev + (prev ? ' ' : '') + transcript.trim())
           focusPrompt()
         }
@@ -446,6 +452,7 @@ function ChatComposerComponent({
         setIsRecording(false)
         setRecordingTime(0)
         if (recordingTimerRef.current) clearInterval(recordingTimerRef.current)
+        showMicError('Speech recognition failed. Try the Browser provider again or switch providers in Settings.')
       }
       recognition.start()
       return
@@ -483,16 +490,17 @@ function ChatComposerComponent({
           const res = await fetch('/api/stt', { method: 'POST', body: formData, signal: controller.signal })
           const data = (await res.json()) as { ok: boolean; text?: string; error?: string }
           if (data.ok && data.text) {
+            setMicError(null)
             setValue((prev) => prev + (prev ? ' ' : '') + data.text)
             focusPrompt()
           } else if (!data.ok) {
             console.warn('STT failed:', data.error)
-            alert(data.error || 'Speech-to-text failed. Try the Browser provider in Settings.')
+            showMicError(data.error || 'Speech-to-text failed. Try the Browser provider in Settings.')
           }
         } catch (err) {
           if (err instanceof Error && err.name === 'AbortError') return
           console.warn('STT request failed:', err)
-          alert('Could not reach speech-to-text service.')
+          showMicError('Could not reach speech-to-text service.')
         } finally {
           setSttLoading(false)
         }
@@ -518,18 +526,18 @@ function ChatComposerComponent({
         try {
           const status = await navigator.permissions.query({ name: 'microphone' as PermissionName })
           if (status.state === 'denied') {
-            alert('Microphone access is blocked. Please enable it in your browser/app settings.')
+            showMicError('Microphone access is blocked. Please enable it in your browser/app settings.')
           } else {
-            alert('Microphone permission was not granted. Please try again and allow access when prompted.')
+            showMicError('Microphone permission was not granted. Please try again and allow access when prompted.')
           }
         } catch {
-          alert('Could not access microphone. Please check your browser settings and allow microphone access for this site.')
+          showMicError('Could not access microphone. Please check your browser settings and allow microphone access for this site.')
         }
       } else {
-        alert('Could not access microphone: ' + msg)
+        showMicError('Could not access microphone: ' + msg)
       }
     }
-  }, [getSttProvider, stopRecording, focusPrompt])
+  }, [getSttProvider, stopRecording, focusPrompt, showMicError])
 
   const handleMicClick = useCallback(() => {
     if (isRecording) {
@@ -566,6 +574,15 @@ function ChatComposerComponent({
           attachments={attachments}
           onRemove={handleRemoveAttachment}
         />
+        {micError && (
+          <div
+            className="mx-3 mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-200"
+            role="alert"
+            aria-live="polite"
+          >
+            {micError}
+          </div>
+        )}
         {showSlashCommands && filteredSlashCommands.length > 0 && (
           <SlashCommandMenu
             commands={filteredSlashCommands}
