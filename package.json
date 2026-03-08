@@ -54,8 +54,6 @@
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/react-query": "^5.84.1",
     "@tanstack/react-router": "^1.132.0",
-    "@tanstack/react-router-devtools": "^1.132.0",
-    "@tanstack/react-router-ssr-query": "^1.131.7",
     "@tanstack/react-start": "^1.132.0",
     "@tanstack/router-plugin": "^1.132.0",
     "class-variance-authority": "^0.7.1",
@@ -94,8 +92,6 @@
     "sharp": "^0.34.5",
     "typescript": "^5.7.2",
     "vite": "^7.1.7",
-    "vite-plugin-pwa": "^1.2.0",
-    "vitest": "^3.0.5",
-    "web-vitals": "^5.1.0"
+    "vitest": "^3.0.5"
   }
 }
