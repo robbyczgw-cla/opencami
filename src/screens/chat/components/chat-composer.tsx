@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { PersonaPicker } from '@/components/persona-picker'
 import { CommandHelp } from '@/components/command-help'
+import { ModelSelector } from '@/components/model-selector'
 import {
   AttachmentButton,
   createAttachmentFromFile,
@@ -27,6 +28,8 @@ type ChatComposerProps = {
   onSubmit: (value: string, helpers: ChatComposerHelpers) => void
   isLoading: boolean
   disabled: boolean
+  sessionKey?: string
+  friendlyId?: string
   wrapperRef?: Ref<HTMLDivElement>
   inputRef?: Ref<HTMLTextAreaElement>
 }
@@ -95,6 +98,8 @@ function ChatComposerComponent({
   onSubmit,
   isLoading,
   disabled,
+  sessionKey,
+  friendlyId,
   wrapperRef,
   inputRef: externalInputRef,
 }: ChatComposerProps) {
@@ -596,6 +601,11 @@ function ChatComposerComponent({
         />
         <PromptInputActions className="justify-between px-3">
           <div className="flex items-center gap-1">
+            <ModelSelector
+              sessionKey={sessionKey}
+              friendlyId={friendlyId}
+              onModelChange={(modelId) => setSelectedModel(modelId || '')}
+            />
             <ThinkingLevelSelector />
             <PersonaPicker onSelect={handlePersonaSelect} />
             <CommandHelp onCommandSelect={(cmd) => handleValueChange(cmd + ' ')} />

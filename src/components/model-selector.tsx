@@ -1,8 +1,12 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
-import { ArtificialIntelligence02Icon, Tick02Icon } from '@hugeicons/core-free-icons'
+import {
+  ArtificialIntelligence02Icon,
+  Loading03Icon,
+  Tick02Icon,
+} from '@hugeicons/core-free-icons'
 import { MenuRoot, MenuTrigger, MenuContent, MenuItem } from '@/components/ui/menu'
 import { cn } from '@/lib/utils'
 
@@ -18,137 +22,175 @@ type ModelsResponse = {
   defaultModel: string
 }
 
-const STORAGE_KEY = 'opencami-selected-model'
-
-function getStoredModel(): string | null {
-  if (typeof window === 'undefined') return null
-  try {
-    return localStorage.getItem(STORAGE_KEY)
-  } catch {
-    return null
-  }
-}
-
-function setStoredModel(modelId: string): void {
-  if (typeof window === 'undefined') return
-  try {
-    localStorage.setItem(STORAGE_KEY, modelId)
-  } catch {
-    // Ignore storage errors
-  }
+type CurrentModelResponse = {
+  ok: boolean
+  sessionKey: string
+  model: string | null
 }
 
 type ModelSelectorProps = {
   className?: string
-  onModelChange?: (modelId: string) => void
+  sessionKey?: string
+  friendlyId?: string
+  onModelChange?: (modelId: string | undefined) => void
 }
 
-export function ModelSelector({ className, onModelChange }: ModelSelectorProps) {
+export function ModelSelector({
+  className,
+  sessionKey,
+  friendlyId,
+  onModelChange,
+}: ModelSelectorProps) {
   const [models, setModels] = useState<ModelInfo[]>([])
   const [selectedModel, setSelectedModel] = useState<string>('')
   const [isLoading, setIsLoading] = useState(true)
+  const [isSwitching, setIsSwitching] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
 
-  useEffect(() => {
-    let mounted = true
+  const loadState = useCallback(async () => {
+    abortControllerRef.current?.abort()
+    const controller = new AbortController()
+    abortControllerRef.current = controller
 
-    async function fetchModels() {
-      abortControllerRef.current?.abort()
-      const controller = new AbortController()
-      abortControllerRef.current = controller
+    try {
+      setIsLoading(true)
+      setError(null)
 
-      try {
-        setIsLoading(true)
-        setError(null)
+      const params = new URLSearchParams()
+      if (sessionKey) params.set('sessionKey', sessionKey)
+      if (friendlyId) params.set('friendlyId', friendlyId)
 
-        const response = await fetch('/api/models', { signal: controller.signal })
-        if (!response.ok) {
-          throw new Error('Failed to fetch models')
-        }
+      const [modelsResponse, currentModelResponse] = await Promise.all([
+        fetch('/api/models', { signal: controller.signal }),
+        fetch(`/api/model${params.size > 0 ? `?${params.toString()}` : ''}`, {
+          signal: controller.signal,
+        }),
+      ])
 
-        const data = (await response.json()) as ModelsResponse
+      if (!modelsResponse.ok) {
+        throw new Error('Failed to fetch models')
+      }
+      if (!currentModelResponse.ok) {
+        throw new Error('Failed to fetch current model')
+      }
 
-        if (!mounted) return
+      const modelsData = (await modelsResponse.json()) as ModelsResponse
+      const currentModelData = (await currentModelResponse.json()) as CurrentModelResponse
 
-        if (data.ok && data.models.length > 0) {
-          setModels(data.models)
+      if (!modelsData.ok || modelsData.models.length === 0) {
+        throw new Error('No models available')
+      }
 
-          // Set initial selection: stored preference > default from server
-          const storedModel = getStoredModel()
-          const initialModel =
-            storedModel && data.models.some((m) => m.id === storedModel)
-              ? storedModel
-              : data.defaultModel
+      const serverModel = currentModelData.model?.trim() || ''
+      const initialModel =
+        serverModel && modelsData.models.some((model) => model.id === serverModel)
+          ? serverModel
+          : modelsData.defaultModel
 
-          setSelectedModel(initialModel)
-          onModelChange?.(initialModel)
-        } else {
-          throw new Error('No models available')
-        }
-      } catch (err) {
-        if (err instanceof Error && err.name === 'AbortError') return
-        if (!mounted) return
-        console.error('[model-selector] Error fetching models:', err)
-        setError(err instanceof Error ? err.message : 'Failed to load models')
-        // Set a fallback
-        setModels([{ id: 'default', name: 'Default Model' }])
-        setSelectedModel('default')
-      } finally {
-        if (mounted) {
-          setIsLoading(false)
-        }
+      setModels(modelsData.models)
+      setSelectedModel(initialModel)
+      onModelChange?.(initialModel || undefined)
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return
+      console.error('[model-selector] Error loading state:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load models')
+    } finally {
+      if (!controller.signal.aborted) {
+        setIsLoading(false)
       }
     }
+  }, [friendlyId, onModelChange, sessionKey])
 
-    fetchModels()
+  useEffect(() => {
+    loadState()
 
     return () => {
-      mounted = false
       abortControllerRef.current?.abort()
     }
-  }, [onModelChange])
+  }, [loadState])
 
-  function handleModelSelect(modelId: string) {
-    setSelectedModel(modelId)
-    setStoredModel(modelId)
-    onModelChange?.(modelId)
-  }
+  const handleModelSelect = useCallback(
+    async (modelId: string) => {
+      if (modelId === selectedModel || isSwitching) return
 
-  if (isLoading) {
-    return (
-      <div className={cn('flex items-center gap-2 text-xs text-primary-500', className)}>
-        <HugeiconsIcon icon={ArtificialIntelligence02Icon} size={14} />
-        <span>Loading...</span>
-      </div>
-    )
-  }
+      const previousModel = selectedModel
+      setSelectedModel(modelId)
+      setIsSwitching(true)
+      setError(null)
 
-  if (error || models.length === 0) {
-    return null // Hide on error
-  }
+      try {
+        const response = await fetch('/api/model', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionKey,
+            friendlyId,
+            model: modelId,
+          }),
+        })
 
-  const selectedModelInfo = models.find((m) => m.id === selectedModel)
-  const displayName = selectedModelInfo?.name || 'Select Model'
-  // Shorter display for mobile: extract a compact alias from model name
+        if (!response.ok) {
+          const message = await response.text()
+          throw new Error(message || 'Failed to switch model')
+        }
+
+        const data = (await response.json()) as CurrentModelResponse
+        const nextModel = data.model?.trim() || modelId
+        setSelectedModel(nextModel)
+        onModelChange?.(nextModel || undefined)
+      } catch (err) {
+        console.error('[model-selector] Error switching model:', err)
+        setSelectedModel(previousModel)
+        setError(err instanceof Error ? err.message : 'Failed to switch model')
+        onModelChange?.(previousModel || undefined)
+      } finally {
+        setIsSwitching(false)
+      }
+    },
+    [friendlyId, isSwitching, onModelChange, selectedModel, sessionKey],
+  )
+
+  const selectedModelInfo = useMemo(
+    () => models.find((model) => model.id === selectedModel),
+    [models, selectedModel],
+  )
+
+  const displayName = selectedModelInfo?.name || 'Select model'
   const shortDisplayName = (() => {
     if (!selectedModelInfo?.name) return displayName
-    const name = selectedModelInfo.name
-    // Remove parenthesized suffixes like "(opus46)" and trim
-    const clean = name.replace(/\s*\([^)]*\)\s*$/, '').trim()
-    // If still long, take first two words
+    const clean = selectedModelInfo.name.replace(/\s*\([^)]*\)\s*$/, '').trim()
     const words = clean.split(/\s+/)
     if (words.length > 3) return words.slice(0, 3).join(' ')
     return clean
   })()
 
-  // Don't show selector if there's only one model
+  if (isLoading) {
+    return (
+      <div className={cn('flex items-center gap-2 text-xs text-primary-500', className)}>
+        <HugeiconsIcon icon={Loading03Icon} size={14} className="animate-spin" />
+        <span>Loading models…</span>
+      </div>
+    )
+  }
+
+  if (error || models.length === 0) {
+    return null
+  }
+
+  const label = isSwitching ? 'Switching…' : displayName
+  const shortLabel = isSwitching ? 'Switching…' : shortDisplayName
+
   if (models.length === 1) {
     return (
       <div className={cn('flex items-center gap-2 text-xs text-primary-500', className)}>
-        <HugeiconsIcon icon={ArtificialIntelligence02Icon} size={14} />
-        <span className="font-[450] md:hidden">{shortDisplayName}</span>
-        <span className="font-[450] hidden md:inline">{displayName}</span>
+        <HugeiconsIcon
+          icon={isSwitching ? Loading03Icon : ArtificialIntelligence02Icon}
+          size={14}
+          className={isSwitching ? 'animate-spin' : undefined}
+        />
+        <span className="font-[450] md:hidden">{shortLabel}</span>
+        <span className="hidden font-[450] md:inline">{label}</span>
       </div>
     )
   }
@@ -157,20 +199,26 @@ export function ModelSelector({ className, onModelChange }: ModelSelectorProps) 
     <MenuRoot>
       <MenuTrigger
         className={cn(
-          'inline-flex h-7 items-center gap-2 rounded-md px-2 text-xs font-[450] text-primary-600 hover:text-primary-900 hover:bg-primary-100',
+          'inline-flex h-7 items-center gap-2 rounded-md px-2 text-xs font-[450] text-primary-600 hover:bg-primary-100 hover:text-primary-900 disabled:opacity-60',
           className,
         )}
+        disabled={isSwitching}
       >
-        <HugeiconsIcon icon={ArtificialIntelligence02Icon} size={14} />
-        <span className="md:hidden">{shortDisplayName}</span>
-        <span className="hidden md:inline">{displayName}</span>
+        <HugeiconsIcon
+          icon={isSwitching ? Loading03Icon : ArtificialIntelligence02Icon}
+          size={14}
+          className={isSwitching ? 'animate-spin' : undefined}
+        />
+        <span className="md:hidden">{shortLabel}</span>
+        <span className="hidden md:inline">{label}</span>
       </MenuTrigger>
       <MenuContent side="top" align="start">
         {models.map((model) => (
           <MenuItem
             key={model.id}
             onClick={() => handleModelSelect(model.id)}
-            className="justify-between min-w-[180px]"
+            className="min-w-[180px] justify-between"
+            disabled={isSwitching}
           >
             <span>{model.name}</span>
             {selectedModel === model.id && (
