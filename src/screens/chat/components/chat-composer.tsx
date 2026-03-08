@@ -10,7 +10,6 @@ import {
   PromptInputTextarea,
 } from '@/components/prompt-kit/prompt-input'
 import { Button } from '@/components/ui/button'
-import { ModelSelector } from '@/components/model-selector'
 import { PersonaPicker } from '@/components/persona-picker'
 import { CommandHelp } from '@/components/command-help'
 import {
@@ -597,7 +596,6 @@ function ChatComposerComponent({
         />
         <PromptInputActions className="justify-between px-3">
           <div className="flex items-center gap-1">
-            <ModelSelector onModelChange={setSelectedModel} />
             <ThinkingLevelSelector />
             <PersonaPicker onSelect={handlePersonaSelect} />
             <CommandHelp onCommandSelect={(cmd) => handleValueChange(cmd + ' ')} />
