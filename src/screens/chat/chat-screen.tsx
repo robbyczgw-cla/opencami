@@ -699,19 +699,32 @@ export function ChatScreen({
     streamingNotificationTextRef.current = ''
     streamStart()
 
-    fetch('/api/send', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        sessionKey,
-        friendlyId,
-        message: body,
-        thinking: thinkingLevel,
-        idempotencyKey: crypto.randomUUID(),
-        attachments: attachmentsPayload,
-        model: model || undefined,
-      }),
-    })
+    const ensureModelPromise = model
+      ? fetch('/api/model', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ sessionKey, friendlyId, model }),
+        }).then(async (res) => {
+          if (!res.ok) throw new Error(await readError(res))
+          return res.json()
+        })
+      : Promise.resolve(null)
+
+    ensureModelPromise
+      .then(() =>
+        fetch('/api/send', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            sessionKey,
+            friendlyId,
+            message: body,
+            thinking: thinkingLevel,
+            idempotencyKey: crypto.randomUUID(),
+            attachments: attachmentsPayload,
+          }),
+        }),
+      )
       .then(async (res) => {
         if (!res.ok) throw new Error(await readError(res))
         // Parse response to get the actual resolved sessionKey, then start
@@ -1081,6 +1094,8 @@ export function ChatScreen({
                 onSubmit={send}
                 isLoading={sending}
                 disabled={sending}
+                sessionKey={isNewChat ? undefined : activeCanonicalKey}
+                friendlyId={isNewChat ? undefined : activeFriendlyId}
                 wrapperRef={composerRef}
                 inputRef={inputRef}
               />
