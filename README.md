@@ -192,7 +192,6 @@ docker run -p 3000:3000 opencami
 - 🔧 **Workspace settings** — toggle each tool on/off in Settings
 
 ### 🎨 Customization
-- 🎨 **Model selector** — switch AI models per message
 - 🎭 **Persona picker** — 20 AI personalities
 - 🦎 **Chameleon theme** — light/dark/system with accent colors
 - 🔤 **Text size** — S / M / L / XL
