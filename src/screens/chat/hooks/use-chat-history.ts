@@ -122,19 +122,21 @@ export function useChatHistory({
       : 0
     if (visibleCount >= totalMessages) return
 
-    pendingScrollRestoreRef.current = viewport
-      ? {
-          scrollTop: viewport.scrollTop,
-          scrollHeight: viewport.scrollHeight,
-        }
-      : null
+    if (viewport) {
+      pendingScrollRestoreRef.current = {
+        scrollTop: viewport.scrollTop,
+        scrollHeight: viewport.scrollHeight,
+      }
+    }
 
     setIsLoadingMore(true)
     setVisibleCount((currentCount) => {
       return Math.min(totalMessages, currentCount + HISTORY_PAGE_SIZE)
     })
-    window.requestAnimationFrame(() => {
-      setIsLoadingMore(false)
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setIsLoadingMore(false)
+      })
     })
   }, [
     historyQuery.data?.messages,

@@ -285,16 +285,9 @@ function ChatMessageListComponent({
       typeof lastTextAssistantIndex !== 'number' ||
       lastTextAssistantIndex > lastUserIndex)
 
-  useEffect(() => {
-    if (isLoadingMore) {
-      suppressAutoScrollRef.current = true
-    }
-  }, [isLoadingMore])
-
   useLayoutEffect(() => {
     if (loading) return
-    if (suppressAutoScrollRef.current) {
-      suppressAutoScrollRef.current = false
+    if (isLoadingMore) {
       return
     }
     if (pinToTop) {

@@ -16,6 +16,7 @@ export type ChatContainerRootProps = {
   children: React.ReactNode
   className?: string
   onUserScroll?: (scrollTop: number) => void
+  viewportRef?: React.Ref<HTMLDivElement>
 } & React.HTMLAttributes<HTMLDivElement>
 
 export type ChatContainerContentProps = {
@@ -122,18 +123,27 @@ function ChatContainerRoot({
   children,
   className,
   onUserScroll,
+  viewportRef,
   ...props
 }: ChatContainerRootProps) {
   const scrollRef = React.useRef<HTMLDivElement | null>(null)
   const [viewportNode, setViewportNode] = React.useState<HTMLDivElement | null>(
     null,
   )
-  const handleViewportRef = React.useCallback(function handleViewportRef(
-    node: HTMLDivElement | null,
-  ) {
-    scrollRef.current = node
-    setViewportNode(node)
-  }, [])
+  const handleViewportRef = React.useCallback(
+    function handleViewportRef(node: HTMLDivElement | null) {
+      scrollRef.current = node
+      setViewportNode(node)
+      if (typeof viewportRef === 'function') {
+        viewportRef(node)
+        return
+      }
+      if (viewportRef) {
+        viewportRef.current = node
+      }
+    },
+    [viewportRef],
+  )
 
   // Handle scroll events
   React.useLayoutEffect(() => {

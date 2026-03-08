@@ -46,6 +46,8 @@ export function ModelSelector({
   const [isLoading, setIsLoading] = useState(true)
   const [isSwitching, setIsSwitching] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const onModelChangeRef = useRef(onModelChange)
+  onModelChangeRef.current = onModelChange
   const abortControllerRef = useRef<AbortController | null>(null)
 
   const loadState = useCallback(async () => {
@@ -90,7 +92,7 @@ export function ModelSelector({
 
       setModels(modelsData.models)
       setSelectedModel(initialModel)
-      onModelChange?.(initialModel || undefined)
+      onModelChangeRef.current?.(initialModel || undefined)
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') return
       console.error('[model-selector] Error loading state:', err)
@@ -100,7 +102,7 @@ export function ModelSelector({
         setIsLoading(false)
       }
     }
-  }, [friendlyId, onModelChange, sessionKey])
+  }, [friendlyId, sessionKey])
 
   useEffect(() => {
     loadState()
@@ -138,17 +140,17 @@ export function ModelSelector({
         const data = (await response.json()) as CurrentModelResponse
         const nextModel = data.model?.trim() || modelId
         setSelectedModel(nextModel)
-        onModelChange?.(nextModel || undefined)
+        onModelChangeRef.current?.(nextModel || undefined)
       } catch (err) {
         console.error('[model-selector] Error switching model:', err)
         setSelectedModel(previousModel)
         setError(err instanceof Error ? err.message : 'Failed to switch model')
-        onModelChange?.(previousModel || undefined)
+        onModelChangeRef.current?.(previousModel || undefined)
       } finally {
         setIsSwitching(false)
       }
     },
-    [friendlyId, isSwitching, onModelChange, selectedModel, sessionKey],
+    [friendlyId, isSwitching, selectedModel, sessionKey],
   )
 
   const selectedModelInfo = useMemo(
