@@ -1,8 +1,12 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { ArrowUp02Icon, Mic02Icon, StopIcon } from '@hugeicons/core-free-icons'
-import type { DragEvent, KeyboardEvent, MutableRefObject, Ref } from 'react'
 
+import { ThinkingLevelSelector } from './thinking-level-selector'
+import { SlashCommandMenu } from './slash-command-menu'
+import type { DragEvent, KeyboardEvent, MutableRefObject, Ref } from 'react'
+import type { AttachmentFile } from '@/components/attachment-button'
+import type { SlashCommand } from './slash-command-menu'
 import {
   PromptInput,
   PromptInputAction,
@@ -17,11 +21,8 @@ import {
   createAttachmentFromFile,
   isAcceptedImage,
   isAcceptedNonImage,
-  type AttachmentFile,
 } from '@/components/attachment-button'
 import { AttachmentPreviewList } from '@/components/attachment-preview'
-import { SlashCommandMenu, type SlashCommand } from './slash-command-menu'
-import { ThinkingLevelSelector } from './thinking-level-selector'
 
 type ChatComposerProps = {
   onSubmit: (value: string, helpers: ChatComposerHelpers) => void
@@ -61,12 +62,21 @@ const FALLBACK_SLASH_COMMANDS: Array<SlashCommand> = [
   { command: '/status', description: 'Show session status & usage' },
   { command: '/whoami', description: 'Show your sender ID' },
   { command: '/context', description: 'Show context window details' },
-  { command: '/usage', description: 'Toggle usage footer (off/tokens/full/cost)' },
+  {
+    command: '/usage',
+    description: 'Toggle usage footer (off/tokens/full/cost)',
+  },
   // Directives
-  { command: '/think', description: 'Set thinking level (off/low/medium/high)' },
+  {
+    command: '/think',
+    description: 'Set thinking level (off/low/medium/high)',
+  },
   { command: '/reasoning', description: 'Toggle reasoning (on/off/stream)' },
   { command: '/verbose', description: 'Toggle verbose mode (on/full/off)' },
-  { command: '/elevated', description: 'Toggle elevated permissions (on/off/ask)' },
+  {
+    command: '/elevated',
+    description: 'Toggle elevated permissions (on/off/ask)',
+  },
   { command: '/exec', description: 'Configure exec settings' },
   { command: '/queue', description: 'Show/configure message queue' },
   // TTS
@@ -83,13 +93,33 @@ const FALLBACK_SLASH_COMMANDS: Array<SlashCommand> = [
   { command: '/debug', description: 'Runtime overrides (owner-only)' },
   { command: '/send', description: 'Toggle message sending (on/off)' },
   { command: '/restart', description: 'Restart gateway' },
-  { command: '/activation', description: 'Set activation mode (mention/always)' },
+  {
+    command: '/activation',
+    description: 'Set activation mode (mention/always)',
+  },
   // Channels
   { command: '/dock-telegram', description: 'Switch replies to Telegram' },
   { command: '/dock-discord', description: 'Switch replies to Discord' },
   // Other
   { command: '/bash', description: 'Run host shell command' },
 ]
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function removeUploadedFilePrompt(value: string, uploadedPath: string): string {
+  const escapedPath = escapeRegExp(uploadedPath)
+  const uploadedFileBlockRegex = new RegExp(
+    `(?:^|\\n\\n)📎 Uploaded file: ${escapedPath}\\n\\nPlease analyze this file\\.(?=\\n\\n|$)`,
+  )
+
+  return value
+    .replace(uploadedFileBlockRegex, (match, offset) => {
+      return offset === 0 ? '' : '\n\n'
+    })
+    .trim()
+}
 
 function ChatComposerComponent({
   onSubmit,
@@ -109,21 +139,28 @@ function ChatComposerComponent({
   const [sttLoading, setSttLoading] = useState(false)
   const [micError, setMicError] = useState<string | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
-  const recordingChunksRef = useRef<Blob[]>([])
+  const recordingChunksRef = useRef<Array<Blob>>([])
   const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const sttAbortControllerRef = useRef<AbortController | null>(null)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const webSpeechRef = useRef<any>(null)
   const promptRef = useRef<HTMLTextAreaElement | null>(null)
 
-  const showSlashCommands = useMemo(() => /^\/\S*$/.test(value) && !slashMenuDismissed, [value, slashMenuDismissed])
-  const slashQuery = useMemo(() => (showSlashCommands ? value.slice(1).toLowerCase() : ''), [showSlashCommands, value])
+  const showSlashCommands = useMemo(
+    () => /^\/\S*$/.test(value) && !slashMenuDismissed,
+    [value, slashMenuDismissed],
+  )
+  const slashQuery = useMemo(
+    () => (showSlashCommands ? value.slice(1).toLowerCase() : ''),
+    [showSlashCommands, value],
+  )
   const filteredSlashCommands = useMemo(() => {
     if (!showSlashCommands) return []
     if (!slashQuery) return FALLBACK_SLASH_COMMANDS
-    return FALLBACK_SLASH_COMMANDS.filter((item) => item.command.slice(1).toLowerCase().startsWith(slashQuery))
+    return FALLBACK_SLASH_COMMANDS.filter((item) =>
+      item.command.slice(1).toLowerCase().startsWith(slashQuery),
+    )
   }, [showSlashCommands, slashQuery])
-  
+
   // Sync internal ref with external ref if provided
   const setPromptRef = useCallback(
     (element: HTMLTextAreaElement | null) => {
@@ -132,13 +169,15 @@ function ChatComposerComponent({
         if (typeof externalInputRef === 'function') {
           externalInputRef(element)
         } else {
-          ;(externalInputRef as MutableRefObject<HTMLTextAreaElement | null>).current = element
+          ;(
+            externalInputRef as MutableRefObject<HTMLTextAreaElement | null>
+          ).current = element
         }
       }
     },
     [externalInputRef],
   )
-  
+
   const focusPrompt = useCallback(() => {
     if (typeof window === 'undefined') return
     window.requestAnimationFrame(() => {
@@ -171,82 +210,104 @@ function ChatComposerComponent({
     })
   }, [])
 
-  const uploadAttachmentFile = useCallback(async (file: File): Promise<AttachmentFile> => {
-    const id = crypto.randomUUID()
+  const uploadAttachmentFile = useCallback(
+    async (file: File): Promise<AttachmentFile> => {
+      const id = crypto.randomUUID()
 
-    if (!isAcceptedNonImage(file)) {
-      return {
-        id,
-        file,
-        preview: null,
-        type: 'file',
-        base64: null,
-        error: 'Unsupported file type for upload.',
-      }
-    }
-
-    try {
-      await ensureUploadsDirectory()
-
-      const formData = new FormData()
-      formData.append('path', '/uploads')
-      formData.append('file', file)
-
-      const response = await fetch('/api/files/upload', {
-        method: 'POST',
-        body: formData,
-      })
-
-      if (!response.ok) {
-        const message = await response.text()
-        throw new Error(message || 'File upload failed')
+      if (!isAcceptedNonImage(file)) {
+        return {
+          id,
+          file,
+          preview: null,
+          type: 'file',
+          base64: null,
+          error: 'Unsupported file type for upload.',
+        }
       }
 
-      const data = (await response.json()) as {
-        ok?: boolean
-        files?: Array<{ path: string }>
+      try {
+        await ensureUploadsDirectory()
+
+        const formData = new FormData()
+        formData.append('path', '/uploads')
+        formData.append('file', file)
+
+        const response = await fetch('/api/files/upload', {
+          method: 'POST',
+          body: formData,
+        })
+
+        if (!response.ok) {
+          const message = await response.text()
+          throw new Error(message || 'File upload failed')
+        }
+
+        const data = (await response.json()) as {
+          ok?: boolean
+          files?: Array<{ path: string }>
+        }
+
+        const uploadedPath = data.files?.[0]?.path
+        if (!uploadedPath) {
+          throw new Error('Upload succeeded but no path was returned')
+        }
+
+        appendUploadedFilePrompt(uploadedPath)
+
+        return {
+          id,
+          file,
+          preview: null,
+          type: 'file',
+          base64: null,
+          uploadedPath,
+        }
+      } catch (err) {
+        return {
+          id,
+          file,
+          preview: null,
+          type: 'file',
+          base64: null,
+          error: err instanceof Error ? err.message : 'File upload failed',
+        }
       }
+    },
+    [appendUploadedFilePrompt, ensureUploadsDirectory],
+  )
 
-      const uploadedPath = data.files?.[0]?.path
-      if (!uploadedPath) {
-        throw new Error('Upload succeeded but no path was returned')
-      }
+  const handleFilesSelect = useCallback(
+    async (files: Array<File>) => {
+      if (files.length === 0) return
 
-      appendUploadedFilePrompt(uploadedPath)
+      const nextAttachments = await Promise.all(
+        files.map((file) =>
+          isAcceptedImage(file)
+            ? createAttachmentFromFile(file)
+            : uploadAttachmentFile(file),
+        ),
+      )
 
-      return {
-        id,
-        file,
-        preview: null,
-        type: 'file',
-        base64: null,
-        uploadedPath,
-      }
-    } catch (err) {
-      return {
-        id,
-        file,
-        preview: null,
-        type: 'file',
-        base64: null,
-        error: err instanceof Error ? err.message : 'File upload failed',
-      }
-    }
-  }, [appendUploadedFilePrompt, ensureUploadsDirectory])
-
-  const handleFilesSelect = useCallback(async (files: File[]) => {
-    if (files.length === 0) return
-
-    const nextAttachments = await Promise.all(
-      files.map((file) => (isAcceptedImage(file) ? createAttachmentFromFile(file) : uploadAttachmentFile(file))),
-    )
-
-    setAttachments((prev) => [...prev, ...nextAttachments])
-    focusPrompt()
-  }, [focusPrompt, uploadAttachmentFile])
+      setAttachments((prev) => [...prev, ...nextAttachments])
+      focusPrompt()
+    },
+    [focusPrompt, uploadAttachmentFile],
+  )
 
   const handleRemoveAttachment = useCallback((id: string) => {
-    setAttachments((prev) => prev.filter((a) => a.id !== id))
+    let removedUploadedPath: string | undefined
+    setAttachments((prev) => {
+      const attachmentToRemove = prev.find((attachment) => attachment.id === id)
+      if (attachmentToRemove?.uploadedPath) {
+        removedUploadedPath = attachmentToRemove.uploadedPath
+      }
+      return prev.filter((attachment) => attachment.id !== id)
+    })
+    if (removedUploadedPath) {
+      setValue((currentValue) =>
+        removeUploadedFilePrompt(currentValue, removedUploadedPath),
+      )
+    }
   }, [])
   const handleDragOver = useCallback((event: DragEvent<HTMLDivElement>) => {
     const hasFiles = Array.from(event.dataTransfer.types).includes('Files')
@@ -261,15 +322,18 @@ function ChatComposerComponent({
     if (nextTarget && event.currentTarget.contains(nextTarget)) return
     setIsDragActive(false)
   }, [])
-  const handleDrop = useCallback(async (event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault()
-    setIsDragActive(false)
+  const handleDrop = useCallback(
+    async (event: DragEvent<HTMLDivElement>) => {
+      event.preventDefault()
+      setIsDragActive(false)
 
-    const files = Array.from(event.dataTransfer.files ?? [])
-    if (files.length === 0) return
+      const files = Array.from(event.dataTransfer.files)
+      if (files.length === 0) return
 
-    await handleFilesSelect(files)
-  }, [handleFilesSelect])
+      await handleFilesSelect(files)
+    },
+    [handleFilesSelect],
+  )
   const setComposerValue = useCallback(
     (nextValue: string) => {
       setValue(nextValue)
@@ -297,7 +361,10 @@ function ChatComposerComponent({
     if (disabled) return
 
     if (showSlashCommands && filteredSlashCommands.length > 0) {
-      const nextIndex = Math.min(selectedCommandIndex, filteredSlashCommands.length - 1)
+      const nextIndex = Math.min(
+        selectedCommandIndex,
+        filteredSlashCommands.length - 1,
+      )
       selectSlashCommand(filteredSlashCommands[nextIndex])
       return
     }
@@ -306,7 +373,12 @@ function ChatComposerComponent({
     // Allow submit if there's text OR valid attachments
     const validAttachments = attachments.filter((a) => !a.error && a.base64)
     if (body.length === 0 && validAttachments.length === 0) return
-    onSubmit(body, { reset, setValue: setComposerValue, model: selectedModel || undefined, attachments: validAttachments })
+    onSubmit(body, {
+      reset,
+      setValue: setComposerValue,
+      model: selectedModel || undefined,
+      attachments: validAttachments,
+    })
     focusPrompt()
   }, [
     disabled,
@@ -324,7 +396,12 @@ function ChatComposerComponent({
   ])
   const handlePersonaSelect = useCallback(
     (command: string) => {
-      onSubmit(command, { reset, setValue: setComposerValue, model: selectedModel || undefined, attachments: [] })
+      onSubmit(command, {
+        reset,
+        setValue: setComposerValue,
+        model: selectedModel || undefined,
+        attachments: [],
+      })
       focusPrompt()
     },
     [focusPrompt, onSubmit, reset, setComposerValue, selectedModel],
@@ -344,30 +421,47 @@ function ChatComposerComponent({
 
       if (event.key === 'ArrowDown') {
         event.preventDefault()
-        setSelectedCommandIndex((prev) => (prev + 1) % filteredSlashCommands.length)
+        setSelectedCommandIndex(
+          (prev) => (prev + 1) % filteredSlashCommands.length,
+        )
         return
       }
 
       if (event.key === 'ArrowUp') {
         event.preventDefault()
-        setSelectedCommandIndex((prev) => (prev - 1 + filteredSlashCommands.length) % filteredSlashCommands.length)
+        setSelectedCommandIndex(
+          (prev) =>
+            (prev - 1 + filteredSlashCommands.length) %
+            filteredSlashCommands.length,
+        )
         return
       }
 
       if (event.key === 'Tab') {
         event.preventDefault()
-        const nextIndex = Math.min(selectedCommandIndex, filteredSlashCommands.length - 1)
+        const nextIndex = Math.min(
+          selectedCommandIndex,
+          filteredSlashCommands.length - 1,
+        )
         selectSlashCommand(filteredSlashCommands[nextIndex])
       }
     },
-    [showSlashCommands, filteredSlashCommands, selectedCommandIndex, selectSlashCommand],
+    [
+      showSlashCommands,
+      filteredSlashCommands,
+      selectedCommandIndex,
+      selectSlashCommand,
+    ],
   )
   // Cleanup recording timer on unmount
   useEffect(() => {
     return () => {
       sttAbortControllerRef.current?.abort()
       if (recordingTimerRef.current) clearInterval(recordingTimerRef.current)
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      if (
+        mediaRecorderRef.current &&
+        mediaRecorderRef.current.state !== 'inactive'
+      ) {
         mediaRecorderRef.current.stop()
       }
       if (webSpeechRef.current) webSpeechRef.current.abort()
@@ -384,7 +478,10 @@ function ChatComposerComponent({
   }, [])
 
   const stopRecording = useCallback(() => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+    if (
+      mediaRecorderRef.current &&
+      mediaRecorderRef.current.state !== 'inactive'
+    ) {
       mediaRecorderRef.current.stop()
     }
     if (webSpeechRef.current) {
@@ -404,8 +501,9 @@ function ChatComposerComponent({
 
     // Browser Web Speech API path
     if (provider === 'browser') {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+      const SpeechRecognition =
+        (window as any).SpeechRecognition ||
+        (window as any).webkitSpeechRecognition
       if (!SpeechRecognition) {
         showMicError('Web Speech API is not supported in this browser.')
         return
@@ -429,7 +527,6 @@ function ChatComposerComponent({
       }, 1000)
 
       let transcript = ''
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       recognition.onresult = (event: any) => {
         for (let i = event.resultIndex; i < event.results.length; i++) {
           if (event.results[i].isFinal) {
@@ -451,7 +548,9 @@ function ChatComposerComponent({
         setIsRecording(false)
         setRecordingTime(0)
         if (recordingTimerRef.current) clearInterval(recordingTimerRef.current)
-        showMicError('Speech recognition failed. Try the Browser provider again or switch providers in Settings.')
+        showMicError(
+          'Speech recognition failed. Try the Browser provider again or switch providers in Settings.',
+        )
       }
       recognition.start()
       return
@@ -473,28 +572,45 @@ function ChatComposerComponent({
 
       recorder.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop())
-        const audioBlob = new Blob(recordingChunksRef.current, { type: mimeType })
+        const audioBlob = new Blob(recordingChunksRef.current, {
+          type: mimeType,
+        })
         if (audioBlob.size === 0) return
 
         setSttLoading(true)
         try {
           const formData = new FormData()
-          formData.append('audio', audioBlob, `recording.${mimeType === 'audio/webm' ? 'webm' : 'mp4'}`)
+          formData.append(
+            'audio',
+            audioBlob,
+            `recording.${mimeType === 'audio/webm' ? 'webm' : 'mp4'}`,
+          )
           if (provider !== 'auto') formData.append('provider', provider)
 
           sttAbortControllerRef.current?.abort()
           const controller = new AbortController()
           sttAbortControllerRef.current = controller
 
-          const res = await fetch('/api/stt', { method: 'POST', body: formData, signal: controller.signal })
-          const data = (await res.json()) as { ok: boolean; text?: string; error?: string }
+          const res = await fetch('/api/stt', {
+            method: 'POST',
+            body: formData,
+            signal: controller.signal,
+          })
+          const data = (await res.json()) as {
+            ok: boolean
+            text?: string
+            error?: string
+          }
           if (data.ok && data.text) {
             setMicError(null)
             setValue((prev) => prev + (prev ? ' ' : '') + data.text)
             focusPrompt()
           } else if (!data.ok) {
             console.warn('STT failed:', data.error)
-            showMicError(data.error || 'Speech-to-text failed. Try the Browser provider in Settings.')
+            showMicError(
+              data.error ||
+                'Speech-to-text failed. Try the Browser provider in Settings.',
+            )
           }
         } catch (err) {
           if (err instanceof Error && err.name === 'AbortError') return
@@ -523,14 +639,22 @@ function ChatComposerComponent({
       if (msg.includes('NotAllowedError') || msg.includes('Permission')) {
         // On Android/PWA, explicitly request permission first
         try {
-          const status = await navigator.permissions.query({ name: 'microphone' as PermissionName })
+          const status = await navigator.permissions.query({
+            name: 'microphone' as PermissionName,
+          })
           if (status.state === 'denied') {
-            showMicError('Microphone access is blocked. Please enable it in your browser/app settings.')
+            showMicError(
+              'Microphone access is blocked. Please enable it in your browser/app settings.',
+            )
           } else {
-            showMicError('Microphone permission was not granted. Please try again and allow access when prompted.')
+            showMicError(
+              'Microphone permission was not granted. Please try again and allow access when prompted.',
+            )
           }
         } catch {
-          showMicError('Could not access microphone. Please check your browser settings and allow microphone access for this site.')
+          showMicError(
+            'Could not access microphone. Please check your browser settings and allow microphone access for this site.',
+          )
         }
       } else {
         showMicError('Could not access microphone: ' + msg)
@@ -547,7 +671,8 @@ function ChatComposerComponent({
   }, [isRecording, stopRecording, startRecording])
 
   const validAttachments = attachments.filter((a) => !a.error && a.base64)
-  const submitDisabled = disabled || (value.trim().length === 0 && validAttachments.length === 0)
+  const submitDisabled =
+    disabled || (value.trim().length === 0 && validAttachments.length === 0)
 
   return (
     <div
@@ -585,7 +710,10 @@ function ChatComposerComponent({
         {showSlashCommands && filteredSlashCommands.length > 0 && (
           <SlashCommandMenu
             commands={filteredSlashCommands}
-            selectedIndex={Math.min(selectedCommandIndex, filteredSlashCommands.length - 1)}
+            selectedIndex={Math.min(
+              selectedCommandIndex,
+              filteredSlashCommands.length - 1,
+            )}
             onSelect={selectSlashCommand}
           />
         )}
@@ -598,14 +726,18 @@ function ChatComposerComponent({
           <div className="flex items-center gap-1">
             <ThinkingLevelSelector />
             <PersonaPicker onSelect={handlePersonaSelect} />
-            <CommandHelp onCommandSelect={(cmd) => handleValueChange(cmd + ' ')} />
+            <CommandHelp
+              onCommandSelect={(cmd) => handleValueChange(cmd + ' ')}
+            />
           </div>
           <div className="flex items-center gap-1">
             <AttachmentButton
               onFilesSelect={handleFilesSelect}
               disabled={disabled}
             />
-            <PromptInputAction tooltip={isRecording ? 'Stop recording' : 'Voice input'}>
+            <PromptInputAction
+              tooltip={isRecording ? 'Stop recording' : 'Voice input'}
+            >
               <Button
                 onClick={handleMicClick}
                 disabled={disabled || sttLoading}
@@ -619,7 +751,10 @@ function ChatComposerComponent({
                 ) : isRecording ? (
                   <span className="flex items-center gap-1">
                     <span className="size-2 rounded-full bg-red-500" />
-                    <span className="text-xs tabular-nums">{Math.floor(recordingTime / 60)}:{String(recordingTime % 60).padStart(2, '0')}</span>
+                    <span className="text-xs tabular-nums">
+                      {Math.floor(recordingTime / 60)}:
+                      {String(recordingTime % 60).padStart(2, '0')}
+                    </span>
                     <HugeiconsIcon icon={StopIcon} size={14} strokeWidth={2} />
                   </span>
                 ) : (
