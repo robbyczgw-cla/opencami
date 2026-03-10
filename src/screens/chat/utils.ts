@@ -18,19 +18,36 @@ export function deriveFriendlyIdFromKey(key: string | undefined): string {
 }
 
 /**
- * Strip OpenClaw inbound metadata prefix from user message text.
- * OpenClaw prepends "Conversation info (untrusted metadata):\n```json\n{...}\n```\n"
- * and optional "[Day YYYY-MM-DD HH:MM GMT+N] " timestamp to every message.
+ * Strip OpenClaw gateway-injected metadata from rendered message text.
+ * This keeps user-visible chat clean while preserving the raw payload upstream.
  */
 const INBOUND_META_FENCED_REGEX =
   /^Conversation info \(untrusted metadata\):\s*```(?:json)?\s*[\s\S]*?```\s*/
 const INBOUND_META_INLINE_REGEX =
   /^Conversation info \(untrusted metadata\):\s*\{[\s\S]*?\}\s*/
+const INBOUND_SENDER_FENCED_REGEX =
+  /^Sender \(untrusted metadata\):\s*```(?:[a-zA-Z0-9_-]+)?\s*[\s\S]*?```\s*/gm
+const INBOUND_SENDER_INLINE_REGEX =
+  /^Sender \(untrusted metadata\):\s*\{[^\n]*\}\s*$/gm
+const SUPERMEMORY_CONTEXT_REGEX =
+  /<supermemory-context\b[^>]*>[\s\S]*?<\/supermemory-context>/gi
+const SUPERMEMORY_CONTAINERS_REGEX =
+  /<supermemory-containers\b[^>]*>[\s\S]*?<\/supermemory-containers>/gi
+const WORKSPACE_CRITICAL_RULES_REGEX =
+  /<workspace-critical-rules\b[^>]*>[\s\S]*?<\/workspace-critical-rules>/gi
 const INBOUND_META_TIMESTAMP_REGEX =
-  /^\[(?:[A-Za-z]{3}\s+)?\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}\s+GMT[+-]?\d+\]\s*/
+  /^\[(?:[A-Za-z]{3}\s+)?\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}\s+GMT[+-]?\d+\]\s*/gm
+const MULTI_BLANK_LINES_REGEX = /\n{3,}/g
 
 export function stripInboundMeta(text: string): string {
   let s = text
+
+  s = s
+    .replace(SUPERMEMORY_CONTEXT_REGEX, '')
+    .replace(SUPERMEMORY_CONTAINERS_REGEX, '')
+    .replace(WORKSPACE_CRITICAL_RULES_REGEX, '')
+    .replace(INBOUND_SENDER_FENCED_REGEX, '')
+
   const hasFenced = INBOUND_META_FENCED_REGEX.test(s)
   const hasInline = !hasFenced && INBOUND_META_INLINE_REGEX.test(s)
   if (hasFenced) {
@@ -38,9 +55,15 @@ export function stripInboundMeta(text: string): string {
   } else if (hasInline) {
     s = s.replace(INBOUND_META_INLINE_REGEX, '')
   }
-  if (hasFenced || hasInline) {
-    s = s.replace(INBOUND_META_TIMESTAMP_REGEX, '')
-  }
+
+  s = s
+    .replace(SUPERMEMORY_CONTEXT_REGEX, '')
+    .replace(SUPERMEMORY_CONTAINERS_REGEX, '')
+    .replace(INBOUND_SENDER_FENCED_REGEX, '')
+    .replace(INBOUND_SENDER_INLINE_REGEX, '')
+    .replace(INBOUND_META_TIMESTAMP_REGEX, '')
+    .replace(MULTI_BLANK_LINES_REGEX, '\n\n')
+
   return s.trim()
 }
 

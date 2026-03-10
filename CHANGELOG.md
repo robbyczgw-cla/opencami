@@ -3,6 +3,16 @@
 All notable changes to OpenCami are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [Semantic Versioning](https://semver.org/).
 
+## [1.8.12] - 2026-03-10
+
+### Fixed
+
+- Extend `stripInboundMeta()` to strip OpenClaw gateway injection patterns (`supermemory-context`, `workspace-critical-rules`, `Sender (untrusted metadata)`, multi-blank-lines cleanup) — reported by [@maciejlis](https://github.com/maciejlis) (#1, #3)
+
+### Changed
+
+- Softer dark mode palette with ChatGPT-style colors — contributed by [@maciejlis](https://github.com/maciejlis) (#7)
+
 ## [1.8.11] - 2026-03-10
 
 ### Added
