@@ -3,6 +3,15 @@
 All notable changes to OpenCami are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [Semantic Versioning](https://semver.org/).
 
+## [1.8.11] - 2026-03-10
+
+### Fixed
+
+- Unwrap `getNormalizedURL` return value to prevent crash on fresh npm installs — reported and fix authored by [@maciejlis](https://github.com/maciejlis) (#1)
+- Extend `stripInboundMeta()` to strip OpenClaw gateway injection patterns (`supermemory-context`, `workspace-critical-rules`, `Sender (untrusted metadata)`) — reported and fix authored by [@maciejlis](https://github.com/maciejlis) (#3)
+
+Special thanks to [@maciejlis](https://github.com/maciejlis) for the detailed bug reports and patches! 🙏
+
 ## [1.8.10] - 2026-03-10
 
 ### Fixed
