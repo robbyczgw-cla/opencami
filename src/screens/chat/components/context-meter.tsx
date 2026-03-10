@@ -155,18 +155,18 @@ function ContextMeterComponent({
           )}
         >
           <div className="flex items-center gap-2 mb-1.5">
-            <span className="text-primary-500 dark:text-primary-400">
+            <span className="text-primary-500 dark:text-primary-500">
               Context window
             </span>
             <span className={cn('font-semibold', colors.text)}>
               {percentage}%
             </span>
           </div>
-          <div className="flex items-center gap-1.5 text-primary-700 dark:text-primary-300">
+          <div className="flex items-center gap-1.5 text-primary-700 dark:text-primary-700">
             <span className="font-medium">{usedStr}</span>
-            <span className="text-primary-400">/</span>
+            <span className="text-primary-400 dark:text-primary-500">/</span>
             <span>{maxStr}</span>
-            <span className="text-primary-400">tokens</span>
+            <span className="text-primary-400 dark:text-primary-500">tokens</span>
           </div>
           {/* Wider bar in tooltip */}
           <div className="w-full h-1.5 rounded-full bg-primary-200 dark:bg-primary-700 overflow-hidden mt-1.5">

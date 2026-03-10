@@ -49,8 +49,8 @@ function SlashCommandMenuComponent({
               )}
             >
               <div className="flex items-start gap-3">
-                <code className="min-w-[90px] font-mono text-xs text-primary-300">{item.command}</code>
-                <span className="text-xs text-neutral-300">{item.description}</span>
+                <code className="min-w-[90px] font-mono text-xs text-primary-700 dark:text-primary-700">{item.command}</code>
+                <span className="text-xs text-primary-600 dark:text-primary-600">{item.description}</span>
               </div>
             </button>
           )
