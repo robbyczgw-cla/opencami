@@ -15,7 +15,13 @@ type GatewayFrame =
       payload?: unknown
       error?: { code: string; message: string; details?: unknown }
     }
-  | { type: 'event'; event: string; payload?: unknown; seq?: number }
+  | {
+      type: 'event'
+      event: string
+      payload?: unknown
+      seq?: number
+      stateVersion?: number
+    }
 
 type ConnectParams = {
   minProtocol: number
@@ -47,9 +53,34 @@ export type GatewayEvent = {
   event: string
   payload: Record<string, unknown>
   seq?: number
+  stateVersion?: number
 }
 
 export type StreamListener = (event: GatewayEvent) => void
+
+type GatewayClient = {
+  connect: () => Promise<void>
+  sendReq: <TPayload = unknown>(
+    method: string,
+    params?: unknown,
+  ) => Promise<TPayload>
+  close: () => void
+  setOnEvent: (handler?: (event: GatewayEvent) => void) => void
+  setOnError: (handler?: (error: Error) => void) => void
+  isClosed: () => boolean
+}
+
+type GatewayClientEntry = {
+  refs: number
+  client: GatewayClient
+}
+
+type GatewayClientHandle = {
+  client: GatewayClient
+  release: () => void
+}
+
+const sharedGatewayClients = new Map<string, GatewayClientEntry>()
 
 // ─── Config helpers ─────────────────────────────────────────────────────
 
@@ -78,7 +109,9 @@ function base64UrlEncode(buf: Buffer) {
 }
 
 function derivePublicKeyRaw(publicKeyPem: string) {
-  const spki = crypto.createPublicKey(publicKeyPem).export({ type: 'spki', format: 'der' }) as Buffer
+  const spki = crypto
+    .createPublicKey(publicKeyPem)
+    .export({ type: 'spki', format: 'der' }) as Buffer
   if (
     spki.length === ED25519_SPKI_PREFIX.length + 32 &&
     spki.subarray(0, ED25519_SPKI_PREFIX.length).equals(ED25519_SPKI_PREFIX)
@@ -136,8 +169,12 @@ function storeDeviceToken(deviceId: string, gatewayUrl: string, token: string) {
     }
     parsed[key] = token
     ensureDir(filePath)
-    fs.writeFileSync(filePath, `${JSON.stringify(parsed, null, 2)}\n`, { mode: 0o600 })
-    try { fs.chmodSync(filePath, 0o600) } catch {}
+    fs.writeFileSync(filePath, `${JSON.stringify(parsed, null, 2)}\n`, {
+      mode: 0o600,
+    })
+    try {
+      fs.chmodSync(filePath, 0o600)
+    } catch {}
   } catch {}
 }
 
@@ -155,18 +192,34 @@ function loadOrCreateDeviceIdentity(filePath = resolveDeviceIdentityPath()) {
         const derivedId = fingerprintPublicKey(parsed.publicKeyPem)
         if (derivedId && derivedId !== parsed.deviceId) {
           const updated = { ...parsed, deviceId: derivedId }
-          fs.writeFileSync(filePath, `${JSON.stringify(updated, null, 2)}\n`, { mode: 0o600 })
-          try { fs.chmodSync(filePath, 0o600) } catch {}
-          return { deviceId: derivedId, publicKeyPem: parsed.publicKeyPem, privateKeyPem: parsed.privateKeyPem }
+          fs.writeFileSync(filePath, `${JSON.stringify(updated, null, 2)}\n`, {
+            mode: 0o600,
+          })
+          try {
+            fs.chmodSync(filePath, 0o600)
+          } catch {}
+          return {
+            deviceId: derivedId,
+            publicKeyPem: parsed.publicKeyPem,
+            privateKeyPem: parsed.privateKeyPem,
+          }
         }
-        return { deviceId: parsed.deviceId, publicKeyPem: parsed.publicKeyPem, privateKeyPem: parsed.privateKeyPem }
+        return {
+          deviceId: parsed.deviceId,
+          publicKeyPem: parsed.publicKeyPem,
+          privateKeyPem: parsed.privateKeyPem,
+        }
       }
     }
   } catch {}
 
   const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519')
-  const publicKeyPem = publicKey.export({ type: 'spki', format: 'pem' }).toString()
-  const privateKeyPem = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString()
+  const publicKeyPem = publicKey
+    .export({ type: 'spki', format: 'pem' })
+    .toString()
+  const privateKeyPem = privateKey
+    .export({ type: 'pkcs8', format: 'pem' })
+    .toString()
   const deviceId = fingerprintPublicKey(publicKeyPem)
 
   ensureDir(filePath)
@@ -177,8 +230,12 @@ function loadOrCreateDeviceIdentity(filePath = resolveDeviceIdentityPath()) {
     privateKeyPem,
     createdAtMs: Date.now(),
   }
-  fs.writeFileSync(filePath, `${JSON.stringify(stored, null, 2)}\n`, { mode: 0o600 })
-  try { fs.chmodSync(filePath, 0o600) } catch {}
+  fs.writeFileSync(filePath, `${JSON.stringify(stored, null, 2)}\n`, {
+    mode: 0o600,
+  })
+  try {
+    fs.chmodSync(filePath, 0o600)
+  } catch {}
 
   return { deviceId, publicKeyPem, privateKeyPem }
 }
@@ -205,11 +262,26 @@ function buildDeviceAuthPayload(args: {
   const scopes = args.scopes.join(',')
   const token = args.token ?? ''
   // Must match OpenClaw device identity format.
-  return ['v2', args.deviceId, args.clientId, args.clientMode, args.role, scopes, String(args.signedAtMs), token, args.nonce].join('|')
+  return [
+    'v2',
+    args.deviceId,
+    args.clientId,
+    args.clientMode,
+    args.role,
+    scopes,
+    String(args.signedAtMs),
+    token,
+    args.nonce,
+  ].join('|')
 }
 
 function loadOrCreateInstanceId() {
-  const filePath = path.join(os.homedir(), '.opencami', 'identity', 'instance-id.txt')
+  const filePath = path.join(
+    os.homedir(),
+    '.opencami',
+    'identity',
+    'instance-id.txt',
+  )
   try {
     if (fs.existsSync(filePath)) {
       const v = fs.readFileSync(filePath, 'utf8').trim()
@@ -219,11 +291,18 @@ function loadOrCreateInstanceId() {
   const v = randomUUID()
   ensureDir(filePath)
   fs.writeFileSync(filePath, `${v}\n`, { mode: 0o600 })
-  try { fs.chmodSync(filePath, 0o600) } catch {}
+  try {
+    fs.chmodSync(filePath, 0o600)
+  } catch {}
   return v
 }
 
-function buildConnectParams(url: string, token: string, password: string, nonce: string): ConnectParams {
+function buildConnectParams(
+  url: string,
+  token: string,
+  password: string,
+  nonce: string,
+): ConnectParams {
   const clientId = 'openclaw-control-ui'
   const clientMode = 'webchat'
   const role = 'operator'
@@ -318,7 +397,10 @@ class PersistentGatewayConnection {
   // Listeners that receive ALL events (for debugging or global subscriptions)
   private globalListeners = new Set<StreamListener>()
   // Event buffer: store recent events per sessionKey so late subscribers don't miss them
-  private eventBuffer = new Map<string, { events: Array<GatewayEvent>; timer: ReturnType<typeof setTimeout> }>()
+  private eventBuffer = new Map<
+    string,
+    { events: Array<GatewayEvent>; timer: ReturnType<typeof setTimeout> }
+  >()
 
   get isConnected(): boolean {
     return this.connected && this.ws?.readyState === WebSocket.OPEN
@@ -353,7 +435,9 @@ class PersistentGatewayConnection {
     // gateway.controlUi.allowedOrigins.
     // Close existing connection if any
     if (this.ws) {
-      try { this.ws.close() } catch {}
+      try {
+        this.ws.close()
+      } catch {}
       this.ws = null
     }
 
@@ -365,9 +449,18 @@ class PersistentGatewayConnection {
 
     // Wait for open
     await new Promise<void>((resolve, reject) => {
-      const onOpen = () => { cleanup(); resolve() }
-      const onError = (err: Error) => { cleanup(); reject(new Error(`WS open error: ${err.message}`)) }
-      const cleanup = () => { ws.off('open', onOpen); ws.off('error', onError) }
+      const onOpen = () => {
+        cleanup()
+        resolve()
+      }
+      const onError = (err: Error) => {
+        cleanup()
+        reject(new Error(`WS open error: ${err.message}`))
+      }
+      const cleanup = () => {
+        ws.off('open', onOpen)
+        ws.off('error', onError)
+      }
       ws.on('open', onOpen)
       ws.on('error', onError)
     })
@@ -425,14 +518,17 @@ class PersistentGatewayConnection {
         }),
       )
 
-      const hello = await this._waitForRes(connectId, 10_000) as any
+      const hello = (await this._waitForRes(connectId, 10_000)) as any
       if (hello?.auth?.deviceToken) {
         const identity = loadOrCreateDeviceIdentity()
         storeDeviceToken(identity.deviceId, url, hello.auth.deviceToken)
       }
       // Optional sanity check: ensure operator.read was granted.
       const grantedScopes = hello?.auth?.scopes
-      if (Array.isArray(grantedScopes) && !grantedScopes.includes('operator.read')) {
+      if (
+        Array.isArray(grantedScopes) &&
+        !grantedScopes.includes('operator.read')
+      ) {
         throw new Error(
           `Gateway connected but missing required scope: operator.read (granted: ${grantedScopes.join(', ')})`,
         )
@@ -441,7 +537,10 @@ class PersistentGatewayConnection {
     } catch (err) {
       const code = err instanceof GatewayResponseError ? err.code : ''
       const message = err instanceof Error ? err.message : String(err)
-      if (code === 'device_pending' || message.toLowerCase().includes('pending')) {
+      if (
+        code === 'device_pending' ||
+        message.toLowerCase().includes('pending')
+      ) {
         this._devicePending = true
       }
       if (!shouldFallback) throw err
@@ -505,7 +604,12 @@ class PersistentGatewayConnection {
           if (parsed.ok) {
             pending.resolve(parsed.payload)
           } else {
-            pending.reject(new GatewayResponseError(parsed.error?.message ?? 'gateway error', parsed.error?.code))
+            pending.reject(
+              new GatewayResponseError(
+                parsed.error?.message ?? 'gateway error',
+                parsed.error?.code,
+              ),
+            )
           }
         }
         return
@@ -516,6 +620,7 @@ class PersistentGatewayConnection {
           event: parsed.event,
           payload: (parsed.payload ?? {}) as Record<string, unknown>,
           seq: parsed.seq,
+          stateVersion: parsed.stateVersion,
         }
 
         // Determine which sessionKey this event belongs to
@@ -523,7 +628,9 @@ class PersistentGatewayConnection {
 
         // Notify global listeners
         for (const listener of this.globalListeners) {
-          try { listener(event) } catch {}
+          try {
+            listener(event)
+          } catch {}
         }
 
         // Notify session-specific listeners
@@ -531,13 +638,17 @@ class PersistentGatewayConnection {
           const listeners = this.sessionListeners.get(sessionKey)
           if (listeners && listeners.size > 0) {
             for (const listener of listeners) {
-              try { listener(event) } catch {}
+              try {
+                listener(event)
+              } catch {}
             }
           } else {
             // No listeners yet — buffer the event so late subscribers can catch up
             let buf = this.eventBuffer.get(sessionKey)
             if (!buf) {
-              const timer = setTimeout(() => { this.eventBuffer.delete(sessionKey) }, 10_000)
+              const timer = setTimeout(() => {
+                this.eventBuffer.delete(sessionKey)
+              }, 10_000)
               buf = { events: [], timer }
               this.eventBuffer.set(sessionKey, buf)
             }
@@ -586,14 +697,20 @@ class PersistentGatewayConnection {
   private _scheduleReconnect() {
     if (this.reconnectTimer) return
     const delay = this.reconnectDelay
-    this.reconnectDelay = Math.min(this.reconnectDelay * 2, this.maxReconnectDelay)
+    this.reconnectDelay = Math.min(
+      this.reconnectDelay * 2,
+      this.maxReconnectDelay,
+    )
     console.log(`[gateway-ws] Reconnecting in ${delay}ms...`)
     this.reconnectTimer = setTimeout(async () => {
       this.reconnectTimer = null
       try {
         await this.ensureConnected()
       } catch (err) {
-        console.error('[gateway-ws] Reconnect failed:', err instanceof Error ? err.message : err)
+        console.error(
+          '[gateway-ws] Reconnect failed:',
+          err instanceof Error ? err.message : err,
+        )
         // _onClose will schedule the next attempt
       }
     }, delay)
@@ -610,7 +727,11 @@ class PersistentGatewayConnection {
   }
 
   /** Send an RPC request over the persistent connection. */
-  async rpc<T = unknown>(method: string, params?: unknown, timeoutMs = 30_000): Promise<T> {
+  async rpc<T = unknown>(
+    method: string,
+    params?: unknown,
+    timeoutMs = 30_000,
+  ): Promise<T> {
     await this.ensureConnected()
 
     const id = randomUUID()
@@ -636,7 +757,9 @@ class PersistentGatewayConnection {
       this.eventBuffer.delete(sessionKey)
       clearTimeout(buf.timer)
       for (const event of buf.events) {
-        try { listener(event) } catch {}
+        try {
+          listener(event)
+        } catch {}
       }
     }
 
@@ -651,7 +774,9 @@ class PersistentGatewayConnection {
   /** Subscribe to ALL events. Returns an unsubscribe function. */
   subscribeAll(listener: StreamListener): () => void {
     this.globalListeners.add(listener)
-    return () => { this.globalListeners.delete(listener) }
+    return () => {
+      this.globalListeners.delete(listener)
+    }
   }
 
   destroy() {
@@ -686,6 +811,105 @@ function getPersistentConnection(): PersistentGatewayConnection {
     _proc.__opencamiGatewayInstance = new PersistentGatewayConnection()
   }
   return _proc.__opencamiGatewayInstance
+}
+
+function createGatewayClient(): GatewayClient {
+  const conn = new PersistentGatewayConnection()
+  let closed = false
+  let onEvent: ((event: GatewayEvent) => void) | undefined
+  let onError: ((error: Error) => void) | undefined
+  let unsubscribeAll: (() => void) | null = null
+
+  return {
+    async connect() {
+      if (closed) throw new Error('Gateway client closed')
+      try {
+        await conn.ensureConnected()
+        if (!unsubscribeAll) {
+          unsubscribeAll = conn.subscribeAll((event) => {
+            onEvent?.(event)
+          })
+        }
+      } catch (error) {
+        onError?.(error instanceof Error ? error : new Error(String(error)))
+        throw error
+      }
+    },
+    async sendReq(method, params) {
+      if (closed) throw new Error('Gateway client closed')
+      try {
+        await conn.ensureConnected()
+        return await conn.rpc(method, params)
+      } catch (error) {
+        onError?.(error instanceof Error ? error : new Error(String(error)))
+        throw error
+      }
+    },
+    close() {
+      if (closed) return
+      closed = true
+      if (unsubscribeAll) {
+        unsubscribeAll()
+        unsubscribeAll = null
+      }
+      conn.destroy()
+    },
+    setOnEvent(handler) {
+      onEvent = handler
+    },
+    setOnError(handler) {
+      onError = handler
+    },
+    isClosed() {
+      return closed
+    },
+  }
+}
+
+export async function acquireGatewayClient(
+  key: string,
+  options?: {
+    onEvent?: (event: GatewayEvent) => void
+    onError?: (error: Error) => void
+  },
+): Promise<GatewayClientHandle> {
+  const existing = sharedGatewayClients.get(key)
+  if (existing && !existing.client.isClosed()) {
+    existing.refs += 1
+    if (options?.onEvent) existing.client.setOnEvent(options.onEvent)
+    if (options?.onError) existing.client.setOnError(options.onError)
+    return { client: existing.client, release: () => releaseGatewayClient(key) }
+  }
+
+  const client = createGatewayClient()
+  if (options?.onEvent) client.setOnEvent(options.onEvent)
+  if (options?.onError) client.setOnError(options.onError)
+  await client.connect()
+  sharedGatewayClients.set(key, { refs: 1, client })
+  return { client, release: () => releaseGatewayClient(key) }
+}
+
+function releaseGatewayClient(key: string) {
+  const entry = sharedGatewayClients.get(key)
+  if (!entry) return
+  entry.refs -= 1
+  if (entry.refs > 0) return
+  entry.client.close()
+  sharedGatewayClients.delete(key)
+}
+
+export async function gatewayRpcShared<TPayload = unknown>(
+  method: string,
+  params?: unknown,
+  key?: string,
+): Promise<TPayload> {
+  if (key) {
+    const entry = sharedGatewayClients.get(key)
+    if (entry && !entry.client.isClosed()) {
+      return entry.client.sendReq<TPayload>(method, params)
+    }
+  }
+  return gatewayRpc<TPayload>(method, params)
 }
 
 // ─── Public API ─────────────────────────────────────────────────────────
