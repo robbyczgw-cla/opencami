@@ -3,6 +3,17 @@
 All notable changes to OpenCami are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [Semantic Versioning](https://semver.org/).
 
+## [1.8.13] - 2026-03-10
+
+### Fixed
+
+- **Streaming with tool-call support** — responses now stream token-by-token, including after tool calls (#4, #10)
+  - Declare `tool-events` capability so the gateway sends agent streaming events
+  - Port upstream shared gateway client (`acquireGatewayClient`, `gatewayRpcShared`) so `chat.send` and event listening share the same connection
+  - Replace server-side event filtering with raw event proxy (matching upstream WebClaw)
+  - Filter events by sessionKey to prevent cross-session leakage
+  - Reuse EventSource across messages; start stream before send to prevent race conditions
+
 ## [1.8.12] - 2026-03-10
 
 ### Fixed
