@@ -166,12 +166,16 @@ const accentColorScript = `
       red: { accent: '#ef4444', hover: '#dc2626', light: 'rgba(239, 68, 68, 0.10)' },
       cyan: { accent: '#06b6d4', hover: '#0891b2', light: 'rgba(6, 182, 212, 0.10)' },
       yellow: { accent: '#eab308', hover: '#ca8a04', light: 'rgba(234, 179, 8, 0.10)' },
+      white: { accent: '#ffffff', hover: '#e5e5e5', light: 'rgba(255, 255, 255, 0.10)' },
     }
     const selected = map[stored] || map.green
     const root = document.documentElement
     root.style.setProperty('--opencami-accent', selected.accent)
     root.style.setProperty('--opencami-accent-hover', selected.hover)
     root.style.setProperty('--opencami-accent-light', selected.light)
+    root.style.setProperty('--opencami-accent-fg', stored === 'white' ? '#1a1a1a' : '#ffffff')
+    if (stored === 'white') root.dataset.accentWhite = ''
+    else delete root.dataset.accentWhite
   } catch {}
 })()
 `

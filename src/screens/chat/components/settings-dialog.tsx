@@ -223,6 +223,13 @@ const accentColorOptions = [
     hover: '#ca8a04',
     light: 'rgba(234, 179, 8, 0.10)',
   },
+  {
+    value: 'white',
+    label: 'White',
+    accent: '#ffffff',
+    hover: '#e5e5e5',
+    light: 'rgba(255, 255, 255, 0.10)',
+  },
 ] as const
 
 const chatWidthOptions = [
@@ -526,6 +533,9 @@ export function SettingsDialog({
     root.style.setProperty('--opencami-accent', selected.accent)
     root.style.setProperty('--opencami-accent-hover', selected.hover)
     root.style.setProperty('--opencami-accent-light', selected.light)
+    root.style.setProperty('--opencami-accent-fg', value === 'white' ? '#1a1a1a' : '#ffffff')
+    if (value === 'white') root.dataset.accentWhite = ''
+    else delete root.dataset.accentWhite
   }
 
   function applyChatWidth(value: ChatWidthValue) {

@@ -121,7 +121,7 @@ function PromptInput({
         <div
           onClick={handleClick}
           className={cn(
-            'bg-surface cursor-text rounded-[22px] outline outline-ink/10 shadow-[0px_12px_32px_0px_rgba(0,0,0,0.05)] py-3 gap-3 flex flex-col',
+            'bg-surface dark:bg-primary-200 cursor-text rounded-[22px] outline outline-ink/10 shadow-[0px_12px_32px_0px_rgba(0,0,0,0.05)] py-3 gap-3 flex flex-col',
             disabled && 'cursor-not-allowed opacity-60',
             className,
           )}
