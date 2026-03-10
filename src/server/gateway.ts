@@ -263,7 +263,7 @@ function buildConnectParams(url: string, token: string, password: string, nonce:
       mode: clientMode,
       instanceId: loadOrCreateInstanceId(),
     },
-    caps: [],
+    caps: ['tool-events'],
     auth: {
       token: token || undefined,
       password: password || undefined,
@@ -528,7 +528,7 @@ class PersistentGatewayConnection {
 
         // Notify session-specific listeners
         if (sessionKey) {
-          const listeners = this.sessionListeners.get(sessionKey)
+          const listeners = this._findListenersForSessionKey(sessionKey)
           if (listeners && listeners.size > 0) {
             for (const listener of listeners) {
               try { listener(event) } catch {}
@@ -561,6 +561,46 @@ class PersistentGatewayConnection {
     }
     return null
   }
+
+  /**
+   * Find all listeners that should receive events for a given canonical sessionKey.
+   * The gateway sends canonical keys like "agent:main:main" but clients subscribe
+   * with short keys like "main". We need to match both forms.
+   */
+  private _findListenersForSessionKey(canonicalKey: string): Set<StreamListener> | null {
+    // Direct match first (most common after key resolution)
+    const direct = this.sessionListeners.get(canonicalKey)
+    if (direct && direct.size > 0) return direct
+
+    // Try matching short key: "agent:main:main" → "main", "agent:opus:work" → "work"
+    // Gateway canonical keys follow the pattern "agent:<model>:<shortKey>"
+    const parts = canonicalKey.split(':')
+    if (parts.length >= 3 && parts[0] === 'agent') {
+      const shortKey = parts.slice(2).join(':')
+      const short = this.sessionListeners.get(shortKey)
+      if (short && short.size > 0) {
+        // Migrate listeners to canonical key for future efficiency
+        this.sessionListeners.set(canonicalKey, short)
+        this.sessionListeners.delete(shortKey)
+        // Also store canonical mapping so unsubscribe still works
+        if (!this._keyAliases) this._keyAliases = new Map()
+        this._keyAliases.set(shortKey, canonicalKey)
+        return short
+      }
+    }
+
+    // Also check if the input IS a short key and we have a canonical version
+    for (const [registeredKey, listeners] of this.sessionListeners) {
+      if (registeredKey.endsWith(':' + canonicalKey) && listeners.size > 0) {
+        return listeners
+      }
+    }
+
+    return null
+  }
+
+  // Track key aliases for unsubscribe
+  private _keyAliases?: Map<string, string>
 
   private _onClose() {
     const wasConnected = this.connected
@@ -623,27 +663,46 @@ class PersistentGatewayConnection {
 
   /** Subscribe to events for a specific sessionKey. Returns an unsubscribe function. */
   subscribe(sessionKey: string, listener: StreamListener): () => void {
-    let listeners = this.sessionListeners.get(sessionKey)
+    // Check if we already have a canonical alias for this key
+    const resolvedKey = this._keyAliases?.get(sessionKey) ?? sessionKey
+    let listeners = this.sessionListeners.get(resolvedKey)
     if (!listeners) {
       listeners = new Set()
-      this.sessionListeners.set(sessionKey, listeners)
+      this.sessionListeners.set(resolvedKey, listeners)
     }
     listeners.add(listener)
 
-    // Flush any buffered events to the new subscriber
-    const buf = this.eventBuffer.get(sessionKey)
-    if (buf) {
-      this.eventBuffer.delete(sessionKey)
-      clearTimeout(buf.timer)
-      for (const event of buf.events) {
-        try { listener(event) } catch {}
+    // Flush any buffered events to the new subscriber — check both short and canonical keys
+    const keysToCheck = [resolvedKey]
+    // Also check canonical variants that might have been buffered
+    for (const bufKey of this.eventBuffer.keys()) {
+      if (bufKey === resolvedKey) continue
+      // Match "agent:*:main" against "main"
+      if (bufKey.endsWith(':' + resolvedKey) || resolvedKey.endsWith(':' + bufKey)) {
+        keysToCheck.push(bufKey)
+      }
+    }
+    for (const key of keysToCheck) {
+      const buf = this.eventBuffer.get(key)
+      if (buf) {
+        this.eventBuffer.delete(key)
+        clearTimeout(buf.timer)
+        for (const event of buf.events) {
+          try { listener(event) } catch {}
+        }
       }
     }
 
     return () => {
       listeners.delete(listener)
       if (listeners.size === 0) {
-        this.sessionListeners.delete(sessionKey)
+        this.sessionListeners.delete(resolvedKey)
+        // Also clean up any aliases pointing to this key
+        if (this._keyAliases) {
+          for (const [alias, target] of this._keyAliases) {
+            if (target === resolvedKey) this._keyAliases.delete(alias)
+          }
+        }
       }
     }
   }
