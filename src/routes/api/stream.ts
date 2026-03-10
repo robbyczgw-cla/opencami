@@ -1,135 +1,111 @@
-import { PassThrough } from 'node:stream'
-import { Readable } from 'node:stream'
+import { PassThrough, Readable } from 'node:stream'
 import { createFileRoute } from '@tanstack/react-router'
-import {
-  subscribeGatewayEvents,
-  type GatewayEvent,
-} from '../../server/gateway'
+import { acquireGatewayClient } from '../../server/gateway'
+
+type StreamEventPayload = {
+  event: string
+  payload?: unknown
+  seq?: number
+  stateVersion?: number
+}
 
 export const Route = createFileRoute('/api/stream')({
   server: {
     handlers: {
       GET: async ({ request }) => {
         const url = new URL(request.url)
-        const sessionKey = url.searchParams.get('sessionKey')
+        const sessionKey = url.searchParams.get('sessionKey')?.trim() || ''
+        const friendlyId = url.searchParams.get('friendlyId')?.trim() || ''
+        const key = sessionKey || friendlyId
 
-        if (!sessionKey) {
+        if (!key) {
           return new Response(
-            JSON.stringify({ ok: false, error: 'sessionKey required' }),
+            JSON.stringify({ ok: false, error: 'sessionKey or friendlyId required' }),
             { status: 400, headers: { 'content-type': 'application/json' } },
           )
         }
 
-        // Use Node.js PassThrough stream — Web ReadableStream gets buffered by
-        // Vite's dev server, causing the browser to only see data after the
-        // stream ends. PassThrough + Readable.toWeb() bypasses this buffering.
         const pass = new PassThrough()
         const encoder = new TextEncoder()
 
         let closed = false
-        let unsubscribe: (() => void) | null = null
+        let heartbeat: ReturnType<typeof setInterval> | null = null
+        let releaseClient: (() => void) | null = null
 
-        function sendSSE(event: string, data: unknown) {
+        function writeChunk(chunk: string) {
           if (closed) return
           try {
-            pass.write(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`))
+            pass.write(encoder.encode(chunk))
           } catch {
-            // stream may have closed
+            cleanup()
           }
+        }
+
+        function send(data: StreamEventPayload) {
+          writeChunk(`data: ${JSON.stringify(data)}\n\n`)
         }
 
         function cleanup() {
           if (closed) return
           closed = true
-          if (unsubscribe) {
-            unsubscribe()
-            unsubscribe = null
+          if (heartbeat) {
+            clearInterval(heartbeat)
+            heartbeat = null
           }
-          try { pass.end() } catch {}
+          if (releaseClient) {
+            releaseClient()
+            releaseClient = null
+          }
+          try {
+            pass.end()
+          } catch {
+            // ignore
+          }
         }
 
-        // Send initial ping to establish connection
-        pass.write(encoder.encode(': connected\n\n'))
+        writeChunk(': connected\n\n')
+        heartbeat = setInterval(() => {
+          writeChunk('event: ping\ndata: {}\n\n')
+        }, 15000)
 
-        // Track whether we've received agent-stream events.
-        // If we get agent events, prefer those for deltas (they're raw
-        // token deltas). chat.delta events contain accumulated buffered
-        // text which can overlap / duplicate the agent stream.
-        let gotAgentStream = false
+        try {
+          const handle = await acquireGatewayClient(key, {
+            onEvent(event) {
+              // Filter events to only forward those relevant to this session.
+              // The gateway broadcasts ALL events to every connected client.
+              const p = event.payload as Record<string, unknown> | undefined
+              const eventSessionKey = typeof p?.sessionKey === 'string' ? p.sessionKey : ''
 
-        unsubscribe = subscribeGatewayEvents(sessionKey, (evt: GatewayEvent) => {
-          if (evt.event === 'agent') {
-            const payload = evt.payload as Record<string, unknown>
-            const agentStream = payload.stream as string | undefined
-
-            if (agentStream === 'assistant') {
-              gotAgentStream = true
-              const data = (payload.data ?? payload) as Record<string, unknown>
-              const text =
-                typeof data.delta === 'string'
-                  ? data.delta
-                  : typeof data.text === 'string'
-                    ? data.text
-                    : typeof payload.text === 'string'
-                      ? payload.text
-                      : typeof payload.delta === 'string'
-                        ? payload.delta
-                        : ''
-              if (text) {
-                sendSSE('delta', { text, sessionKey })
+              // Allow events without a sessionKey (health, presence, tick, etc.)
+              // Allow events matching this session's key (exact or agent: prefixed)
+              if (eventSessionKey && !eventSessionKey.includes(key)) {
+                return
               }
-            } else if (agentStream === 'tool') {
-              gotAgentStream = true
-              const tdata = (payload.data ?? payload) as Record<string, unknown>
-              sendSSE('tool', {
-                name: tdata.name ?? tdata.toolName ?? payload.name ?? '',
-                status: tdata.phase ?? tdata.status ?? payload.phase ?? 'running',
-                id: tdata.id ?? tdata.toolCallId ?? payload.id ?? '',
-                sessionKey,
+
+              send({
+                event: event.event,
+                payload: event.payload,
+                seq: event.seq,
+                stateVersion: event.stateVersion,
               })
-            } else if (agentStream === 'lifecycle') {
-              const ldata = (payload.data ?? payload) as Record<string, unknown>
-              const phase = (ldata.phase ?? payload.phase) as string | undefined
-              if (phase === 'end' || phase === 'error') {
-                sendSSE('done', {
-                  sessionKey,
-                  status: phase,
-                  error: phase === 'error' ? payload.error : undefined,
-                })
-                cleanup()
-              }
-            }
-          } else if (evt.event === 'chat') {
-            const payload = evt.payload as Record<string, unknown>
-            // Gateway sends `state` (not `kind`) — "delta" or "final"
-            const state = (payload.state ?? payload.kind) as string | undefined
-            const msg = payload.message as Record<string, unknown> | undefined
+            },
+            onError(error) {
+              send({ event: 'error', payload: error.message })
+            },
+          })
 
-            if (state === 'delta' && !gotAgentStream) {
-              const content = Array.isArray(msg?.content)
-                ? (msg.content as Record<string, unknown>[])
-                : []
-              const firstBlock = content[0]
-              const text: string =
-                typeof firstBlock?.text === 'string'
-                  ? firstBlock.text
-                  : typeof payload.text === 'string'
-                    ? payload.text
-                    : typeof payload.delta === 'string'
-                      ? payload.delta
-                      : ''
-              if (text) {
-                sendSSE('delta', { text, sessionKey })
-              }
-            } else if (state === 'final') {
-              sendSSE('done', { sessionKey, status: 'end' })
-              cleanup()
-            }
+          if (closed) {
+            handle.release()
+          } else {
+            releaseClient = handle.release
           }
-        })
+        } catch (error: unknown) {
+          const message = error instanceof Error ? error.message : String(error)
+          send({ event: 'error', payload: message })
+          cleanup()
+        }
 
-        // Handle client disconnect
-        request.signal?.addEventListener('abort', cleanup)
+        request.signal.addEventListener('abort', cleanup, { once: true })
 
         const webStream = Readable.toWeb(pass) as ReadableStream<Uint8Array>
 
