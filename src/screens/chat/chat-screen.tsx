@@ -839,7 +839,10 @@ export function ChatScreen({
       }
 
       const sessionKeyForSend =
-        forcedSessionKey || resolvedSessionKey || activeSessionKey
+        forcedSessionKey ||
+        resolvedSessionKey ||
+        activeSessionKey ||
+        activeFriendlyId
       sendMessage(
         sessionKeyForSend,
         activeFriendlyId,
@@ -898,7 +901,10 @@ export function ChatScreen({
     (suggestion: string) => {
       if (isNewChat || !suggestion.trim()) return
       const sessionKeyForSend =
-        forcedSessionKey || resolvedSessionKey || activeSessionKey
+        forcedSessionKey ||
+        resolvedSessionKey ||
+        activeSessionKey ||
+        activeFriendlyId
       if (!sessionKeyForSend) return
       sendMessage(sessionKeyForSend, activeFriendlyId, suggestion.trim())
     },
