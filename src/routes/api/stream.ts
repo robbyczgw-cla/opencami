@@ -28,6 +28,13 @@ export const Route = createFileRoute('/api/stream')({
 
         let closed = false
         let unsubscribe: (() => void) | null = null
+        let doneFallbackTimer: ReturnType<typeof setTimeout> | null = null
+
+        function clearDoneFallbackTimer() {
+          if (!doneFallbackTimer) return
+          clearTimeout(doneFallbackTimer)
+          doneFallbackTimer = null
+        }
 
         function sendSSE(event: string, data: unknown) {
           if (closed) return
@@ -41,6 +48,7 @@ export const Route = createFileRoute('/api/stream')({
         function cleanup() {
           if (closed) return
           closed = true
+          clearDoneFallbackTimer()
           if (unsubscribe) {
             unsubscribe()
             unsubscribe = null
@@ -90,13 +98,39 @@ export const Route = createFileRoute('/api/stream')({
             } else if (agentStream === 'lifecycle') {
               const ldata = (payload.data ?? payload) as Record<string, unknown>
               const phase = (ldata.phase ?? payload.phase) as string | undefined
-              if (phase === 'end' || phase === 'error') {
+              const error =
+                (ldata.error as string | undefined) ??
+                (payload.error as string | undefined)
+
+              if (phase === 'error') {
+                clearDoneFallbackTimer()
                 sendSSE('done', {
                   sessionKey,
                   status: phase,
-                  error: phase === 'error' ? payload.error : undefined,
+                  error,
                 })
                 cleanup()
+              } else if (phase === 'end') {
+                // Tool-enabled runs can emit lifecycle:end before the gateway
+                // broadcasts chat.final. If we close the SSE immediately, the
+                // client refetches history too early and misses the final
+                // assistant message until a manual refresh. Prefer chat.final
+                // when it arrives, but keep a short fallback so the stream
+                // still completes if chat.final never shows up.
+                clearDoneFallbackTimer()
+                doneFallbackTimer = setTimeout(() => {
+                  console.warn('[api/stream] lifecycle:end fallback -> done', {
+                    sessionKey,
+                    event: evt.event,
+                    stream: agentStream,
+                    payload,
+                  })
+                  sendSSE('done', {
+                    sessionKey,
+                    status: phase,
+                  })
+                  cleanup()
+                }, 1500)
               }
             }
           } else if (evt.event === 'chat') {
@@ -122,7 +156,16 @@ export const Route = createFileRoute('/api/stream')({
                 sendSSE('delta', { text, sessionKey })
               }
             } else if (state === 'final') {
+              clearDoneFallbackTimer()
               sendSSE('done', { sessionKey, status: 'end' })
+              cleanup()
+            } else if (state === 'error') {
+              clearDoneFallbackTimer()
+              sendSSE('done', {
+                sessionKey,
+                status: 'error',
+                error: payload.errorMessage,
+              })
               cleanup()
             }
           }
