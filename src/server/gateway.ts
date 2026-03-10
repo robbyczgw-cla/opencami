@@ -51,6 +51,16 @@ export type GatewayEvent = {
 
 export type StreamListener = (event: GatewayEvent) => void
 
+export function extractGatewayEventSessionKey(event: GatewayEvent): string | null {
+  const payload = event.payload
+  if (typeof payload.sessionKey === 'string') return payload.sessionKey
+  if (typeof payload.session === 'string') return payload.session
+  if (payload.data && typeof (payload.data as any)?.sessionKey === 'string') {
+    return (payload.data as any).sessionKey
+  }
+  return null
+}
+
 // ─── Config helpers ─────────────────────────────────────────────────────
 
 function getGatewayConfig() {
@@ -551,6 +561,15 @@ class PersistentGatewayConnection {
         // Determine which sessionKey this event belongs to
         const sessionKey = this._extractSessionKey(event)
 
+        console.log('[gateway-ws:dispatch]', {
+          event: event.event,
+          seq: event.seq ?? null,
+          sessionKey,
+          directListeners: sessionKey ? (this.sessionListeners.get(sessionKey)?.size ?? 0) : 0,
+          globalListeners: this.globalListeners.size,
+          bufferedEvents: sessionKey ? (this.eventBuffer.get(sessionKey)?.events.length ?? 0) : 0,
+        })
+
         // Notify global listeners
         for (const listener of this.globalListeners) {
           try { listener(event) } catch {}
@@ -581,15 +600,7 @@ class PersistentGatewayConnection {
   }
 
   private _extractSessionKey(event: GatewayEvent): string | null {
-    // Events typically carry sessionKey in the payload
-    const payload = event.payload
-    if (typeof payload.sessionKey === 'string') return payload.sessionKey
-    if (typeof payload.session === 'string') return payload.session
-    // Some events nest it deeper
-    if (payload.data && typeof (payload.data as any)?.sessionKey === 'string') {
-      return (payload.data as any).sessionKey
-    }
-    return null
+    return extractGatewayEventSessionKey(event)
   }
 
   private _onClose() {

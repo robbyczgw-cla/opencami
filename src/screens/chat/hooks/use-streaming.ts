@@ -183,6 +183,7 @@ export function useStreaming(options: {
 
   const start = useCallback(
     function start(sessionKey: string) {
+      console.log('[stream:client] start', { sessionKey })
       doneRef.current = false
       clearPolling()
       streamStartRef.current = Date.now()
@@ -204,9 +205,14 @@ export function useStreaming(options: {
       const es = new EventSource(`/api/stream?sessionKey=${encodeURIComponent(sessionKey)}`)
       eventSourceRef.current = es
 
+      es.onopen = () => {
+        console.log('[stream:client] open', { sessionKey, readyState: es.readyState })
+      }
+
       es.addEventListener('delta', (e) => {
         try {
           const data = JSON.parse(e.data) as { text: string; sessionKey: string }
+          console.log('[stream:client] delta', { sessionKey, data })
           setState((prev) => ({
             ...prev,
             text: prev.text + data.text,
@@ -223,6 +229,7 @@ export function useStreaming(options: {
             id: string
             sessionKey: string
           }
+          console.log('[stream:client] tool', { sessionKey, data })
           setState((prev) => {
             const existingIdx = prev.tools.findIndex((t) => t.id === data.id)
             const tools = [...prev.tools]
@@ -239,6 +246,7 @@ export function useStreaming(options: {
       es.addEventListener('done', (e) => {
         try {
           const data = JSON.parse(e.data) as { sessionKey: string; status: string }
+          console.log('[stream:client] done', { sessionKey, data })
           doneRef.current = true
           clearPolling()
           es.close()
@@ -251,6 +259,7 @@ export function useStreaming(options: {
       })
 
       es.onerror = () => {
+        console.log('[stream:client] error', { sessionKey, readyState: es.readyState })
         // EventSource auto-reconnects on error, but if the connection is
         // definitely broken we fall back to polling. Close after a brief
         // moment so we don't spin-reconnect.

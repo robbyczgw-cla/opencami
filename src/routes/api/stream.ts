@@ -2,7 +2,8 @@ import { PassThrough } from 'node:stream'
 import { Readable } from 'node:stream'
 import { createFileRoute } from '@tanstack/react-router'
 import {
-  subscribeGatewayEvents,
+  subscribeAllGatewayEvents,
+  extractGatewayEventSessionKey,
   type GatewayEvent,
 } from '../../server/gateway'
 
@@ -25,6 +26,9 @@ export const Route = createFileRoute('/api/stream')({
         // stream ends. PassThrough + Readable.toWeb() bypasses this buffering.
         const pass = new PassThrough()
         const encoder = new TextEncoder()
+        const streamDebugId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+
+        console.log('[stream:sse] connect', { streamDebugId, sessionKey, url: request.url })
 
         let closed = false
         let unsubscribe: (() => void) | null = null
@@ -65,10 +69,16 @@ export const Route = createFileRoute('/api/stream')({
 
         function sendSSE(event: string, data: unknown) {
           if (closed) return
+          console.log('[stream:sse] emit', { streamDebugId, sessionKey, event, data })
           try {
             pass.write(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`))
-          } catch {
-            // stream may have closed
+          } catch (error) {
+            console.log('[stream:sse] emit failed', {
+              streamDebugId,
+              sessionKey,
+              event,
+              error: error instanceof Error ? error.message : String(error),
+            })
           }
         }
 
@@ -104,6 +114,7 @@ export const Route = createFileRoute('/api/stream')({
 
         function cleanup() {
           if (closed) return
+          console.log('[stream:sse] cleanup', { streamDebugId, sessionKey })
           closed = true
           clearPendingDoneTimeout()
           clearPendingLifecycleEndTimeout()
@@ -123,7 +134,37 @@ export const Route = createFileRoute('/api/stream')({
         // text which can overlap / duplicate the agent stream.
         let gotAgentStream = false
 
-        unsubscribe = subscribeGatewayEvents(sessionKey, (evt: GatewayEvent) => {
+        // Subscribe to ALL events and match by sessionKey prefix/suffix.
+        // The browser sends sessionKey like "main" but events arrive with
+        // full keys like "agent:main:main" or "agent:main:<uuid>".
+        // We need to catch both.
+        const matchesSession = (evtKey: string | null): boolean => {
+          if (!evtKey) return false
+          if (evtKey === sessionKey) return true
+          const parts = evtKey.split(':')
+          return parts.includes(sessionKey) || evtKey.startsWith(sessionKey + ':') || evtKey.endsWith(':' + sessionKey)
+        }
+
+        unsubscribe = subscribeAllGatewayEvents((evt: GatewayEvent) => {
+          const evtSessionKey = extractGatewayEventSessionKey(evt)
+          const matched = matchesSession(evtSessionKey)
+
+          console.log('[stream:sse] gateway event', {
+            streamDebugId,
+            requestedSessionKey: sessionKey,
+            evtSessionKey,
+            matched,
+            event: evt.event,
+            seq: evt.seq ?? null,
+            payloadKeys: Object.keys(evt.payload ?? {}),
+            dataKeys:
+              evt.payload?.data && typeof evt.payload.data === 'object'
+                ? Object.keys(evt.payload.data as Record<string, unknown>)
+                : [],
+          })
+
+          if (!matched) return
+
           if (evt.event !== 'agent') {
             clearPendingLifecycleEndTimeout()
           }
@@ -131,6 +172,14 @@ export const Route = createFileRoute('/api/stream')({
           if (evt.event === 'agent') {
             const payload = evt.payload as Record<string, unknown>
             const agentStream = payload.stream as string | undefined
+
+            console.log('[stream:sse] matched agent event', {
+              streamDebugId,
+              sessionKey,
+              evtSessionKey,
+              agentStream,
+              payload,
+            })
 
             if (agentStream === 'assistant') {
               gotAgentStream = true
@@ -184,6 +233,12 @@ export const Route = createFileRoute('/api/stream')({
             }
           } else if (evt.event === 'chat') {
             const payload = evt.payload as Record<string, unknown>
+            console.log('[stream:sse] matched chat event', {
+              streamDebugId,
+              sessionKey,
+              evtSessionKey,
+              payload,
+            })
             // Gateway sends `state` (not `kind`) — "delta" or "final"
             const state = (payload.state ?? payload.kind) as string | undefined
             const msg = payload.message as Record<string, unknown> | undefined
@@ -215,7 +270,10 @@ export const Route = createFileRoute('/api/stream')({
         })
 
         // Handle client disconnect
-        request.signal?.addEventListener('abort', cleanup)
+        request.signal?.addEventListener('abort', () => {
+          console.log('[stream:sse] abort', { streamDebugId, sessionKey })
+          cleanup()
+        })
 
         const webStream = Readable.toWeb(pass) as ReadableStream<Uint8Array>
 
