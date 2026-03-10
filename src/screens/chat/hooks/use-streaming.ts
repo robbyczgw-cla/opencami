@@ -1,14 +1,30 @@
-import { useCallback, useRef, useState } from 'react'
+import {
+  useCallback,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from 'react'
 
 export type StreamingState = {
-  /** Whether we're currently receiving streamed content */
   active: boolean
-  /** Accumulated text from assistant deltas */
   text: string
-  /** Currently active tool calls */
   tools: Array<{ name: string; status: string; id: string }>
-  /** The sessionKey this stream is for */
   sessionKey: string | null
+}
+
+type RawGatewayEvent = {
+  event?: string
+  payload?: unknown
+  seq?: number
+  stateVersion?: number
+}
+
+type RawAgentPayload = {
+  runId?: unknown
+  sessionKey?: unknown
+  stream?: unknown
+  data?: unknown
 }
 
 const INITIAL_STATE: StreamingState = {
@@ -18,10 +34,6 @@ const INITIAL_STATE: StreamingState = {
   sessionKey: null,
 }
 
-/**
- * Hook that manages an SSE connection to /api/stream for real-time
- * message streaming from the Gateway's persistent WebSocket.
- */
 export function useStreaming(options: {
   onDone: (sessionKey: string) => void
   onError?: (error: string) => void
@@ -29,10 +41,9 @@ export function useStreaming(options: {
 }) {
   const [state, setState] = useState<StreamingState>(INITIAL_STATE)
   const eventSourceRef = useRef<EventSource | null>(null)
-  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const pollingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const streamStartRef = useRef<number | null>(null)
   const doneRef = useRef(false)
+  const finalStateRef = useRef(false)
+  const activeRunsRef = useRef(new Set<string>())
   const onDoneRef = useRef(options.onDone)
   const onErrorRef = useRef(options.onError)
   const onAssistantDeltaRef = useRef(options.onAssistantDelta)
@@ -40,50 +51,10 @@ export function useStreaming(options: {
   onErrorRef.current = options.onError
   onAssistantDeltaRef.current = options.onAssistantDelta
 
-  function clearPolling() {
-    if (pollingTimeoutRef.current) {
-      window.clearTimeout(pollingTimeoutRef.current)
-      pollingTimeoutRef.current = null
-    }
-    if (pollingRef.current) {
-      window.clearInterval(pollingRef.current)
-      pollingRef.current = null
-    }
-  }
-
-  function startPolling(sessionKey: string, startedAt: number) {
-    if (pollingRef.current) return
-    pollingRef.current = window.setInterval(async () => {
-      try {
-        const res = await fetch(
-          `/api/history?sessionKey=${encodeURIComponent(sessionKey)}`,
-        )
-        if (!res.ok) return
-        const data = (await res.json()) as {
-          messages?: Array<{ role?: string; timestamp?: number }>
-        }
-        const messages = Array.isArray(data.messages) ? data.messages : []
-        // Allow 10s clock-skew tolerance between server and browser
-        const hasNewAssistant = messages.some((message) => {
-          if (!message || message.role !== 'assistant') return false
-          if (typeof message.timestamp !== 'number') return false
-          return message.timestamp > startedAt - 3_000
-        })
-        if (!hasNewAssistant) return
-        if (eventSourceRef.current) {
-          eventSourceRef.current.close()
-          eventSourceRef.current = null
-        }
-        clearPolling()
-        setState((prev) => ({ ...prev, active: false }))
-        onDoneRef.current(sessionKey)
-      } catch {}
-    }, 2000)
-  }
-
   const stop = useCallback((options?: { preserveState?: boolean }) => {
     doneRef.current = true
-    clearPolling()
+    finalStateRef.current = false
+    activeRunsRef.current.clear()
     if (eventSourceRef.current) {
       eventSourceRef.current.close()
       eventSourceRef.current = null
@@ -95,92 +66,176 @@ export function useStreaming(options: {
     setState(INITIAL_STATE)
   }, [])
 
-  const start = useCallback(
-    function start(sessionKey: string) {
-      doneRef.current = false
-      clearPolling()
-      streamStartRef.current = Date.now()
-      // Close any existing connection
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close()
-        eventSourceRef.current = null
-      }
+  const start = useCallback(function start(sessionKey: string) {
+    doneRef.current = false
+    finalStateRef.current = false
+    activeRunsRef.current.clear()
 
-      setState({
-        active: true,
-        text: '',
-        tools: [],
-        sessionKey,
-      })
+    setState({
+      active: true,
+      text: '',
+      tools: [],
+      sessionKey,
+    })
 
-      const es = new EventSource(`/api/stream?sessionKey=${encodeURIComponent(sessionKey)}`)
-      eventSourceRef.current = es
+    // If we already have an open EventSource for this session, reuse it.
+    // The server stream stays open across multiple messages.
+    if (eventSourceRef.current) {
+      return
+    }
 
-      es.addEventListener('delta', (e) => {
-        try {
-          const data = JSON.parse(e.data) as { text: string; sessionKey: string }
-          setState((prev) => ({
-            ...prev,
-            text: prev.text + data.text,
-          }))
-          onAssistantDeltaRef.current?.({ text: data.text, sessionKey: data.sessionKey })
-        } catch {}
-      })
+    const es = new EventSource(`/api/stream?sessionKey=${encodeURIComponent(sessionKey)}`)
+    eventSourceRef.current = es
 
-      es.addEventListener('tool', (e) => {
-        try {
-          const data = JSON.parse(e.data) as {
-            name: string
-            status: string
-            id: string
-            sessionKey: string
-          }
-          setState((prev) => {
-            const existingIdx = prev.tools.findIndex((t) => t.id === data.id)
-            const tools = [...prev.tools]
-            if (existingIdx >= 0) {
-              tools[existingIdx] = { name: data.name, status: data.status, id: data.id }
-            } else {
-              tools.push({ name: data.name, status: data.status, id: data.id })
-            }
-            return { ...prev, tools }
+    es.addEventListener('message', (e) => {
+      try {
+        const data = JSON.parse(e.data) as RawGatewayEvent
+        if (data.event === 'agent') {
+          handleAgentEvent(data.payload, sessionKey, {
+            setState,
+            onAssistantDelta: onAssistantDeltaRef.current,
+            activeRuns: activeRunsRef.current,
           })
-        } catch {}
-      })
-
-      es.addEventListener('done', (e) => {
-        try {
-          const data = JSON.parse(e.data) as { sessionKey: string; status: string }
-          doneRef.current = true
-          clearPolling()
-          es.close()
-          eventSourceRef.current = null
-          // Mark stream as inactive but keep text/tools so the UI can
-          // continue displaying them until history refetch completes.
-          setState((prev) => ({ ...prev, active: false }))
-          onDoneRef.current(data.sessionKey)
-        } catch {}
-      })
-
-      es.onerror = () => {
-        // EventSource auto-reconnects on error, but if the connection is
-        // definitely broken we fall back to polling. Close after a brief
-        // moment so we don't spin-reconnect.
-        if (es.readyState === EventSource.CLOSED) {
-          es.close()
-          eventSourceRef.current = null
-          setState(INITIAL_STATE)
-          onErrorRef.current?.('Stream connection lost')
+          return
         }
+
+        if (data.event === 'chat') {
+          const chatPayload = asRecord(data.payload)
+          const eventSessionKey =
+            normalizeString(chatPayload?.sessionKey) || sessionKey
+          const chatState = normalizeString(chatPayload?.state)
+
+          if (chatState === 'final') {
+            finalStateRef.current = true
+          }
+
+          if (
+            !doneRef.current &&
+            finalStateRef.current &&
+            (chatState === 'final' || activeRunsRef.current.size === 0)
+          ) {
+            doneRef.current = true
+            // Don't close the EventSource — keep it alive for subsequent
+            // messages in the same chat. The server stream stays open and
+            // will forward events for the next chat.send call too.
+            setState((prev) => ({ ...prev, active: false }))
+            onDoneRef.current(eventSessionKey)
+          }
+          return
+        }
+
+        if (data.event === 'error') {
+          const message =
+            typeof data.payload === 'string'
+              ? data.payload
+              : 'Stream connection lost'
+          onErrorRef.current?.(message)
+        }
+      } catch {
+        // ignore parse errors
       }
-      pollingTimeoutRef.current = window.setTimeout(() => {
-        if (doneRef.current) return
-        const startedAt = streamStartRef.current ?? Date.now()
-        startPolling(sessionKey, startedAt)
-      }, 3000)
-    },
-    [],
-  )
+    })
+
+    es.onerror = () => {
+      if (doneRef.current) return
+      if (es.readyState === EventSource.CLOSED) {
+        eventSourceRef.current = null
+        setState((prev) => ({ ...prev, active: false }))
+        onErrorRef.current?.('Stream connection lost')
+      }
+    }
+  }, [])
 
   return { streaming: state, startStream: start, stopStream: stop }
+}
+
+function handleAgentEvent(
+  payload: unknown,
+  fallbackSessionKey: string,
+  options: {
+    setState: Dispatch<SetStateAction<StreamingState>>
+    onAssistantDelta?: (payload: { text: string; sessionKey: string }) => void
+    activeRuns: Set<string>
+  },
+) {
+  const agentPayload = asRecord(payload) as RawAgentPayload | null
+  const stream = normalizeString(agentPayload?.stream)
+  const runId = normalizeString(agentPayload?.runId)
+  const sessionKey = normalizeString(agentPayload?.sessionKey) || fallbackSessionKey
+  const streamData = asRecord(agentPayload?.data)
+
+  if (runId) {
+    if (stream === 'lifecycle') {
+      const phase = normalizeString(streamData?.phase)
+      if (phase === 'end' || phase === 'error' || phase === 'abort') {
+        options.activeRuns.delete(runId)
+      } else if (phase) {
+        options.activeRuns.add(runId)
+      }
+    } else {
+      options.activeRuns.add(runId)
+    }
+  }
+
+  if (stream === 'assistant') {
+    const text = normalizeString(streamData?.delta) || normalizeString(streamData?.text)
+    if (!text) return
+    options.setState((prev) => ({
+      ...prev,
+      sessionKey,
+      text: prev.text + text,
+    }))
+    options.onAssistantDelta?.({ text, sessionKey })
+    return
+  }
+
+  if (!stream.includes('tool')) return
+
+  const toolId =
+    normalizeString(streamData?.toolCallId) ||
+    normalizeString(streamData?.id) ||
+    normalizeString(streamData?.callId) ||
+    `${runId || 'tool'}:${normalizeString(streamData?.toolName) || normalizeString(streamData?.name) || 'unknown'}`
+  const toolName =
+    normalizeString(streamData?.toolName) ||
+    normalizeString(streamData?.name) ||
+    'Tool'
+  const toolStatus = deriveToolStatus(stream, streamData)
+
+  options.setState((prev) => {
+    const tools = [...prev.tools]
+    const index = tools.findIndex((tool) => tool.id === toolId)
+    const nextTool = { id: toolId, name: toolName, status: toolStatus }
+    if (index >= 0) {
+      tools[index] = nextTool
+    } else {
+      tools.push(nextTool)
+    }
+    return {
+      ...prev,
+      sessionKey,
+      tools,
+    }
+  })
+}
+
+function deriveToolStatus(stream: string, data: Record<string, unknown> | null): string {
+  const explicitStatus =
+    normalizeString(data?.phase) ||
+    normalizeString(data?.status) ||
+    normalizeString(data?.state)
+  if (explicitStatus) return explicitStatus
+  if (stream.includes('result') || stream.includes('output')) return 'done'
+  if (stream.includes('call')) return 'running'
+  return 'running'
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object'
+    ? (value as Record<string, unknown>)
+    : null
+}
+
+function normalizeString(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : ''
 }

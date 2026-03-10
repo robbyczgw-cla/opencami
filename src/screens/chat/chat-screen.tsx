@@ -699,6 +699,12 @@ export function ChatScreen({
     streamingNotificationTextRef.current = ''
     streamStart()
 
+    // Start SSE stream BEFORE sending so we don't miss early events
+    const preStreamKey = sessionKey || friendlyId
+    if (preStreamKey) {
+      startStream(preStreamKey)
+    }
+
     fetch('/api/send', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
