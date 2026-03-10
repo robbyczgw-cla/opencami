@@ -3,6 +3,12 @@
 All notable changes to OpenCami are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [Semantic Versioning](https://semver.org/).
 
+## [1.8.10] - 2026-03-10
+
+### Fixed
+
+- 🔒 **pnpm lockfile sync** — Synchronized `pnpm-lock.yaml` after dependency removal to keep installs reproducible and CI consistent
+
 ## [1.8.9] - 2026-03-08
 
 ### Fixed
