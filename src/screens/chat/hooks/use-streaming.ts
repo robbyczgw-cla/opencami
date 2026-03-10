@@ -106,7 +106,7 @@ export function useStreaming(options: {
     }
   }
 
-  async function seedAssistantBaseline(sessionKey: string) {
+  async function seedAssistantBaseline(sessionKey: string, startedAt: number) {
     try {
       const res = await fetch(
         `/api/history?sessionKey=${encodeURIComponent(sessionKey)}`,
@@ -116,7 +116,16 @@ export function useStreaming(options: {
       const messages = Array.isArray(data.messages) ? data.messages : []
       baselineAssistantFingerprintsRef.current = new Set(
         messages
-          .filter((message) => message?.role === 'assistant')
+          .filter((message) => {
+            if (message?.role !== 'assistant') return false
+            const normalizedTimestamp = normalizeTimestamp(
+              message.createdAt ?? message.created_at ?? message.timestamp ?? message.time ?? message.ts,
+            )
+            if (!normalizedTimestamp) return true
+            // Baseline should represent assistant messages from BEFORE this stream.
+            // Avoid capturing the in-flight reply if history resolves late.
+            return normalizedTimestamp <= startedAt + 3_000
+          })
           .map((message) => fingerprintMessage(message)),
       )
     } catch {}
@@ -178,7 +187,7 @@ export function useStreaming(options: {
       clearPolling()
       streamStartRef.current = Date.now()
       baselineAssistantFingerprintsRef.current = new Set()
-      void seedAssistantBaseline(sessionKey)
+      void seedAssistantBaseline(sessionKey, streamStartRef.current ?? Date.now())
       // Close any existing connection
       if (eventSourceRef.current) {
         eventSourceRef.current.close()

@@ -518,6 +518,36 @@ class PersistentGatewayConnection {
           seq: parsed.seq,
         }
 
+        if (
+          process.env.OPENCAMI_DEBUG_GATEWAY_EVENTS === '1' ||
+          process.env.OPENCAMI_DEBUG_GATEWAY_EVENTS === 'true'
+        ) {
+          const payload = event.payload ?? {}
+          const stream = typeof payload.stream === 'string' ? payload.stream : ''
+          const state = typeof payload.state === 'string' ? payload.state : ''
+          const sessionKey =
+            typeof payload.sessionKey === 'string'
+              ? payload.sessionKey
+              : typeof payload.session === 'string'
+                ? payload.session
+                : typeof (payload as any).data?.sessionKey === 'string'
+                  ? (payload as any).data.sessionKey
+                  : ''
+          const payloadKeys = Object.keys(payload)
+          const dataKeys = payload.data && typeof payload.data === 'object'
+            ? Object.keys(payload.data as Record<string, unknown>)
+            : []
+          console.log('[gateway-ws:event]', {
+            event: event.event,
+            seq: event.seq,
+            stream,
+            state,
+            sessionKey,
+            payloadKeys,
+            dataKeys,
+          })
+        }
+
         // Determine which sessionKey this event belongs to
         const sessionKey = this._extractSessionKey(event)
 

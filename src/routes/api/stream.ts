@@ -30,6 +30,7 @@ export const Route = createFileRoute('/api/stream')({
         let unsubscribe: (() => void) | null = null
         let streamedAssistantText = ''
         let pendingDoneTimeout: ReturnType<typeof setTimeout> | null = null
+        let pendingLifecycleEndTimeout: ReturnType<typeof setTimeout> | null = null
 
         function extractMessageText(message: unknown): string {
           if (!message || typeof message !== 'object') return ''
@@ -77,8 +78,15 @@ export const Route = createFileRoute('/api/stream')({
           pendingDoneTimeout = null
         }
 
+        function clearPendingLifecycleEndTimeout() {
+          if (!pendingLifecycleEndTimeout) return
+          clearTimeout(pendingLifecycleEndTimeout)
+          pendingLifecycleEndTimeout = null
+        }
+
         function finishStream(status: string, error?: unknown, delayMs = 0) {
           clearPendingDoneTimeout()
+          clearPendingLifecycleEndTimeout()
           const finalize = () => {
             sendSSE('done', {
               sessionKey,
@@ -98,6 +106,7 @@ export const Route = createFileRoute('/api/stream')({
           if (closed) return
           closed = true
           clearPendingDoneTimeout()
+          clearPendingLifecycleEndTimeout()
           if (unsubscribe) {
             unsubscribe()
             unsubscribe = null
@@ -115,6 +124,10 @@ export const Route = createFileRoute('/api/stream')({
         let gotAgentStream = false
 
         unsubscribe = subscribeGatewayEvents(sessionKey, (evt: GatewayEvent) => {
+          if (evt.event !== 'agent') {
+            clearPendingLifecycleEndTimeout()
+          }
+
           if (evt.event === 'agent') {
             const payload = evt.payload as Record<string, unknown>
             const agentStream = payload.stream as string | undefined
@@ -148,15 +161,26 @@ export const Route = createFileRoute('/api/stream')({
             } else if (agentStream === 'lifecycle') {
               const ldata = (payload.data ?? payload) as Record<string, unknown>
               const phase = (ldata.phase ?? payload.phase) as string | undefined
-              if (phase === 'end') {
-                finishStream(phase, undefined, gotAgentStream ? 500 : 0)
-              } else if (phase === 'error') {
+              if (phase === 'error') {
                 finishStream(
                   phase,
                   ldata.error ?? payload.error,
                   0,
                 )
+              } else if (phase === 'end') {
+                // Gateway should emit chat.final on true turn completion, but in
+                // some tool-call flows that final can be missing/delayed. Use a
+                // quiescence fallback: if no further events arrive shortly after
+                // lifecycle:end, close the SSE to unblock the UI.
+                clearPendingLifecycleEndTimeout()
+                pendingLifecycleEndTimeout = setTimeout(() => {
+                  finishStream('end')
+                }, 1200)
+              } else {
+                clearPendingLifecycleEndTimeout()
               }
+            } else {
+              clearPendingLifecycleEndTimeout()
             }
           } else if (evt.event === 'chat') {
             const payload = evt.payload as Record<string, unknown>
