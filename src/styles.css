@@ -80,6 +80,7 @@ html {
 
   --color-surface: oklch(0.215 0 89.88); /* main chat area ~#212121 (lighter than sidebar) */
   --color-ink: oklch(0.94 0.002 80); /* off-white, not pure white */
+  --color-surface-deep: oklch(0.14 0 89.88); /* deeper than deepest */
 }
 
 .light {
@@ -538,14 +539,6 @@ html.tauri .tauri-drag-header {
 .opencami-accent-bg {
   background: var(--opencami-accent);
   color: var(--opencami-accent-fg);
-}
-
-[data-accent-white] .opencami-accent-text {
-  color: #ffffff;
-}
-
-[data-accent-white] .opencami-accent-soft {
-  color: #e5e5e5;
 }
 
 .opencami-accent-bg-hover:hover {
