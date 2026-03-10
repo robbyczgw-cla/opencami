@@ -263,7 +263,7 @@ function buildConnectParams(url: string, token: string, password: string, nonce:
       mode: clientMode,
       instanceId: loadOrCreateInstanceId(),
     },
-    caps: [],
+    caps: ['tool-events'],
     auth: {
       token: token || undefined,
       password: password || undefined,
@@ -463,7 +463,7 @@ class PersistentGatewayConnection {
           mode: 'webchat',
           instanceId: loadOrCreateInstanceId(),
         },
-        caps: [],
+        caps: ['tool-events'],
         auth: {
           token: token || undefined,
           password: password || undefined,
