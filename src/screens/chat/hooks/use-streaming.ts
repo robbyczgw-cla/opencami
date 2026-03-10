@@ -11,11 +11,65 @@ export type StreamingState = {
   sessionKey: string | null
 }
 
+type HistoryMessage = {
+  id?: string
+  role?: string
+  timestamp?: unknown
+  createdAt?: unknown
+  created_at?: unknown
+  time?: unknown
+  ts?: unknown
+  content?: unknown
+  text?: unknown
+}
+
 const INITIAL_STATE: StreamingState = {
   active: false,
   text: '',
   tools: [],
   sessionKey: null,
+}
+
+function normalizeTimestamp(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value < 1e12 ? value * 1000 : value
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (!trimmed) return null
+    const asNumber = Number(trimmed)
+    if (Number.isFinite(asNumber)) {
+      return asNumber < 1e12 ? asNumber * 1000 : asNumber
+    }
+    const parsed = Date.parse(trimmed)
+    if (!Number.isNaN(parsed)) return parsed
+  }
+  return null
+}
+
+function extractMessageText(message: HistoryMessage): string {
+  if (typeof message.text === 'string') return message.text
+  if (typeof message.content === 'string') return message.content
+  if (Array.isArray(message.content)) {
+    return message.content
+      .map((block) => {
+        if (!block || typeof block !== 'object') return ''
+        return block.type === 'text' && typeof block.text === 'string'
+          ? block.text
+          : ''
+      })
+      .join('')
+  }
+  return ''
+}
+
+function fingerprintMessage(message: HistoryMessage): string {
+  const normalizedTimestamp = normalizeTimestamp(
+    message.createdAt ?? message.created_at ?? message.timestamp ?? message.time ?? message.ts,
+  )
+  const text = extractMessageText(message)
+  const id = typeof message.id === 'string' ? message.id : ''
+  return JSON.stringify({ id, timestamp: normalizedTimestamp, text, role: message.role })
 }
 
 /**
@@ -32,6 +86,7 @@ export function useStreaming(options: {
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const pollingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const streamStartRef = useRef<number | null>(null)
+  const baselineAssistantFingerprintsRef = useRef<Set<string>>(new Set())
   const doneRef = useRef(false)
   const onDoneRef = useRef(options.onDone)
   const onErrorRef = useRef(options.onError)
@@ -51,6 +106,22 @@ export function useStreaming(options: {
     }
   }
 
+  async function seedAssistantBaseline(sessionKey: string) {
+    try {
+      const res = await fetch(
+        `/api/history?sessionKey=${encodeURIComponent(sessionKey)}`,
+      )
+      if (!res.ok) return
+      const data = (await res.json()) as { messages?: Array<HistoryMessage> }
+      const messages = Array.isArray(data.messages) ? data.messages : []
+      baselineAssistantFingerprintsRef.current = new Set(
+        messages
+          .filter((message) => message?.role === 'assistant')
+          .map((message) => fingerprintMessage(message)),
+      )
+    } catch {}
+  }
+
   function startPolling(sessionKey: string, startedAt: number) {
     if (pollingRef.current) return
     pollingRef.current = window.setInterval(async () => {
@@ -59,15 +130,21 @@ export function useStreaming(options: {
           `/api/history?sessionKey=${encodeURIComponent(sessionKey)}`,
         )
         if (!res.ok) return
-        const data = (await res.json()) as {
-          messages?: Array<{ role?: string; timestamp?: number }>
-        }
+        const data = (await res.json()) as { messages?: Array<HistoryMessage> }
         const messages = Array.isArray(data.messages) ? data.messages : []
-        // Allow 10s clock-skew tolerance between server and browser
+        const baselineFingerprints = baselineAssistantFingerprintsRef.current
+        // Allow 3s clock-skew tolerance between server and browser.
+        // Fallback to baseline-diff detection when timestamps are missing,
+        // ISO strings, seconds, or otherwise unreliable.
         const hasNewAssistant = messages.some((message) => {
           if (!message || message.role !== 'assistant') return false
-          if (typeof message.timestamp !== 'number') return false
-          return message.timestamp > startedAt - 3_000
+          const normalizedTimestamp = normalizeTimestamp(
+            message.createdAt ?? message.created_at ?? message.timestamp ?? message.time ?? message.ts,
+          )
+          if (normalizedTimestamp && normalizedTimestamp > startedAt - 3_000) {
+            return true
+          }
+          return !baselineFingerprints.has(fingerprintMessage(message))
         })
         if (!hasNewAssistant) return
         if (eventSourceRef.current) {
@@ -100,6 +177,8 @@ export function useStreaming(options: {
       doneRef.current = false
       clearPolling()
       streamStartRef.current = Date.now()
+      baselineAssistantFingerprintsRef.current = new Set()
+      void seedAssistantBaseline(sessionKey)
       // Close any existing connection
       if (eventSourceRef.current) {
         eventSourceRef.current.close()

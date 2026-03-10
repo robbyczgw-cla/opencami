@@ -29,6 +29,7 @@ export const Route = createFileRoute('/api/stream')({
         let closed = false
         let unsubscribe: (() => void) | null = null
         let streamedAssistantText = ''
+        let pendingDoneTimeout: ReturnType<typeof setTimeout> | null = null
 
         function extractMessageText(message: unknown): string {
           if (!message || typeof message !== 'object') return ''
@@ -70,9 +71,33 @@ export const Route = createFileRoute('/api/stream')({
           }
         }
 
+        function clearPendingDoneTimeout() {
+          if (!pendingDoneTimeout) return
+          clearTimeout(pendingDoneTimeout)
+          pendingDoneTimeout = null
+        }
+
+        function finishStream(status: string, error?: unknown, delayMs = 0) {
+          clearPendingDoneTimeout()
+          const finalize = () => {
+            sendSSE('done', {
+              sessionKey,
+              status,
+              error,
+            })
+            cleanup()
+          }
+          if (delayMs <= 0) {
+            finalize()
+            return
+          }
+          pendingDoneTimeout = setTimeout(finalize, delayMs)
+        }
+
         function cleanup() {
           if (closed) return
           closed = true
+          clearPendingDoneTimeout()
           if (unsubscribe) {
             unsubscribe()
             unsubscribe = null
@@ -123,16 +148,14 @@ export const Route = createFileRoute('/api/stream')({
             } else if (agentStream === 'lifecycle') {
               const ldata = (payload.data ?? payload) as Record<string, unknown>
               const phase = (ldata.phase ?? payload.phase) as string | undefined
-              if (phase === 'end' || phase === 'error') {
-                sendSSE('done', {
-                  sessionKey,
-                  status: phase,
-                  error:
-                    phase === 'error'
-                      ? (ldata.error ?? payload.error)
-                      : undefined,
-                })
-                cleanup()
+              if (phase === 'end') {
+                finishStream(phase, undefined, gotAgentStream ? 500 : 0)
+              } else if (phase === 'error') {
+                finishStream(
+                  phase,
+                  ldata.error ?? payload.error,
+                  0,
+                )
               }
             }
           } else if (evt.event === 'chat') {
@@ -160,15 +183,9 @@ export const Route = createFileRoute('/api/stream')({
               }
             } else if (state === 'final' || state === 'done') {
               emitMissingFinalText(extractMessageText(msg))
-              sendSSE('done', { sessionKey, status: 'end' })
-              cleanup()
+              finishStream('end')
             } else if (state === 'error') {
-              sendSSE('done', {
-                sessionKey,
-                status: 'error',
-                error: payload.errorMessage,
-              })
-              cleanup()
+              finishStream('error', payload.errorMessage)
             }
           }
         })
