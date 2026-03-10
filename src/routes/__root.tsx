@@ -158,20 +158,22 @@ const accentColorScript = `
   try {
     const stored = localStorage.getItem('opencami-accent-color')
     const map = {
-      green: { accent: '#22c55e', hover: '#16a34a', light: 'rgba(34, 197, 94, 0.10)' },
-      blue: { accent: '#3b82f6', hover: '#2563eb', light: 'rgba(59, 130, 246, 0.10)' },
-      purple: { accent: '#8b5cf6', hover: '#7c3aed', light: 'rgba(139, 92, 246, 0.10)' },
-      orange: { accent: '#f97316', hover: '#ea580c', light: 'rgba(249, 115, 22, 0.10)' },
-      pink: { accent: '#ec4899', hover: '#db2777', light: 'rgba(236, 72, 153, 0.10)' },
-      red: { accent: '#ef4444', hover: '#dc2626', light: 'rgba(239, 68, 68, 0.10)' },
-      cyan: { accent: '#06b6d4', hover: '#0891b2', light: 'rgba(6, 182, 212, 0.10)' },
-      yellow: { accent: '#eab308', hover: '#ca8a04', light: 'rgba(234, 179, 8, 0.10)' },
+      green: { accent: '#22c55e', hover: '#16a34a', light: 'rgba(34, 197, 94, 0.10)', fg: '#ffffff' },
+      blue: { accent: '#3b82f6', hover: '#2563eb', light: 'rgba(59, 130, 246, 0.10)', fg: '#ffffff' },
+      purple: { accent: '#8b5cf6', hover: '#7c3aed', light: 'rgba(139, 92, 246, 0.10)', fg: '#ffffff' },
+      orange: { accent: '#f97316', hover: '#ea580c', light: 'rgba(249, 115, 22, 0.10)', fg: '#ffffff' },
+      pink: { accent: '#ec4899', hover: '#db2777', light: 'rgba(236, 72, 153, 0.10)', fg: '#ffffff' },
+      red: { accent: '#ef4444', hover: '#dc2626', light: 'rgba(239, 68, 68, 0.10)', fg: '#ffffff' },
+      cyan: { accent: '#06b6d4', hover: '#0891b2', light: 'rgba(6, 182, 212, 0.10)', fg: '#ffffff' },
+      yellow: { accent: '#eab308', hover: '#ca8a04', light: 'rgba(234, 179, 8, 0.10)', fg: '#ffffff' },
+      white: { accent: '#ffffff', hover: '#e5e5e5', light: 'rgba(255, 255, 255, 0.10)', fg: '#1a1a1a' },
     }
     const selected = map[stored] || map.green
     const root = document.documentElement
     root.style.setProperty('--opencami-accent', selected.accent)
     root.style.setProperty('--opencami-accent-hover', selected.hover)
     root.style.setProperty('--opencami-accent-light', selected.light)
+    root.style.setProperty('--opencami-accent-fg', selected.fg)
   } catch {}
 })()
 `

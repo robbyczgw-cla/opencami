@@ -27,7 +27,7 @@ const buttonVariants = cva(
       },
       variant: {
         default:
-          'bg-[var(--opencami-accent)] text-white hover:bg-[var(--opencami-accent-hover)] shadow-sm outline outline-primary-900/10 shadow-2xs',
+          'bg-[var(--opencami-accent)] text-[var(--opencami-accent-fg)] hover:bg-[var(--opencami-accent-hover)] shadow-sm outline outline-primary-900/10 shadow-2xs',
         secondary:
           'bg-primary-50 text-primary-950 hover:bg-primary-200 outline outline-primary-900/10 shadow-2xs',
         outline:

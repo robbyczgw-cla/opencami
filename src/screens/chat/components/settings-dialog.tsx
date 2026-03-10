@@ -173,6 +173,7 @@ const accentColorOptions = [
     accent: '#22c55e',
     hover: '#16a34a',
     light: 'rgba(34, 197, 94, 0.10)',
+    fg: '#ffffff',
   },
   {
     value: 'blue',
@@ -180,6 +181,7 @@ const accentColorOptions = [
     accent: '#3b82f6',
     hover: '#2563eb',
     light: 'rgba(59, 130, 246, 0.10)',
+    fg: '#ffffff',
   },
   {
     value: 'purple',
@@ -187,6 +189,7 @@ const accentColorOptions = [
     accent: '#8b5cf6',
     hover: '#7c3aed',
     light: 'rgba(139, 92, 246, 0.10)',
+    fg: '#ffffff',
   },
   {
     value: 'orange',
@@ -194,6 +197,7 @@ const accentColorOptions = [
     accent: '#f97316',
     hover: '#ea580c',
     light: 'rgba(249, 115, 22, 0.10)',
+    fg: '#ffffff',
   },
   {
     value: 'pink',
@@ -201,6 +205,7 @@ const accentColorOptions = [
     accent: '#ec4899',
     hover: '#db2777',
     light: 'rgba(236, 72, 153, 0.10)',
+    fg: '#ffffff',
   },
   {
     value: 'red',
@@ -208,6 +213,7 @@ const accentColorOptions = [
     accent: '#ef4444',
     hover: '#dc2626',
     light: 'rgba(239, 68, 68, 0.10)',
+    fg: '#ffffff',
   },
   {
     value: 'cyan',
@@ -215,6 +221,7 @@ const accentColorOptions = [
     accent: '#06b6d4',
     hover: '#0891b2',
     light: 'rgba(6, 182, 212, 0.10)',
+    fg: '#ffffff',
   },
   {
     value: 'yellow',
@@ -222,6 +229,15 @@ const accentColorOptions = [
     accent: '#eab308',
     hover: '#ca8a04',
     light: 'rgba(234, 179, 8, 0.10)',
+    fg: '#ffffff',
+  },
+  {
+    value: 'white',
+    label: 'White',
+    accent: '#ffffff',
+    hover: '#e5e5e5',
+    light: 'rgba(255, 255, 255, 0.10)',
+    fg: '#1a1a1a',
   },
 ] as const
 
@@ -526,6 +542,7 @@ export function SettingsDialog({
     root.style.setProperty('--opencami-accent', selected.accent)
     root.style.setProperty('--opencami-accent-hover', selected.hover)
     root.style.setProperty('--opencami-accent-light', selected.light)
+    root.style.setProperty('--opencami-accent-fg', selected.fg)
   }
 
   function applyChatWidth(value: ChatWidthValue) {

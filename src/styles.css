@@ -55,6 +55,7 @@ html {
   --opencami-accent: #22c55e;
   --opencami-accent-hover: #16a34a;
   --opencami-accent-light: rgba(34, 197, 94, 0.1);
+  --opencami-accent-fg: #ffffff;
   --opencami-chat-width: 1000px;
   --opencami-sidebar-width: 260px;
 }
@@ -65,20 +66,21 @@ html {
 
 .dark {
   color-scheme: dark;
-  --color-primary-50: oklch(0.1244 0 89.88);
-  --color-primary-100: oklch(0.1584 0 89.88);
-  --color-primary-200: oklch(0.2078 0 89.88);
-  --color-primary-300: oklch(0.3 0.006 80);
-  --color-primary-400: oklch(0.4 0.006 80);
-  --color-primary-500: oklch(0.52 0.006 80);
-  --color-primary-600: oklch(0.65 0.006 80);
-  --color-primary-700: oklch(0.73 0.006 80);
-  --color-primary-800: oklch(0.83 0.005 80);
-  --color-primary-900: oklch(0.895 0.004 80);
-  --color-primary-950: oklch(0.945 0.003 80);
+  --color-primary-50: oklch(0.155 0 89.88); /* deepest dark */
+  --color-primary-100: oklch(0.185 0 89.88); /* sidebar bg ~#1e1e1e (darker than main) */
+  --color-primary-200: oklch(0.265 0 89.88); /* cards/elevated surfaces ~#2f2f2f */
+  --color-primary-300: oklch(0.32 0.004 80); /* subtle borders ~#3a3a3a */
+  --color-primary-400: oklch(0.40 0.005 80); /* muted elements ~#4a4a4a */
+  --color-primary-500: oklch(0.52 0.005 80);
+  --color-primary-600: oklch(0.63 0.005 80);
+  --color-primary-700: oklch(0.73 0.005 80);
+  --color-primary-800: oklch(0.82 0.004 80);
+  --color-primary-900: oklch(0.89 0.003 80);
+  --color-primary-950: oklch(0.94 0.002 80); /* off-white text ~#ececec */
 
-  --color-surface: var(--color-black);
-  --color-ink: var(--color-white);
+  --color-surface: oklch(0.215 0 89.88); /* main chat area ~#212121 (lighter than sidebar) */
+  --color-ink: oklch(0.94 0.002 80); /* off-white, not pure white */
+  --color-surface-deep: oklch(0.14 0 89.88); /* deeper than deepest */
 }
 
 .light {
@@ -92,20 +94,20 @@ html {
 @media (prefers-color-scheme: dark) {
   .system {
     color-scheme: dark;
-    --color-primary-50: oklch(0.1244 0 89.88);
-    --color-primary-100: oklch(0.1584 0 89.88);
-    --color-primary-200: oklch(0.2078 0 89.88);
-    --color-primary-300: oklch(0.3 0.006 80);
-    --color-primary-400: oklch(0.4 0.006 80);
-    --color-primary-500: oklch(0.52 0.006 80);
-    --color-primary-600: oklch(0.65 0.006 80);
-    --color-primary-700: oklch(0.73 0.006 80);
-    --color-primary-800: oklch(0.83 0.005 80);
-    --color-primary-900: oklch(0.895 0.004 80);
-    --color-primary-950: oklch(0.945 0.003 80);
-    --color-surface: var(--color-black);
-    --color-ink: var(--color-white);
-    --color-surface-deep: oklch(0.18 0 0);
+    --color-primary-50: oklch(0.155 0 89.88); /* deepest dark */
+    --color-primary-100: oklch(0.185 0 89.88); /* sidebar bg ~#1e1e1e (darker than main) */
+    --color-primary-200: oklch(0.265 0 89.88); /* cards/elevated surfaces ~#2f2f2f */
+    --color-primary-300: oklch(0.32 0.004 80); /* subtle borders ~#3a3a3a */
+    --color-primary-400: oklch(0.40 0.005 80); /* muted elements ~#4a4a4a */
+    --color-primary-500: oklch(0.52 0.005 80);
+    --color-primary-600: oklch(0.63 0.005 80);
+    --color-primary-700: oklch(0.73 0.005 80);
+    --color-primary-800: oklch(0.82 0.004 80);
+    --color-primary-900: oklch(0.89 0.003 80);
+    --color-primary-950: oklch(0.94 0.002 80); /* off-white text ~#ececec */
+    --color-surface: oklch(0.215 0 89.88); /* main chat area ~#212121 (lighter than sidebar) */
+    --color-ink: oklch(0.94 0.002 80); /* off-white, not pure white */
+    --color-surface-deep: oklch(0.14 0 89.88); /* deeper than deepest */
   }
 }
 
@@ -536,7 +538,7 @@ html.tauri .tauri-drag-header {
 
 .opencami-accent-bg {
   background: var(--opencami-accent);
-  color: white;
+  color: var(--opencami-accent-fg);
 }
 
 .opencami-accent-bg-hover:hover {
@@ -573,7 +575,7 @@ img[loading='lazy'] {
 
 [data-opencami-bubble-style='bubbles'] .opencami-message-user {
   background: var(--opencami-accent);
-  color: white;
+  color: var(--opencami-accent-fg);
   max-width: 80%;
 }
 
