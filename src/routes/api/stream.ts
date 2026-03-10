@@ -28,6 +28,38 @@ export const Route = createFileRoute('/api/stream')({
 
         let closed = false
         let unsubscribe: (() => void) | null = null
+        let streamedAssistantText = ''
+
+        function extractMessageText(message: unknown): string {
+          if (!message || typeof message !== 'object') return ''
+          const content = Array.isArray((message as { content?: unknown }).content)
+            ? (message as { content: Array<Record<string, unknown>> }).content
+            : []
+          return content
+            .map((block) => (block?.type === 'text' && typeof block.text === 'string' ? block.text : ''))
+            .join('')
+        }
+
+        function emitMissingFinalText(finalText: string) {
+          if (!finalText) return
+          if (!streamedAssistantText) {
+            streamedAssistantText = finalText
+            sendSSE('delta', { text: finalText, sessionKey })
+            return
+          }
+          if (finalText.startsWith(streamedAssistantText)) {
+            const suffix = finalText.slice(streamedAssistantText.length)
+            if (suffix) {
+              streamedAssistantText = finalText
+              sendSSE('delta', { text: suffix, sessionKey })
+            }
+            return
+          }
+          if (finalText !== streamedAssistantText) {
+            streamedAssistantText = finalText
+            sendSSE('delta', { text: finalText, sessionKey })
+          }
+        }
 
         function sendSSE(event: string, data: unknown) {
           if (closed) return
@@ -76,6 +108,7 @@ export const Route = createFileRoute('/api/stream')({
                         ? payload.delta
                         : ''
               if (text) {
+                streamedAssistantText += text
                 sendSSE('delta', { text, sessionKey })
               }
             } else if (agentStream === 'tool') {
@@ -94,7 +127,10 @@ export const Route = createFileRoute('/api/stream')({
                 sendSSE('done', {
                   sessionKey,
                   status: phase,
-                  error: phase === 'error' ? payload.error : undefined,
+                  error:
+                    phase === 'error'
+                      ? (ldata.error ?? payload.error)
+                      : undefined,
                 })
                 cleanup()
               }
@@ -119,10 +155,19 @@ export const Route = createFileRoute('/api/stream')({
                       ? payload.delta
                       : ''
               if (text) {
+                streamedAssistantText += text
                 sendSSE('delta', { text, sessionKey })
               }
-            } else if (state === 'final') {
+            } else if (state === 'final' || state === 'done') {
+              emitMissingFinalText(extractMessageText(msg))
               sendSSE('done', { sessionKey, status: 'end' })
+              cleanup()
+            } else if (state === 'error') {
+              sendSSE('done', {
+                sessionKey,
+                status: 'error',
+                error: payload.errorMessage,
+              })
               cleanup()
             }
           }
