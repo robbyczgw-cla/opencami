@@ -51,6 +51,29 @@ export type GatewayEvent = {
 
 export type StreamListener = (event: GatewayEvent) => void
 
+type GatewayClientCallbacks = {
+  onEvent?: StreamListener
+  onError?: (error: Error) => void
+}
+
+type GatewayClient = {
+  connect: () => Promise<void>
+  sendReq: <TPayload = unknown>(method: string, params?: unknown) => Promise<TPayload>
+  close: () => void
+  isClosed: () => boolean
+  addCallbacks: (callbacks?: GatewayClientCallbacks) => () => void
+}
+
+type GatewayClientEntry = {
+  refs: number
+  client: GatewayClient
+}
+
+type GatewayClientHandle = {
+  client: GatewayClient
+  release: () => void
+}
+
 // ─── Config helpers ─────────────────────────────────────────────────────
 
 function getGatewayConfig() {
@@ -686,6 +709,268 @@ function getPersistentConnection(): PersistentGatewayConnection {
     _proc.__opencamiGatewayInstance = new PersistentGatewayConnection()
   }
   return _proc.__opencamiGatewayInstance
+}
+
+
+const sharedGatewayClients = new Map<string, GatewayClientEntry>()
+
+function createGatewayClient(): GatewayClient {
+  const pendingRpcs = new Map<string, PendingRpc>()
+  const callbacks = new Set<GatewayClientCallbacks>()
+  let ws: WebSocket | null = null
+  let closed = false
+  let connected = false
+  let connectPromise: Promise<void> | null = null
+
+  function rejectAll(err: Error) {
+    for (const [, pending] of pendingRpcs) {
+      clearTimeout(pending.timer)
+      pending.reject(err)
+    }
+    pendingRpcs.clear()
+  }
+
+  function waitForRes(id: string, timeoutMs = 30_000): Promise<unknown> {
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        pendingRpcs.delete(id)
+        reject(new Error(`RPC timeout waiting for ${id}`))
+      }, timeoutMs)
+      pendingRpcs.set(id, { resolve, reject, timer })
+    })
+  }
+
+  function emitError(error: Error) {
+    for (const callback of callbacks) {
+      try {
+        callback.onError?.(error)
+      } catch {}
+    }
+  }
+
+  function emitEvent(event: GatewayEvent) {
+    for (const callback of callbacks) {
+      try {
+        callback.onEvent?.(event)
+      } catch {}
+    }
+  }
+
+  function handleMessage(data: WebSocket.Data) {
+    try {
+      const str = typeof data === 'string' ? data : data.toString()
+      const parsed = JSON.parse(str) as GatewayFrame
+
+      if (parsed.type === 'res') {
+        const pending = pendingRpcs.get(parsed.id)
+        if (!pending) return
+        pendingRpcs.delete(parsed.id)
+        clearTimeout(pending.timer)
+        if (parsed.ok) pending.resolve(parsed.payload)
+        else pending.reject(new GatewayResponseError(parsed.error?.message ?? 'gateway error', parsed.error?.code))
+        return
+      }
+
+      if (parsed.type === 'event') {
+        emitEvent({
+          event: parsed.event,
+          payload: (parsed.payload ?? {}) as Record<string, unknown>,
+          seq: parsed.seq,
+        })
+      }
+    } catch {
+      // Ignore parse errors
+    }
+  }
+
+  function handleClose() {
+    const wasConnected = connected
+    connected = false
+    ws = null
+    rejectAll(new Error('Connection closed'))
+    if (!closed && wasConnected) {
+      emitError(new Error('Gateway client connection closed'))
+    }
+  }
+
+  async function connect(): Promise<void> {
+    if (closed) throw new Error('Gateway client closed')
+    if (connected && ws?.readyState === WebSocket.OPEN) return
+    if (connectPromise) return connectPromise
+
+    connectPromise = (async () => {
+      const { url, token, password } = getGatewayConfig()
+      const origin = process.env.OPENCAMI_ORIGIN?.trim()
+      const nextWs = origin
+        ? new WebSocket(url, { headers: { Origin: origin } })
+        : new WebSocket(url)
+
+      ws = nextWs
+
+      await new Promise<void>((resolve, reject) => {
+        const onOpen = () => { cleanup(); resolve() }
+        const onError = (err: Error) => { cleanup(); reject(new Error(`WS open error: ${err.message}`)) }
+        const cleanup = () => { nextWs.off('open', onOpen); nextWs.off('error', onError) }
+        nextWs.on('open', onOpen)
+        nextWs.on('error', onError)
+      })
+
+      const nonce = await new Promise<string>((resolve) => {
+        let done = false
+        const timer = setTimeout(() => {
+          if (done) return
+          done = true
+          resolve('')
+        }, 3000)
+
+        const onMessage = (data: WebSocket.Data) => {
+          try {
+            const str = typeof data === 'string' ? data : data.toString()
+            const parsed = JSON.parse(str) as GatewayFrame
+            if (parsed.type === 'event' && parsed.event === 'connect.challenge') {
+              const n = (parsed.payload as any)?.nonce
+              if (typeof n === 'string' && n.length > 0) {
+                clearTimeout(timer)
+                nextWs.off('message', onMessage)
+                if (done) return
+                done = true
+                resolve(n)
+              }
+            }
+          } catch {}
+        }
+
+        nextWs.on('message', onMessage)
+      })
+
+      nextWs.on('message', handleMessage)
+      nextWs.on('close', handleClose)
+      nextWs.on('error', (err: Error) => {
+        emitError(new Error(`Gateway client error: ${err.message}`))
+      })
+
+      const connectId = randomUUID()
+      const connectParams = buildConnectParams(url, token, password, nonce)
+      nextWs.send(JSON.stringify({
+        type: 'req',
+        id: connectId,
+        method: 'connect',
+        params: connectParams,
+      }))
+
+      const hello = await waitForRes(connectId, 10_000) as any
+      if (hello?.auth?.deviceToken) {
+        const identity = loadOrCreateDeviceIdentity()
+        storeDeviceToken(identity.deviceId, url, hello.auth.deviceToken)
+      }
+
+      connected = true
+    })()
+
+
+    try {
+      await connectPromise
+    } finally {
+      connectPromise = null
+    }
+  }
+
+  async function sendReq<TPayload = unknown>(method: string, params?: unknown): Promise<TPayload> {
+    await connect()
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      throw new Error('Gateway client not connected')
+    }
+    const id = randomUUID()
+    ws.send(JSON.stringify({ type: 'req', id, method, params }))
+    return await waitForRes(id) as TPayload
+  }
+
+  function close() {
+    if (closed) return
+    closed = true
+    connected = false
+    rejectAll(new Error('Gateway client closed'))
+    const currentWs = ws
+    ws = null
+    if (currentWs) {
+      currentWs.off('message', handleMessage)
+      currentWs.off('close', handleClose)
+      currentWs.close()
+    }
+    callbacks.clear()
+  }
+
+  function isClosed() {
+    return closed
+  }
+
+  function addCallbacks(callbacksToAdd?: GatewayClientCallbacks) {
+    if (!callbacksToAdd?.onEvent && !callbacksToAdd?.onError) {
+      return () => {}
+    }
+    callbacks.add(callbacksToAdd)
+    return () => {
+      callbacks.delete(callbacksToAdd)
+    }
+  }
+
+  return { connect, sendReq, close, isClosed, addCallbacks }
+}
+
+function releaseGatewayClient(key: string) {
+  const entry = sharedGatewayClients.get(key)
+  if (!entry) return
+  entry.refs -= 1
+  if (entry.refs > 0) return
+  entry.client.close()
+  sharedGatewayClients.delete(key)
+}
+
+export async function acquireGatewayClient(
+  key: string,
+  callbacks?: GatewayClientCallbacks,
+): Promise<GatewayClientHandle> {
+  const existing = sharedGatewayClients.get(key)
+  if (existing && !existing.client.isClosed()) {
+    existing.refs += 1
+    const removeCallbacks = existing.client.addCallbacks(callbacks)
+    return {
+      client: existing.client,
+      release: () => {
+        removeCallbacks()
+        releaseGatewayClient(key)
+      },
+    }
+  }
+
+  const client = createGatewayClient()
+  const removeCallbacks = client.addCallbacks(callbacks)
+  await client.connect()
+  sharedGatewayClients.set(key, { refs: 1, client })
+  return {
+    client,
+    release: () => {
+      removeCallbacks()
+      releaseGatewayClient(key)
+    },
+  }
+}
+
+export async function gatewayRpcShared<TPayload = unknown>(
+  method: string,
+  params?: unknown,
+  key?: string,
+): Promise<TPayload> {
+  if (!key) {
+    return gatewayRpc<TPayload>(method, params)
+  }
+
+  const existing = sharedGatewayClients.get(key)
+  if (!existing || existing.client.isClosed()) {
+    return gatewayRpc<TPayload>(method, params)
+  }
+
+  return existing.client.sendReq<TPayload>(method, params)
 }
 
 // ─── Public API ─────────────────────────────────────────────────────────
