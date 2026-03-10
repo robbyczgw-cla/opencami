@@ -1,14 +1,42 @@
 import { useCallback, useRef, useState } from 'react'
 
+type StreamingTool = {
+  name: string
+  status: string
+  id: string
+}
+
 export type StreamingState = {
-  /** Whether we're currently receiving streamed content */
   active: boolean
-  /** Accumulated text from assistant deltas */
   text: string
-  /** Currently active tool calls */
-  tools: Array<{ name: string; status: string; id: string }>
-  /** The sessionKey this stream is for */
+  tools: Array<StreamingTool>
   sessionKey: string | null
+}
+
+type StreamFrame = {
+  event?: unknown
+  payload?: unknown
+  seq?: unknown
+  stateVersion?: unknown
+}
+
+type StreamChatPayload = {
+  runId?: string
+  sessionKey?: string
+  state?: string
+  message?: {
+    role?: string
+    content?: Array<{
+      type?: string
+      text?: string
+      thinking?: string
+      id?: string
+      name?: string
+    }>
+    toolCallId?: string
+    toolName?: string
+  }
+  seq?: number
 }
 
 const INITIAL_STATE: StreamingState = {
@@ -18,10 +46,6 @@ const INITIAL_STATE: StreamingState = {
   sessionKey: null,
 }
 
-/**
- * Hook that manages an SSE connection to /api/stream for real-time
- * message streaming from the Gateway's persistent WebSocket.
- */
 export function useStreaming(options: {
   onDone: (sessionKey: string) => void
   onError?: (error: string) => void
@@ -33,6 +57,7 @@ export function useStreaming(options: {
   const pollingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const streamStartRef = useRef<number | null>(null)
   const doneRef = useRef(false)
+  const sawAgentStreamRef = useRef(false)
   const onDoneRef = useRef(options.onDone)
   const onErrorRef = useRef(options.onError)
   const onAssistantDeltaRef = useRef(options.onAssistantDelta)
@@ -63,7 +88,6 @@ export function useStreaming(options: {
           messages?: Array<{ role?: string; timestamp?: number }>
         }
         const messages = Array.isArray(data.messages) ? data.messages : []
-        // Allow 10s clock-skew tolerance between server and browser
         const hasNewAssistant = messages.some((message) => {
           if (!message || message.role !== 'assistant') return false
           if (typeof message.timestamp !== 'number') return false
@@ -83,6 +107,7 @@ export function useStreaming(options: {
 
   const stop = useCallback((options?: { preserveState?: boolean }) => {
     doneRef.current = true
+    sawAgentStreamRef.current = false
     clearPolling()
     if (eventSourceRef.current) {
       eventSourceRef.current.close()
@@ -95,92 +120,252 @@ export function useStreaming(options: {
     setState(INITIAL_STATE)
   }, [])
 
-  const start = useCallback(
-    function start(sessionKey: string) {
-      doneRef.current = false
-      clearPolling()
-      streamStartRef.current = Date.now()
-      // Close any existing connection
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close()
-        eventSourceRef.current = null
-      }
+  const start = useCallback((sessionKey: string) => {
+    doneRef.current = false
+    sawAgentStreamRef.current = false
+    clearPolling()
+    streamStartRef.current = Date.now()
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close()
+      eventSourceRef.current = null
+    }
 
-      setState({
-        active: true,
-        text: '',
-        tools: [],
-        sessionKey,
-      })
+    setState({
+      active: true,
+      text: '',
+      tools: [],
+      sessionKey,
+    })
 
-      const es = new EventSource(`/api/stream?sessionKey=${encodeURIComponent(sessionKey)}`)
-      eventSourceRef.current = es
+    const es = new EventSource(
+      `/api/stream?sessionKey=${encodeURIComponent(sessionKey)}`,
+    )
+    eventSourceRef.current = es
 
-      es.addEventListener('delta', (e) => {
-        try {
-          const data = JSON.parse(e.data) as { text: string; sessionKey: string }
-          setState((prev) => ({
-            ...prev,
-            text: prev.text + data.text,
-          }))
-          onAssistantDeltaRef.current?.({ text: data.text, sessionKey: data.sessionKey })
-        } catch {}
-      })
+    es.onmessage = (event) => {
+      try {
+        const frame = JSON.parse(String(event.data || '{}')) as StreamFrame
+        const eventName = normalizeString(frame.event)
+        if (!eventName) return
 
-      es.addEventListener('tool', (e) => {
-        try {
-          const data = JSON.parse(e.data) as {
-            name: string
-            status: string
-            id: string
-            sessionKey: string
+        if (eventName === 'error') {
+          const message = normalizeError(frame.payload)
+          if (message) {
+            onErrorRef.current?.(message)
           }
-          setState((prev) => {
-            const existingIdx = prev.tools.findIndex((t) => t.id === data.id)
-            const tools = [...prev.tools]
-            if (existingIdx >= 0) {
-              tools[existingIdx] = { name: data.name, status: data.status, id: data.id }
-            } else {
-              tools.push({ name: data.name, status: data.status, id: data.id })
-            }
-            return { ...prev, tools }
-          })
-        } catch {}
-      })
-
-      es.addEventListener('done', (e) => {
-        try {
-          const data = JSON.parse(e.data) as { sessionKey: string; status: string }
-          doneRef.current = true
-          clearPolling()
-          es.close()
-          eventSourceRef.current = null
-          // Mark stream as inactive but keep text/tools so the UI can
-          // continue displaying them until history refetch completes.
-          setState((prev) => ({ ...prev, active: false }))
-          onDoneRef.current(data.sessionKey)
-        } catch {}
-      })
-
-      es.onerror = () => {
-        // EventSource auto-reconnects on error, but if the connection is
-        // definitely broken we fall back to polling. Close after a brief
-        // moment so we don't spin-reconnect.
-        if (es.readyState === EventSource.CLOSED) {
-          es.close()
-          eventSourceRef.current = null
-          setState(INITIAL_STATE)
-          onErrorRef.current?.('Stream connection lost')
+          return
         }
+
+        if (eventName === 'chat') {
+          handleChatPayload(frame.payload, sessionKey, {
+            allowDelta: !sawAgentStreamRef.current,
+            onAssistantDelta(payload) {
+              setState((prev) => ({ ...prev, text: prev.text + payload.text }))
+              onAssistantDeltaRef.current?.(payload)
+            },
+            onDone(resolvedSessionKey) {
+              finishStream(es, resolvedSessionKey)
+            },
+          })
+          return
+        }
+
+        if (eventName !== 'agent') return
+
+        sawAgentStreamRef.current = true
+        handleAgentPayload(frame.payload, sessionKey, {
+          onAssistantDelta(payload) {
+            setState((prev) => ({ ...prev, text: prev.text + payload.text }))
+            onAssistantDeltaRef.current?.(payload)
+          },
+          onTool(tool) {
+            setState((prev) => ({
+              ...prev,
+              tools: upsertTool(prev.tools, tool),
+            }))
+          },
+          onDone(resolvedSessionKey) {
+            finishStream(es, resolvedSessionKey)
+          },
+        })
+      } catch {}
+    }
+
+    es.onerror = () => {
+      if (es.readyState === EventSource.CLOSED) {
+        es.close()
+        eventSourceRef.current = null
+        setState(INITIAL_STATE)
+        onErrorRef.current?.('Stream connection lost')
       }
-      pollingTimeoutRef.current = window.setTimeout(() => {
-        if (doneRef.current) return
-        const startedAt = streamStartRef.current ?? Date.now()
-        startPolling(sessionKey, startedAt)
-      }, 3000)
-    },
-    [],
-  )
+    }
+
+    pollingTimeoutRef.current = window.setTimeout(() => {
+      if (doneRef.current) return
+      const startedAt = streamStartRef.current ?? Date.now()
+      startPolling(sessionKey, startedAt)
+    }, 3000)
+  }, [])
+
+  function finishStream(es: EventSource, sessionKey: string) {
+    doneRef.current = true
+    sawAgentStreamRef.current = false
+    clearPolling()
+    es.close()
+    eventSourceRef.current = null
+    setState((prev) => ({ ...prev, active: false }))
+    onDoneRef.current(sessionKey)
+  }
 
   return { streaming: state, startStream: start, stopStream: stop }
+}
+
+function handleChatPayload(
+  rawPayload: unknown,
+  fallbackSessionKey: string,
+  handlers: {
+    allowDelta: boolean
+    onAssistantDelta: (payload: { text: string; sessionKey: string }) => void
+    onDone: (sessionKey: string) => void
+  },
+) {
+  const payload = toChatPayload(rawPayload)
+  if (!payload) return
+
+  const resolvedSessionKey = payload.sessionKey || fallbackSessionKey
+  const state = normalizeString(payload.state)
+
+  if (state === 'delta') {
+    if (!handlers.allowDelta) return
+    const text = getChatMessageText(payload)
+    if (text) {
+      handlers.onAssistantDelta({ text, sessionKey: resolvedSessionKey })
+    }
+    return
+  }
+
+  if (state === 'final' || state === 'error' || state === 'aborted') {
+    handlers.onDone(resolvedSessionKey)
+  }
+}
+
+function handleAgentPayload(
+  rawPayload: unknown,
+  fallbackSessionKey: string,
+  handlers: {
+    onAssistantDelta: (payload: { text: string; sessionKey: string }) => void
+    onTool: (tool: StreamingTool) => void
+    onDone: (sessionKey: string) => void
+  },
+) {
+  if (!rawPayload || typeof rawPayload !== 'object') return
+
+  const payload = rawPayload as Record<string, unknown>
+  const resolvedSessionKey =
+    normalizeString(payload.sessionKey) || fallbackSessionKey
+  const stream = normalizeString(payload.stream)
+  const data =
+    payload.data && typeof payload.data === 'object'
+      ? (payload.data as Record<string, unknown>)
+      : null
+
+  if (stream === 'assistant') {
+    const text =
+      readText(data?.text) ||
+      readText(data?.delta) ||
+      readText(payload.text) ||
+      readText(payload.delta)
+    if (text) {
+      handlers.onAssistantDelta({ text, sessionKey: resolvedSessionKey })
+    }
+    return
+  }
+
+  if (stream === 'lifecycle') {
+    const phase = normalizeString(data?.phase) || normalizeString(payload.phase)
+    if (phase === 'end' || phase === 'error' || phase === 'aborted') {
+      handlers.onDone(resolvedSessionKey)
+    }
+    return
+  }
+
+  if (!stream.includes('tool')) return
+
+  const toolId =
+    normalizeString(data?.toolCallId) ||
+    normalizeString(data?.id) ||
+    normalizeString(data?.callId) ||
+    normalizeString(payload.toolCallId) ||
+    normalizeString(payload.id)
+  const toolName =
+    normalizeString(data?.toolName) ||
+    normalizeString(data?.name) ||
+    normalizeString(payload.toolName) ||
+    normalizeString(payload.name) ||
+    'tool'
+
+  let status = 'running'
+  if (stream.includes('result') || stream.includes('output')) {
+    status = normalizeString(data?.error) ? 'error' : 'done'
+  } else if (stream.includes('call')) {
+    status =
+      normalizeString(data?.phase) ||
+      normalizeString(data?.status) ||
+      normalizeString(payload.phase) ||
+      normalizeString(payload.status) ||
+      'running'
+  }
+
+  handlers.onTool({
+    id: toolId || `${toolName}:${status}`,
+    name: toolName,
+    status,
+  })
+}
+
+function toChatPayload(value: unknown): StreamChatPayload | null {
+  if (!value || typeof value !== 'object') return null
+  return value as StreamChatPayload
+}
+
+function getChatMessageText(payload: StreamChatPayload): string {
+  const content = Array.isArray(payload.message?.content)
+    ? payload.message?.content
+    : []
+
+  return content
+    .map((part) => {
+      if (!part || typeof part !== 'object') return ''
+      if (part.type === 'text') return readText(part.text)
+      return ''
+    })
+    .join('')
+}
+
+function upsertTool(
+  tools: Array<StreamingTool>,
+  nextTool: StreamingTool,
+): Array<StreamingTool> {
+  const existingIndex = tools.findIndex((tool) => tool.id === nextTool.id)
+  if (existingIndex === -1) {
+    return [...tools, nextTool]
+  }
+
+  const next = [...tools]
+  next[existingIndex] = nextTool
+  return next
+}
+
+function normalizeString(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : ''
+}
+
+function normalizeError(value: unknown): string {
+  if (typeof value === 'string') return value
+  if (value instanceof Error) return value.message
+  return ''
+}
+
+function readText(value: unknown): string {
+  return typeof value === 'string' ? value : ''
 }
