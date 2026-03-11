@@ -395,6 +395,9 @@ class PersistentGatewayConnection {
       const timer = setTimeout(() => {
         if (done) return
         done = true
+        // Clean up the handler to prevent leaking an extra message listener
+        // on the WebSocket (would be harmless but wastes cycles on every frame).
+        ws.off('message', onMessage)
         resolve('')
       }, 3000)
 

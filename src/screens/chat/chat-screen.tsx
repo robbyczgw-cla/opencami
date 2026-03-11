@@ -333,6 +333,13 @@ export function ChatScreen({
       typeof lastAssistantIndex === 'number' &&
       (typeof lastUserIndex !== 'number' || lastAssistantIndex > lastUserIndex)
 
+    // Once streaming is done, prefer the persisted history over the streaming
+    // overlay. The streaming state may have accumulated garbled/doubled text
+    // from duplicate event delivery; history is always correct.
+    if (!streaming.active && assistantIsLatestTurn) {
+      return displayMessages
+    }
+
     if (assistantIsLatestTurn && typeof lastAssistantIndex === 'number') {
       const historyAssistant = displayMessages[lastAssistantIndex]
       const historyText = textFromMessage(historyAssistant)
@@ -353,7 +360,7 @@ export function ChatScreen({
 
     // No assistant response for the current turn in history yet — append streaming.
     return [...displayMessages, streamingMessage]
-  }, [displayMessages, streamingMessage, streaming.text, streaming.tools])
+  }, [displayMessages, streamingMessage, streaming.active, streaming.text, streaming.tools])
 
   const stableContentStyle = useMemo<React.CSSProperties>(() => ({}), [])
   refreshHistoryRef.current = function refreshHistory() {

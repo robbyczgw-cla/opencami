@@ -57,6 +57,10 @@ export function useStreaming(options: {
   const doneRef = useRef(false)
   const finalStateRef = useRef(false)
   const activeRunsRef = useRef(new Set<string>())
+  // Seq-based deduplication: gateway events carry an incrementing seq number.
+  // If we see a seq we've already processed, skip it. This guards against
+  // duplicate delivery caused by Vite SSR multi-context dispatch or similar.
+  const lastSeqRef = useRef(-1)
   // Track whether we've ever seen a run, to avoid premature onDone when
   // activeRuns is empty simply because no agent events arrived yet.
   const anyRunSeenRef = useRef(false)
@@ -79,6 +83,7 @@ export function useStreaming(options: {
     finalStateRef.current = false
     activeRunsRef.current.clear()
     anyRunSeenRef.current = false
+    lastSeqRef.current = -1
     if (eventSourceRef.current) {
       eventSourceRef.current.close()
       eventSourceRef.current = null
@@ -120,6 +125,7 @@ export function useStreaming(options: {
     finalStateRef.current = false
     activeRunsRef.current.clear()
     anyRunSeenRef.current = false
+    lastSeqRef.current = -1
 
     setState({
       active: true,
@@ -141,6 +147,13 @@ export function useStreaming(options: {
     es.addEventListener('message', (e) => {
       try {
         const data = JSON.parse(e.data) as RawGatewayEvent
+
+        // Seq-based deduplication: skip events we've already processed.
+        if (typeof data.seq === 'number') {
+          if (data.seq <= lastSeqRef.current) return
+          lastSeqRef.current = data.seq
+        }
+
         // Read the latest session key from the ref, NOT the closure.
         const currentKey = sessionKeyRef.current
 

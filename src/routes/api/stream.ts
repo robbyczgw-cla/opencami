@@ -31,6 +31,10 @@ export const Route = createFileRoute('/api/stream')({
         let closed = false
         let heartbeat: ReturnType<typeof setInterval> | null = null
         let releaseClient: (() => void) | null = null
+        // Seq-based dedup: gateway events carry incrementing seq numbers.
+        // Skip any event whose seq we've already forwarded. This prevents
+        // doubled text from duplicate event dispatch in Vite SSR contexts.
+        let lastSeq = -1
 
         function writeChunk(chunk: string) {
           if (closed) return
@@ -71,6 +75,12 @@ export const Route = createFileRoute('/api/stream')({
         try {
           const handle = await acquireGatewayClient(key, {
             onEvent(event) {
+              // Seq-based dedup: skip events already forwarded to this stream.
+              if (typeof event.seq === 'number') {
+                if (event.seq <= lastSeq) return
+                lastSeq = event.seq
+              }
+
               // Safety-net filter: the PersistentGatewayConnection already
               // routes events by session key, but we double-check here to
               // prevent any cross-session leakage in the SSE stream.
