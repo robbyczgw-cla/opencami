@@ -2,6 +2,7 @@ import {
   Suspense,
   lazy,
   memo,
+  useCallback,
   useDeferredValue,
   useEffect,
   useLayoutEffect,
@@ -49,6 +50,12 @@ type ChatMessageListProps = {
   onRetryMessage?: (message: GatewayMessage) => void
   /** Called when user clicks Dismiss on a failed message */
   onDismissMessage?: (message: GatewayMessage) => void
+  /** Whether there are earlier messages to load */
+  hasMore?: boolean
+  /** Called when user wants to load earlier messages */
+  onLoadMore?: () => void
+  /** True while an earlier history page is being fetched */
+  isLoadingMore?: boolean
 }
 
 function ChatMessageListComponent({
@@ -69,12 +76,17 @@ function ChatMessageListComponent({
   jumpToMessageId,
   onRetryMessage,
   onDismissMessage,
+  hasMore,
+  onLoadMore,
+  isLoadingMore = false,
 }: ChatMessageListProps) {
   const anchorRef = useRef<HTMLDivElement | null>(null)
   const lastUserRef = useRef<HTMLDivElement | null>(null)
   const programmaticScroll = useRef(false)
   const prevPinRef = useRef(pinToTop)
   const prevUserIndexRef = useRef<number | undefined>(undefined)
+  const prevFirstMessageIdRef = useRef<string | undefined>(undefined)
+  const loadMoreRequestRef = useRef(false)
   const [highlightedMessageId, setHighlightedMessageId] = useState<
     string | null
   >(null)
@@ -281,13 +293,34 @@ function ChatMessageListComponent({
       typeof lastTextAssistantIndex !== 'number' ||
       lastTextAssistantIndex > lastUserIndex)
 
+  const firstDisplayMessageId = displayMessages.find(
+    (message) => typeof message.id === 'string' && message.id.length > 0,
+  )?.id
+
+  const handleLoadMoreClick = useCallback(() => {
+    if (!onLoadMore || isLoadingMore) return
+    loadMoreRequestRef.current = true
+    onLoadMore()
+  }, [isLoadingMore, onLoadMore])
+
   useLayoutEffect(() => {
     if (loading) return
+
+    const completedLoadMore = loadMoreRequestRef.current && !isLoadingMore
+    if (completedLoadMore) {
+      loadMoreRequestRef.current = false
+      prevPinRef.current = pinToTop
+      prevUserIndexRef.current = lastUserIndex
+      prevFirstMessageIdRef.current = firstDisplayMessageId
+      return
+    }
+
     if (pinToTop) {
       const shouldPin =
         !prevPinRef.current || prevUserIndexRef.current !== lastUserIndex
       prevPinRef.current = true
       prevUserIndexRef.current = lastUserIndex
+      prevFirstMessageIdRef.current = firstDisplayMessageId
       if (shouldPin && lastUserRef.current) {
         programmaticScroll.current = true
         lastUserRef.current.scrollIntoView({ behavior: 'auto', block: 'start' })
@@ -300,6 +333,7 @@ function ChatMessageListComponent({
 
     prevPinRef.current = false
     prevUserIndexRef.current = lastUserIndex
+    prevFirstMessageIdRef.current = firstDisplayMessageId
     if (anchorRef.current) {
       programmaticScroll.current = true
       anchorRef.current.scrollIntoView({ behavior: 'auto', block: 'end' })
@@ -307,7 +341,15 @@ function ChatMessageListComponent({
         programmaticScroll.current = false
       }, 0)
     }
-  }, [loading, displayMessages.length, sessionKey, pinToTop, lastUserIndex])
+  }, [
+    firstDisplayMessageId,
+    isLoadingMore,
+    lastUserIndex,
+    loading,
+    displayMessages.length,
+    pinToTop,
+    sessionKey,
+  ])
 
   useEffect(() => {
     if (!jumpToMessageId || loading) return
@@ -332,6 +374,19 @@ function ChatMessageListComponent({
     <ChatContainerRoot className="flex-1 min-h-0 -mb-4">
       <ChatContainerContent className="pt-6" style={contentStyle}>
         {notice && noticePosition === 'start' ? notice : null}
+        {hasMore && onLoadMore && !loading && (
+          <div className="flex justify-center py-3">
+            <button
+              type="button"
+              className="text-xs text-primary-500 hover:text-primary-700 disabled:cursor-not-allowed disabled:opacity-60 dark:text-primary-400 dark:hover:text-primary-200 underline"
+              onClick={handleLoadMoreClick}
+              disabled={isLoadingMore}
+              aria-busy={isLoadingMore}
+            >
+              {isLoadingMore ? 'Loading earlier messages...' : 'Load earlier messages'}
+            </button>
+          </div>
+        )}
         {empty && !notice ? (
           (emptyState ?? <div aria-hidden></div>)
         ) : hasGroup ? (
@@ -521,7 +576,10 @@ function areChatMessageListEqual(
     prev.onFollowUpClick === next.onFollowUpClick &&
     prev.jumpToMessageId === next.jumpToMessageId &&
     prev.onRetryMessage === next.onRetryMessage &&
-    prev.onDismissMessage === next.onDismissMessage
+    prev.onDismissMessage === next.onDismissMessage &&
+    prev.hasMore === next.hasMore &&
+    prev.onLoadMore === next.onLoadMore &&
+    prev.isLoadingMore === next.isLoadingMore
   )
 }
 

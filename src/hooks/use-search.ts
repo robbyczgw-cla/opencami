@@ -1,7 +1,15 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
-import type { SessionMeta, GatewayMessage, HistoryResponse } from '@/screens/chat/types'
-import { chatQueryKeys } from '@/screens/chat/chat-queries'
+import { useQueryClient, type QueryClient } from '@tanstack/react-query'
+import type {
+  SessionMeta,
+  GatewayMessage,
+  HistoryResponse,
+} from '@/screens/chat/types'
+import { chatQueryKeys, fetchHistory } from '@/screens/chat/chat-queries'
+
+const SEARCH_PAGE_SIZE = 200
+const GLOBAL_SEARCH_THRESHOLD = 200
+const MAX_HISTORY_FETCH_ITERATIONS = 20
 
 export type SearchResult = {
   sessionKey: string
@@ -24,7 +32,7 @@ type UseSearchOptions = {
 
 function extractTextFromContent(content: unknown): string {
   if (!Array.isArray(content)) return ''
-  
+
   return content
     .map((item) => {
       if (item?.type === 'text' && typeof item.text === 'string') {
@@ -37,80 +45,100 @@ function extractTextFromContent(content: unknown): string {
 }
 
 function extractTextFromMessage(message: GatewayMessage): string {
-  // Try content array first
   const contentText = extractTextFromContent(message.content)
   if (contentText) return contentText
-  
-  // Fall back to direct text field if present
+
   if (typeof (message as any).text === 'string') {
     return (message as any).text
   }
-  
+
   return ''
 }
 
-export function useSearch({ sessions, currentFriendlyId, currentSessionKey }: UseSearchOptions) {
+export function useSearch({
+  sessions,
+  currentFriendlyId,
+  currentSessionKey,
+}: UseSearchOptions) {
   const queryClient = useQueryClient()
   const [query, setQuery] = useState('')
   const [isSearching, setIsSearching] = useState(false)
+  const [currentResults, setCurrentResults] = useState<SearchResult[]>([])
   const [globalResults, setGlobalResults] = useState<SearchResult[]>([])
+  const currentSearchControllerRef = useRef<AbortController | null>(null)
   const globalSearchControllerRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
     return () => {
+      currentSearchControllerRef.current?.abort()
+      currentSearchControllerRef.current = null
       globalSearchControllerRef.current?.abort()
       globalSearchControllerRef.current = null
     }
   }, [])
 
-  // Search within current conversation (uses cached history)
   const searchCurrentConversation = useCallback(
-    (searchQuery: string): SearchResult[] => {
-      if (!searchQuery.trim() || !currentFriendlyId || !currentSessionKey) {
+    async (searchQuery: string): Promise<SearchResult[]> => {
+      const trimmedQuery = searchQuery.trim()
+      if (!trimmedQuery || !currentFriendlyId || !currentSessionKey) {
+        currentSearchControllerRef.current?.abort()
+        currentSearchControllerRef.current = null
+        setCurrentResults([])
         return []
       }
 
-      const historyKey = chatQueryKeys.history(currentFriendlyId, currentSessionKey)
-      const historyData = queryClient.getQueryData(historyKey) as HistoryResponse | undefined
-      
-      if (!historyData?.messages) return []
+      currentSearchControllerRef.current?.abort()
+      const controller = new AbortController()
+      currentSearchControllerRef.current = controller
 
-      const normalizedQuery = searchQuery.toLowerCase()
-      const results: SearchResult[] = []
-      
-      const session = sessions.find(s => s.friendlyId === currentFriendlyId)
-      const sessionTitle = session?.label || session?.title || session?.derivedTitle || currentFriendlyId
+      setIsSearching(true)
+      setCurrentResults([])
 
-      historyData.messages.forEach((message, index) => {
-        const text = extractTextFromMessage(message)
-        if (!text) return
+      try {
+        const session = sessions.find((item) => item.friendlyId === currentFriendlyId)
+        const sessionTitle =
+          session?.label ||
+          session?.title ||
+          session?.derivedTitle ||
+          currentFriendlyId
 
-        const lowerText = text.toLowerCase()
-        const matchIndex = lowerText.indexOf(normalizedQuery)
-        
-        if (matchIndex !== -1) {
-          results.push({
-            sessionKey: currentSessionKey,
-            friendlyId: currentFriendlyId,
-            sessionTitle,
-            messageIndex: index,
-            messageId: typeof message.id === 'string' ? message.id : undefined,
-            messageRole: message.role || 'unknown',
-            messageText: text,
-            matchStart: matchIndex,
-            matchEnd: matchIndex + searchQuery.length,
-            timestamp: message.timestamp,
-          })
+        const historyData = await getSearchableHistory({
+          friendlyId: currentFriendlyId,
+          queryClient,
+          sessionKey: currentSessionKey,
+          signal: controller.signal,
+          fetchAll: true,
+        })
+
+        const results = createSearchResults({
+          messages: historyData.messages,
+          normalizedQuery: trimmedQuery.toLowerCase(),
+          searchQuery: trimmedQuery,
+          sessionKey: currentSessionKey,
+          friendlyId: currentFriendlyId,
+          sessionTitle,
+        })
+
+        if (currentSearchControllerRef.current === controller) {
+          setCurrentResults(results)
         }
-      })
 
-      return results
+        return results
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          return []
+        }
+        throw error
+      } finally {
+        if (currentSearchControllerRef.current === controller) {
+          currentSearchControllerRef.current = null
+          setIsSearching(false)
+        }
+      }
     },
-    [currentFriendlyId, currentSessionKey, queryClient, sessions]
+    [currentFriendlyId, currentSessionKey, queryClient, sessions],
   )
 
-  // Search across all sessions (fetches history for each).
-  // NOTE: This function is called imperatively; caller should debounce input events.
   const searchAllSessions = useCallback(
     async (searchQuery: string): Promise<SearchResult[]> => {
       const trimmedQuery = searchQuery.trim()
@@ -121,7 +149,6 @@ export function useSearch({ sessions, currentFriendlyId, currentSessionKey }: Us
         return []
       }
 
-      // Cancel any in-flight global search before starting a new one.
       globalSearchControllerRef.current?.abort()
       const controller = new AbortController()
       globalSearchControllerRef.current = controller
@@ -131,91 +158,58 @@ export function useSearch({ sessions, currentFriendlyId, currentSessionKey }: Us
 
       const normalizedQuery = trimmedQuery.toLowerCase()
       const allResults: SearchResult[] = []
-      const BATCH_SIZE = 10
+      const batchSize = 10
 
       try {
-        for (let i = 0; i < sessions.length; i += BATCH_SIZE) {
+        for (let index = 0; index < sessions.length; index += batchSize) {
           if (controller.signal.aborted) {
             throw new DOMException('Search aborted', 'AbortError')
           }
 
-          const batch = sessions.slice(i, i + BATCH_SIZE)
-
-          // Use Promise.allSettled for better error resilience - failed sessions don't block others
+          const batch = sessions.slice(index, index + batchSize)
           const batchSettled = await Promise.allSettled(
             batch.map(async (session) => {
-              // Try to get from cache first
-              const historyKey = chatQueryKeys.history(session.friendlyId, session.key)
-              let historyData = queryClient.getQueryData(historyKey) as HistoryResponse | undefined
-
-              // If not cached, fetch it
-              if (!historyData) {
-                const params = new URLSearchParams({
-                  sessionKey: session.key,
-                  friendlyId: session.friendlyId,
-                  limit: '200',
-                })
-                const res = await fetch(`/api/history?${params.toString()}`, {
-                  signal: controller.signal,
-                })
-                if (res.ok) {
-                  historyData = await res.json() as HistoryResponse
-                  // Cache it for later
-                  queryClient.setQueryData(historyKey, historyData)
-                }
-              }
-
-              if (!historyData?.messages) return [] as SearchResult[]
-
-              const sessionTitle = session.label || session.title || session.derivedTitle || session.friendlyId
-              const sessionResults: SearchResult[] = []
-
-              historyData.messages.forEach((message, index) => {
-                const text = extractTextFromMessage(message)
-                if (!text) return
-
-                const lowerText = text.toLowerCase()
-                const matchIndex = lowerText.indexOf(normalizedQuery)
-
-                if (matchIndex !== -1) {
-                  sessionResults.push({
-                    sessionKey: session.key,
-                    friendlyId: session.friendlyId,
-                    sessionTitle,
-                    messageIndex: index,
-                    messageId: typeof message.id === 'string' ? message.id : undefined,
-                    messageRole: message.role || 'unknown',
-                    messageText: text,
-                    matchStart: matchIndex,
-                    matchEnd: matchIndex + trimmedQuery.length,
-                    timestamp: message.timestamp,
-                  })
-                }
+              const historyData = await getSearchableHistory({
+                friendlyId: session.friendlyId,
+                minMessages: GLOBAL_SEARCH_THRESHOLD,
+                queryClient,
+                sessionKey: session.key,
+                signal: controller.signal,
               })
 
-              return sessionResults
-            })
+              const sessionTitle =
+                session.label ||
+                session.title ||
+                session.derivedTitle ||
+                session.friendlyId
+
+              return createSearchResults({
+                messages: historyData.messages,
+                normalizedQuery,
+                searchQuery: trimmedQuery,
+                sessionKey: session.key,
+                friendlyId: session.friendlyId,
+                sessionTitle,
+              })
+            }),
           )
 
-          // Extract successful results, skip failures silently
           for (const result of batchSettled) {
             if (result.status === 'fulfilled') {
               allResults.push(...result.value)
             }
-            // Rejected promises are silently skipped (network errors, etc.)
           }
 
-          // Progressive updates after each batch.
           allResults.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
           setGlobalResults([...allResults])
         }
 
         return allResults
       } catch (error) {
-        if (!(error instanceof DOMException && error.name === 'AbortError')) {
-          throw error
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          return []
         }
-        return []
+        throw error
       } finally {
         if (globalSearchControllerRef.current === controller) {
           globalSearchControllerRef.current = null
@@ -223,14 +217,17 @@ export function useSearch({ sessions, currentFriendlyId, currentSessionKey }: Us
         }
       }
     },
-    [sessions, queryClient]
+    [sessions, queryClient],
   )
 
   const clearSearch = useCallback(() => {
+    currentSearchControllerRef.current?.abort()
+    currentSearchControllerRef.current = null
     globalSearchControllerRef.current?.abort()
     globalSearchControllerRef.current = null
     setIsSearching(false)
     setQuery('')
+    setCurrentResults([])
     setGlobalResults([])
   }, [])
 
@@ -238,11 +235,263 @@ export function useSearch({ sessions, currentFriendlyId, currentSessionKey }: Us
     query,
     setQuery,
     isSearching,
+    currentResults,
     globalResults,
     searchCurrentConversation,
     searchAllSessions,
     clearSearch,
   }
+}
+
+function createSearchResults({
+  messages,
+  normalizedQuery,
+  searchQuery,
+  sessionKey,
+  friendlyId,
+  sessionTitle,
+}: {
+  messages: Array<GatewayMessage>
+  normalizedQuery: string
+  searchQuery: string
+  sessionKey: string
+  friendlyId: string
+  sessionTitle: string
+}): SearchResult[] {
+  const results: SearchResult[] = []
+
+  messages.forEach((message, index) => {
+    const text = extractTextFromMessage(message)
+    if (!text) return
+
+    const lowerText = text.toLowerCase()
+    const matchIndex = lowerText.indexOf(normalizedQuery)
+    if (matchIndex === -1) return
+
+    results.push({
+      sessionKey,
+      friendlyId,
+      sessionTitle,
+      messageIndex: index,
+      messageId: typeof message.id === 'string' ? message.id : undefined,
+      messageRole: message.role || 'unknown',
+      messageText: text,
+      matchStart: matchIndex,
+      matchEnd: matchIndex + searchQuery.length,
+      timestamp: message.timestamp,
+    })
+  })
+
+  return results
+}
+
+async function getSearchableHistory({
+  friendlyId,
+  minMessages,
+  queryClient,
+  sessionKey,
+  signal,
+  fetchAll = false,
+}: {
+  friendlyId: string
+  minMessages?: number
+  queryClient: QueryClient
+  sessionKey: string
+  signal: AbortSignal
+  fetchAll?: boolean
+}): Promise<HistoryResponse> {
+  const historyKey = chatQueryKeys.history(friendlyId, sessionKey)
+  const cached = queryClient.getQueryData(historyKey) as HistoryResponse | undefined
+  const optimisticMessages = getOptimisticMessages(cached?.messages)
+  const cachedServerMessages = getServerMessages(cached?.messages)
+  const cachedHasMore = cached?.hasMore ?? false
+
+  if (
+    hasSufficientCachedHistory(
+      cachedServerMessages,
+      cachedHasMore,
+      fetchAll,
+      minMessages,
+    )
+  ) {
+    return {
+      sessionKey: cached?.sessionKey || sessionKey,
+      sessionId: cached?.sessionId,
+      messages: optimisticMessages.length
+        ? mergeOptimisticHistoryMessages(cachedServerMessages, optimisticMessages)
+        : cachedServerMessages,
+      hasMore: cachedHasMore,
+    }
+  }
+
+  const fetched = fetchAll
+    ? await fetchEntireHistory({ friendlyId, sessionKey, signal })
+    : await fetchHistory({
+        sessionKey,
+        friendlyId,
+        limit: Math.max(minMessages ?? GLOBAL_SEARCH_THRESHOLD, GLOBAL_SEARCH_THRESHOLD),
+      })
+
+  if (signal.aborted) {
+    throw new DOMException('Search aborted', 'AbortError')
+  }
+
+  const mergedMessages = optimisticMessages.length
+    ? mergeOptimisticHistoryMessages(fetched.messages, optimisticMessages)
+    : fetched.messages
+
+  const nextData = {
+    sessionKey: fetched.sessionKey || cached?.sessionKey || sessionKey,
+    sessionId: fetched.sessionId ?? cached?.sessionId,
+    messages: mergedMessages,
+    hasMore: fetched.hasMore ?? false,
+  } satisfies HistoryResponse
+
+  queryClient.setQueryData(historyKey, nextData)
+
+  return nextData
+}
+
+function hasSufficientCachedHistory(
+  cachedServerMessages: Array<GatewayMessage>,
+  cachedHasMore: boolean,
+  fetchAll: boolean,
+  minMessages?: number,
+): boolean {
+  if (cachedServerMessages.length === 0) return false
+  if (fetchAll) {
+    return (
+      !cachedHasMore &&
+      cachedServerMessages.length >= GLOBAL_SEARCH_THRESHOLD
+    )
+  }
+  if (cachedServerMessages.length >= (minMessages ?? GLOBAL_SEARCH_THRESHOLD)) {
+    return true
+  }
+  return !cachedHasMore
+}
+
+async function fetchEntireHistory({
+  friendlyId,
+  sessionKey,
+  signal,
+}: {
+  friendlyId: string
+  sessionKey: string
+  signal: AbortSignal
+}): Promise<HistoryResponse> {
+  let accumulated: Array<GatewayMessage> = []
+  let sessionId: string | undefined
+  let responseSessionKey = sessionKey
+  let before: string | undefined
+  let hasMore = false
+  let iterations = 0
+
+  do {
+    iterations += 1
+    const page = await fetchHistory({
+      sessionKey,
+      friendlyId,
+      limit: SEARCH_PAGE_SIZE,
+      before,
+    })
+
+    if (signal.aborted) {
+      throw new DOMException('Search aborted', 'AbortError')
+    }
+
+    responseSessionKey = page.sessionKey || responseSessionKey
+    sessionId = page.sessionId ?? sessionId
+    const previousCount = accumulated.length
+    accumulated = dedupeMessages(page.messages, accumulated)
+    hasMore = page.hasMore ?? false
+    if (accumulated.length === previousCount || iterations >= MAX_HISTORY_FETCH_ITERATIONS) {
+      hasMore = false
+      break
+    }
+    before = getOldestHistoryCursor(accumulated)
+  } while (hasMore && before)
+
+  return {
+    sessionKey: responseSessionKey,
+    sessionId,
+    messages: accumulated,
+    hasMore,
+  }
+}
+
+function getOptimisticMessages(
+  messages: Array<GatewayMessage> | undefined,
+): Array<GatewayMessage> {
+  if (!Array.isArray(messages)) return []
+  return messages.filter((message) => isOptimisticMessage(message))
+}
+
+function getServerMessages(
+  messages: Array<GatewayMessage> | undefined,
+): Array<GatewayMessage> {
+  if (!Array.isArray(messages)) return []
+  return messages.filter((message) => !isOptimisticMessage(message))
+}
+
+function isOptimisticMessage(message: GatewayMessage): boolean {
+  if (message.status === 'sending') return true
+  if (message.__optimisticId) return true
+  return Boolean(message.clientId)
+}
+
+function mergeOptimisticHistoryMessages(
+  serverMessages: Array<GatewayMessage>,
+  optimisticMessages: Array<GatewayMessage>,
+): Array<GatewayMessage> {
+  return dedupeMessages(serverMessages, optimisticMessages)
+}
+
+function getOldestHistoryCursor(
+  messages: Array<GatewayMessage>,
+): string | undefined {
+  const oldestMessage = messages.find((message) => !isOptimisticMessage(message))
+  if (!oldestMessage) return undefined
+  if (typeof oldestMessage.id === 'string' && oldestMessage.id.trim().length > 0) {
+    return oldestMessage.id.trim()
+  }
+  return undefined
+}
+
+function dedupeMessages(...chunks: Array<Array<GatewayMessage>>): Array<GatewayMessage> {
+  const merged: Array<GatewayMessage> = []
+  const seen = new Set<string>()
+
+  for (const chunk of chunks) {
+    for (const message of chunk) {
+      const key = messageIdentity(message)
+      if (seen.has(key)) continue
+      seen.add(key)
+      merged.push(message)
+    }
+  }
+
+  return merged
+}
+
+function messageIdentity(message: GatewayMessage): string {
+  if (typeof message.id === 'string' && message.id.length > 0) {
+    return `id:${message.id}`
+  }
+  if (typeof message.clientId === 'string' && message.clientId.length > 0) {
+    return `client:${message.clientId}`
+  }
+  if (
+    typeof message.__optimisticId === 'string' &&
+    message.__optimisticId.length > 0
+  ) {
+    return `optimistic:${message.__optimisticId}`
+  }
+  return [
+    message.role ?? '',
+    message.timestamp ?? '',
+    extractTextFromMessage(message),
+  ].join('|')
 }
 
 /**
@@ -261,21 +510,19 @@ export function highlightMatch(
 
   if (matchIndex === -1) return null
 
-  // Calculate context around the match
   const contextBefore = 40
   const contextAfter = 80
-  
+
   let start = Math.max(0, matchIndex - contextBefore)
   let end = Math.min(text.length, matchIndex + query.length + contextAfter)
 
-  // Adjust to word boundaries if possible
   if (start > 0) {
     const spaceIndex = text.indexOf(' ', start)
     if (spaceIndex !== -1 && spaceIndex < matchIndex) {
       start = spaceIndex + 1
     }
   }
-  
+
   if (end < text.length) {
     const spaceIndex = text.lastIndexOf(' ', end)
     if (spaceIndex > matchIndex + query.length) {
@@ -285,7 +532,9 @@ export function highlightMatch(
 
   const before = (start > 0 ? '...' : '') + text.slice(start, matchIndex)
   const match = text.slice(matchIndex, matchIndex + query.length)
-  const after = text.slice(matchIndex + query.length, end) + (end < text.length ? '...' : '')
+  const after =
+    text.slice(matchIndex + query.length, end) +
+    (end < text.length ? '...' : '')
 
   return { before, match, after }
 }

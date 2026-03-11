@@ -1,9 +1,11 @@
-import { useMemo, useRef } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useQuery, type QueryClient } from '@tanstack/react-query'
 
 import { chatQueryKeys, fetchHistory } from '../chat-queries'
 import { getMessageTimestamp, textFromMessage } from '../utils'
 import type { GatewayMessage, HistoryResponse } from '../types'
+
+const PAGE_SIZE = 50
 
 type UseChatHistoryInput = {
   activeFriendlyId: string
@@ -32,34 +34,61 @@ export function useChatHistory({
     activeFriendlyId,
     sessionKeyForHistory,
   )
+
+  const limitRef = useRef(PAGE_SIZE)
+  const hasMoreRef = useRef(false)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+
+  const prevSessionRef = useRef(sessionKeyForHistory)
+  if (prevSessionRef.current !== sessionKeyForHistory) {
+    prevSessionRef.current = sessionKeyForHistory
+    limitRef.current = PAGE_SIZE
+    hasMoreRef.current = false
+    if (isLoadingMore) {
+      setIsLoadingMore(false)
+    }
+  }
+
   const historyQuery = useQuery({
     queryKey: historyKey,
     queryFn: async function fetchHistoryForSession() {
       const cached = queryClient.getQueryData(historyKey) as
         | HistoryResponse
         | undefined
-      const optimisticMessages = Array.isArray(cached?.messages)
-        ? cached.messages.filter((message) => {
-            if (message.status === 'sending') return true
-            if (message.__optimisticId) return true
-            return Boolean(message.clientId)
-          })
-        : []
+      const optimisticMessages = getOptimisticMessages(cached?.messages)
+      const cachedServerMessages = getServerMessages(cached?.messages)
 
       const serverData = await fetchHistory({
         sessionKey: sessionKeyForHistory,
         friendlyId: activeFriendlyId,
+        limit: limitRef.current,
       })
-      if (!optimisticMessages.length) return serverData
 
-      const merged = mergeOptimisticHistoryMessages(
+      const mergedServerMessages = dedupeMessages(
         serverData.messages,
-        optimisticMessages,
+        cachedServerMessages,
       )
+      const hasNewMessages = mergedServerMessages.length > cachedServerMessages.length
+      hasMoreRef.current =
+        isLoadingMore && !hasNewMessages
+          ? false
+          : (serverData.hasMore ?? false)
+
+      if (!optimisticMessages.length) {
+        return {
+          ...serverData,
+          messages: mergedServerMessages,
+          hasMore: hasMoreRef.current,
+        }
+      }
 
       return {
         ...serverData,
-        messages: merged,
+        messages: mergeOptimisticHistoryMessages(
+          mergedServerMessages,
+          optimisticMessages,
+        ),
+        hasMore: hasMoreRef.current,
       }
     },
     enabled:
@@ -72,6 +101,17 @@ export function useChatHistory({
     },
     gcTime: 1000 * 60 * 10,
   })
+
+  const loadMore = useCallback(async () => {
+    if (isLoadingMore || historyQuery.isFetching) return
+    setIsLoadingMore(true)
+    limitRef.current += PAGE_SIZE * 3
+    try {
+      await historyQuery.refetch()
+    } finally {
+      setIsLoadingMore(false)
+    }
+  }, [historyQuery, isLoadingMore])
 
   const stableHistorySignatureRef = useRef('')
   const stableHistoryMessagesRef = useRef<Array<GatewayMessage>>([])
@@ -113,7 +153,30 @@ export function useChatHistory({
     resolvedSessionKey,
     activeCanonicalKey,
     sessionKeyForHistory,
+    hasMore: hasMoreRef.current,
+    isLoadingMore,
+    loadMore,
   }
+}
+
+function getOptimisticMessages(
+  messages: Array<GatewayMessage> | undefined,
+): Array<GatewayMessage> {
+  if (!Array.isArray(messages)) return []
+  return messages.filter((message) => isOptimisticMessage(message))
+}
+
+function getServerMessages(
+  messages: Array<GatewayMessage> | undefined,
+): Array<GatewayMessage> {
+  if (!Array.isArray(messages)) return []
+  return messages.filter((message) => !isOptimisticMessage(message))
+}
+
+function isOptimisticMessage(message: GatewayMessage): boolean {
+  if (message.status === 'sending') return true
+  if (message.__optimisticId) return true
+  return Boolean(message.clientId)
 }
 
 function mergeOptimisticHistoryMessages(
@@ -156,4 +219,40 @@ function mergeOptimisticHistoryMessages(
   }
 
   return merged
+}
+
+function dedupeMessages(...chunks: Array<Array<GatewayMessage>>): Array<GatewayMessage> {
+  const merged: Array<GatewayMessage> = []
+  const seen = new Set<string>()
+
+  for (const chunk of chunks) {
+    for (const message of chunk) {
+      const key = messageIdentity(message)
+      if (seen.has(key)) continue
+      seen.add(key)
+      merged.push(message)
+    }
+  }
+
+  return merged
+}
+
+function messageIdentity(message: GatewayMessage): string {
+  if (typeof message.id === 'string' && message.id.length > 0) {
+    return `id:${message.id}`
+  }
+  if (typeof message.clientId === 'string' && message.clientId.length > 0) {
+    return `client:${message.clientId}`
+  }
+  if (
+    typeof message.__optimisticId === 'string' &&
+    message.__optimisticId.length > 0
+  ) {
+    return `optimistic:${message.__optimisticId}`
+  }
+  return [
+    message.role ?? '',
+    message.timestamp ?? '',
+    textFromMessage(message),
+  ].join('|')
 }
