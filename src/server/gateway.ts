@@ -244,7 +244,7 @@ function buildConnectParams(url: string, token: string, password: string, nonce:
   const clientId = 'openclaw-control-ui'
   const clientMode = 'webchat'
   const role = 'operator'
-  const scopes = ['operator.admin', 'operator.approvals', 'operator.pairing']
+  const scopes = ['operator.read', 'operator.write', 'operator.admin', 'operator.approvals', 'operator.pairing']
 
   if (!nonce) {
     throw new Error(
@@ -489,7 +489,7 @@ class PersistentGatewayConnection {
           password: password || undefined,
         },
         role: 'operator',
-        scopes: ['operator.admin', 'operator.approvals', 'operator.pairing'],
+        scopes: ['operator.read', 'operator.write', 'operator.admin', 'operator.approvals', 'operator.pairing'],
         userAgent: `opencami/${process.env.npm_package_version ?? 'dev'} (node ${process.version})`,
         locale: process.env.LANG || 'en',
       }
