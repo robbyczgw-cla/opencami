@@ -44,6 +44,10 @@ type MessageItemProps = {
   wrapperScrollMarginTop?: number
   messageDomId?: string
   highlighted?: boolean
+  /** Called when the user clicks "Retry" on a failed message */
+  onRetry?: (message: GatewayMessage) => void
+  /** Called when the user clicks "Dismiss" on a failed message */
+  onDismiss?: (message: GatewayMessage) => void
 }
 
 function mapToolCallToToolPart(
@@ -303,6 +307,8 @@ function MessageItemComponent({
   wrapperScrollMarginTop,
   messageDomId,
   highlighted = false,
+  onRetry,
+  onDismiss,
 }: MessageItemProps) {
   const { settings } = useChatSettings()
   const role = message.role || 'assistant'
@@ -310,6 +316,7 @@ function MessageItemComponent({
   const thinking = thinkingFromMessage(message)
   const images = imagesFromMessage(message)
   const isUser = role === 'user'
+  const isFailed = isUser && (message as any).status === 'error'
   const imageDataUris = useMemo(
     () =>
       images.map(
@@ -480,11 +487,36 @@ function MessageItemComponent({
               ? 'opencami-message-user bg-primary-100 px-4 py-[var(--opencami-user-bubble-py)] max-w-[85%]'
               : 'opencami-message-assistant bg-transparent w-full',
             !isUser && isStreaming && 'stream-fade-in',
+            isFailed && 'opacity-60',
           )}
         >
           {displayText}
         </MessageContent>
       </Message>
+
+      {isFailed && (
+        <div className="flex items-center gap-2 text-xs text-red-500 dark:text-red-400">
+          <span>Failed to send</span>
+          {onRetry && (
+            <button
+              type="button"
+              className="underline hover:text-red-700 dark:hover:text-red-300"
+              onClick={() => onRetry(message)}
+            >
+              Retry
+            </button>
+          )}
+          {onDismiss && (
+            <button
+              type="button"
+              className="underline hover:text-red-700 dark:hover:text-red-300"
+              onClick={() => onDismiss(message)}
+            >
+              Dismiss
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Render tool calls with their results */}
       {hasToolCalls && settings.showToolMessages && (
@@ -544,6 +576,9 @@ function areMessagesEqual(
   }
   if (prevProps.messageDomId !== nextProps.messageDomId) return false
   if (prevProps.highlighted !== nextProps.highlighted) return false
+  if (prevProps.onRetry !== nextProps.onRetry) return false
+  if (prevProps.onDismiss !== nextProps.onDismiss) return false
+  if ((prevProps.message as any).status !== (nextProps.message as any).status) return false
   if (
     (prevProps.message.role || 'assistant') !==
     (nextProps.message.role || 'assistant')

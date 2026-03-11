@@ -959,6 +959,66 @@ export function ChatScreen({
     })
   }, [queryClient])
 
+  // Handle retry on a failed message — re-send the original text
+  const handleRetryMessage = useCallback(
+    (message: GatewayMessage) => {
+      const messageText = textFromMessage(message)
+      if (!messageText) return
+      const sessionKeyForSend =
+        forcedSessionKey || resolvedSessionKey || activeSessionKey
+      if (!sessionKeyForSend) return
+      // Remove the failed message from history
+      const clientId = message.clientId as string | undefined
+      const optimisticId = message.__optimisticId
+      if (clientId) {
+        removeHistoryMessageByClientId(
+          queryClient,
+          activeFriendlyId,
+          sessionKeyForSend,
+          clientId,
+          optimisticId,
+        )
+      }
+      // Re-send
+      sendMessage(sessionKeyForSend, activeFriendlyId, messageText)
+    },
+    [
+      activeFriendlyId,
+      activeSessionKey,
+      forcedSessionKey,
+      queryClient,
+      resolvedSessionKey,
+    ],
+  )
+
+  // Handle dismiss on a failed message — remove it from history
+  const handleDismissMessage = useCallback(
+    (message: GatewayMessage) => {
+      const sessionKeyForSend =
+        forcedSessionKey || resolvedSessionKey || activeSessionKey
+      if (!sessionKeyForSend) return
+      const clientId = message.clientId as string | undefined
+      const optimisticId = message.__optimisticId
+      if (clientId) {
+        removeHistoryMessageByClientId(
+          queryClient,
+          activeFriendlyId,
+          sessionKeyForSend,
+          clientId,
+          optimisticId,
+        )
+      }
+      setError(null)
+    },
+    [
+      activeFriendlyId,
+      activeSessionKey,
+      forcedSessionKey,
+      queryClient,
+      resolvedSessionKey,
+    ],
+  )
+
   // Handle follow-up suggestion clicks - sends the suggestion as a new message
   const handleFollowUpClick = useCallback(
     (suggestion: string) => {
@@ -1145,6 +1205,8 @@ export function ChatScreen({
                 contentStyle={stableContentStyle}
                 onFollowUpClick={handleFollowUpClick}
                 jumpToMessageId={searchJumpMessageId}
+                onRetryMessage={handleRetryMessage}
+                onDismissMessage={handleDismissMessage}
               />
               <ChatComposer
                 onSubmit={send}

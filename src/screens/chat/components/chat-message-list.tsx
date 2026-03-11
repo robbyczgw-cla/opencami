@@ -45,6 +45,10 @@ type ChatMessageListProps = {
   onFollowUpClick?: (suggestion: string) => void
   /** Message id to scroll to and briefly highlight */
   jumpToMessageId?: string | null
+  /** Called when user clicks Retry on a failed message */
+  onRetryMessage?: (message: GatewayMessage) => void
+  /** Called when user clicks Dismiss on a failed message */
+  onDismissMessage?: (message: GatewayMessage) => void
 }
 
 function ChatMessageListComponent({
@@ -63,6 +67,8 @@ function ChatMessageListComponent({
   contentStyle,
   onFollowUpClick,
   jumpToMessageId,
+  onRetryMessage,
+  onDismissMessage,
 }: ChatMessageListProps) {
   const anchorRef = useRef<HTMLDivElement | null>(null)
   const lastUserRef = useRef<HTMLDivElement | null>(null)
@@ -364,6 +370,8 @@ function ChatMessageListComponent({
                       messageId ? `message-${messageId}` : undefined
                     }
                     highlighted={highlightedMessageId === messageId}
+                    onRetry={onRetryMessage}
+                    onDismiss={onDismissMessage}
                   />
                 )
               })}
@@ -416,6 +424,8 @@ function ChatMessageListComponent({
                         messageId ? `message-${messageId}` : undefined
                       }
                       highlighted={highlightedMessageId === messageId}
+                      onRetry={onRetryMessage}
+                      onDismiss={onDismissMessage}
                     />
                   )
                 })}
@@ -465,6 +475,8 @@ function ChatMessageListComponent({
                   }
                   messageDomId={messageId ? `message-${messageId}` : undefined}
                   highlighted={highlightedMessageId === messageId}
+                  onRetry={onRetryMessage}
+                  onDismiss={onDismissMessage}
                 />
               )
             })}
@@ -507,7 +519,9 @@ function areChatMessageListEqual(
     prev.headerHeight === next.headerHeight &&
     prev.contentStyle === next.contentStyle &&
     prev.onFollowUpClick === next.onFollowUpClick &&
-    prev.jumpToMessageId === next.jumpToMessageId
+    prev.jumpToMessageId === next.jumpToMessageId &&
+    prev.onRetryMessage === next.onRetryMessage &&
+    prev.onDismissMessage === next.onDismissMessage
   )
 }
 
