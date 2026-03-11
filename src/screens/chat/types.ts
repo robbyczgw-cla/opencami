@@ -69,6 +69,7 @@ export type HistoryResponse = {
   sessionKey: string
   sessionId?: string
   messages: Array<GatewayMessage>
+  hasMore?: boolean
 }
 
 export type SessionMeta = {

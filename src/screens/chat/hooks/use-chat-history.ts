@@ -1,9 +1,11 @@
-import { useMemo, useRef } from 'react'
+import { useCallback, useMemo, useRef } from 'react'
 import { useQuery, type QueryClient } from '@tanstack/react-query'
 
 import { chatQueryKeys, fetchHistory } from '../chat-queries'
 import { getMessageTimestamp, textFromMessage } from '../utils'
 import type { GatewayMessage, HistoryResponse } from '../types'
+
+const PAGE_SIZE = 50
 
 type UseChatHistoryInput = {
   activeFriendlyId: string
@@ -32,6 +34,21 @@ export function useChatHistory({
     activeFriendlyId,
     sessionKeyForHistory,
   )
+
+  // Mutable limit ref — increased when user clicks "Load more".
+  // Using a ref (not state) so the queryKey stays stable and the
+  // existing cached data isn't thrown away on limit change.
+  const limitRef = useRef(PAGE_SIZE)
+  const hasMoreRef = useRef(false)
+
+  // Reset limit when session changes
+  const prevSessionRef = useRef(sessionKeyForHistory)
+  if (prevSessionRef.current !== sessionKeyForHistory) {
+    prevSessionRef.current = sessionKeyForHistory
+    limitRef.current = PAGE_SIZE
+    hasMoreRef.current = false
+  }
+
   const historyQuery = useQuery({
     queryKey: historyKey,
     queryFn: async function fetchHistoryForSession() {
@@ -49,7 +66,11 @@ export function useChatHistory({
       const serverData = await fetchHistory({
         sessionKey: sessionKeyForHistory,
         friendlyId: activeFriendlyId,
+        limit: limitRef.current,
       })
+
+      hasMoreRef.current = serverData.hasMore ?? false
+
       if (!optimisticMessages.length) return serverData
 
       const merged = mergeOptimisticHistoryMessages(
@@ -72,6 +93,11 @@ export function useChatHistory({
     },
     gcTime: 1000 * 60 * 10,
   })
+
+  const loadMore = useCallback(() => {
+    limitRef.current += PAGE_SIZE * 3
+    void historyQuery.refetch()
+  }, [historyQuery])
 
   const stableHistorySignatureRef = useRef('')
   const stableHistoryMessagesRef = useRef<Array<GatewayMessage>>([])
@@ -113,6 +139,8 @@ export function useChatHistory({
     resolvedSessionKey,
     activeCanonicalKey,
     sessionKeyForHistory,
+    hasMore: hasMoreRef.current,
+    loadMore,
   }
 }
 

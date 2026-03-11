@@ -45,6 +45,10 @@ type ChatMessageListProps = {
   onFollowUpClick?: (suggestion: string) => void
   /** Message id to scroll to and briefly highlight */
   jumpToMessageId?: string | null
+  /** Whether there are earlier messages to load */
+  hasMore?: boolean
+  /** Called when user wants to load earlier messages */
+  onLoadMore?: () => void
 }
 
 function ChatMessageListComponent({
@@ -63,6 +67,8 @@ function ChatMessageListComponent({
   contentStyle,
   onFollowUpClick,
   jumpToMessageId,
+  hasMore,
+  onLoadMore,
 }: ChatMessageListProps) {
   const anchorRef = useRef<HTMLDivElement | null>(null)
   const lastUserRef = useRef<HTMLDivElement | null>(null)
@@ -326,6 +332,17 @@ function ChatMessageListComponent({
     <ChatContainerRoot className="flex-1 min-h-0 -mb-4">
       <ChatContainerContent className="pt-6" style={contentStyle}>
         {notice && noticePosition === 'start' ? notice : null}
+        {hasMore && onLoadMore && !loading && (
+          <div className="flex justify-center py-3">
+            <button
+              type="button"
+              className="text-xs text-primary-500 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-200 underline"
+              onClick={onLoadMore}
+            >
+              Load earlier messages
+            </button>
+          </div>
+        )}
         {empty && !notice ? (
           (emptyState ?? <div aria-hidden></div>)
         ) : hasGroup ? (
@@ -507,7 +524,9 @@ function areChatMessageListEqual(
     prev.headerHeight === next.headerHeight &&
     prev.contentStyle === next.contentStyle &&
     prev.onFollowUpClick === next.onFollowUpClick &&
-    prev.jumpToMessageId === next.jumpToMessageId
+    prev.jumpToMessageId === next.jumpToMessageId &&
+    prev.hasMore === next.hasMore &&
+    prev.onLoadMore === next.onLoadMore
   )
 }
 
