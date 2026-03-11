@@ -11,7 +11,7 @@ afterEach(() => {
   cleanup()
   vi.clearAllMocks()
   // Clear localStorage between tests
-  if (typeof localStorage !== 'undefined') {
+  if (typeof localStorage !== 'undefined' && typeof localStorage.clear === 'function') {
     localStorage.clear()
   }
 })
