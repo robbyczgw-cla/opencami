@@ -297,9 +297,11 @@ Requires a display/GUI environment.
 
 Built on top of [WebClaw](https://github.com/ibelick/webclaw) by [@ibelick](https://github.com/ibelick).
 
-File Explorer by [@balin-ar](https://github.com/balin-ar) ([PR #2](https://github.com/ibelick/webclaw/pull/2)).
+### Contributors
 
-Dockerfile by [@deblanco](https://github.com/deblanco) ([PR #7](https://github.com/ibelick/webclaw/pull/7)).
+- [@maciejlis](https://github.com/maciejlis) — Dark mode palette, dark mode visibility fixes, metadata stripping improvements
+- [@balin-ar](https://github.com/balin-ar) — File Explorer ([upstream PR #2](https://github.com/ibelick/webclaw/pull/2))
+- [@deblanco](https://github.com/deblanco) — Dockerfile ([upstream PR #7](https://github.com/ibelick/webclaw/pull/7))
 
 Powered by [OpenClaw](https://github.com/openclaw/openclaw).
 

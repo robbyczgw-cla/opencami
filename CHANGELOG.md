@@ -3,6 +3,20 @@
 All notable changes to OpenCami are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [Semantic Versioning](https://semver.org/).
 
+## [1.9.0] - 2026-03-11
+
+### Fixed
+
+- **Streaming reliability** — second and subsequent messages now stream correctly; unified gateway connection eliminates connId mismatches; seq-based dedup prevents doubled text (#4, #12) — by [@robbyczgw-cla](https://github.com/robbyczgw-cla)
+- **Device pairing scopes** — request `operator.read` and `operator.write` during device pairing so connections work without `allowInsecureAuth` (#2, #13) — by [@robbyczgw-cla](https://github.com/robbyczgw-cla)
+- **Dark mode visibility** — slash command menu, command help modal, and context meter now readable in dark mode (#9) — by [@maciejlis](https://github.com/maciejlis)
+
+### Improved
+
+- Tool call cards render inline during streaming instead of appearing after text
+- Gateway connection notice shown when WebSocket is disconnected
+- Cleaner event deduplication with sequence tracking
+
 ## [1.8.13] - 2026-03-10
 
 ### Fixed
