@@ -5,6 +5,7 @@ import {
   type Dispatch,
   type SetStateAction,
 } from 'react'
+import { SseEventSchema } from '@/server/gateway-schemas'
 
 // ─── Types ──────────────────────────────────────────────────────────────
 
@@ -28,13 +29,6 @@ export type StreamingState = {
   /** Ordered content blocks — preserves the interleaving of text and tools. */
   contentBlocks: StreamContentBlock[]
   sessionKey: string | null
-}
-
-type RawGatewayEvent = {
-  event?: string
-  payload?: unknown
-  seq?: number
-  stateVersion?: number
 }
 
 type RawAgentPayload = {
@@ -160,7 +154,9 @@ export function useStreaming(options: {
 
     es.addEventListener('message', (e) => {
       try {
-        const data = JSON.parse(e.data) as RawGatewayEvent
+        const result = SseEventSchema.safeParse(JSON.parse(e.data))
+        if (!result.success) return // drop malformed SSE events
+        const data = result.data
 
         // Seq-based deduplication: skip events we've already processed.
         if (typeof data.seq === 'number') {
