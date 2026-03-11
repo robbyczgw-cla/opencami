@@ -307,6 +307,7 @@ export function ChatScreen({
           type: 'toolCall' as const,
           name: block.name,
           id: block.id,
+          arguments: block.arguments,
         })
       }
     }
@@ -320,6 +321,26 @@ export function ChatScreen({
       __streaming: true,
       timestamp: Date.now(),
     } as GatewayMessage
+  }, [streaming.contentBlocks])
+
+  // Build synthetic tool-result messages for streaming tools that have completed.
+  // These are placed in the message array so `toolResultsByCallId` picks them
+  // up and the Tool component renders them with a ✓ checkmark + output.
+  const streamingToolResults = useMemo(() => {
+    const results: GatewayMessage[] = []
+    for (const block of streaming.contentBlocks) {
+      if (block.kind === 'tool' && block.status === 'done') {
+        results.push({
+          role: 'toolResult',
+          toolCallId: block.id,
+          toolName: block.name,
+          content: block.output
+            ? [{ type: 'text' as const, text: block.output }]
+            : [],
+        } as GatewayMessage)
+      }
+    }
+    return results
   }, [streaming.contentBlocks])
 
   // Merge streaming message into display messages
@@ -350,6 +371,7 @@ export function ChatScreen({
       return displayMessages
     }
 
+    let merged: GatewayMessage[]
     if (assistantIsLatestTurn && typeof lastAssistantIndex === 'number') {
       const historyAssistant = displayMessages[lastAssistantIndex]
       const historyText = textFromMessage(historyAssistant)
@@ -363,14 +385,21 @@ export function ChatScreen({
         return displayMessages
       }
 
-      const msgs = [...displayMessages]
-      msgs[lastAssistantIndex] = streamingMessage
-      return msgs
+      merged = [...displayMessages]
+      merged[lastAssistantIndex] = streamingMessage
+    } else {
+      // No assistant response for the current turn in history yet — append streaming.
+      merged = [...displayMessages, streamingMessage]
     }
 
-    // No assistant response for the current turn in history yet — append streaming.
-    return [...displayMessages, streamingMessage]
-  }, [displayMessages, streamingMessage, streaming.active, streaming.text, streaming.tools])
+    // Append synthetic tool-result messages so the Tool component can show
+    // completed tools with ✓ and output instead of a permanent spinner.
+    if (streamingToolResults.length > 0) {
+      merged = [...merged, ...streamingToolResults]
+    }
+
+    return merged
+  }, [displayMessages, streamingMessage, streamingToolResults, streaming.active, streaming.text, streaming.tools])
 
   const stableContentStyle = useMemo<React.CSSProperties>(() => ({}), [])
   refreshHistoryRef.current = function refreshHistory() {

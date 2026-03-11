@@ -10,7 +10,14 @@ import {
 
 export type StreamContentBlock =
   | { kind: 'text'; text: string }
-  | { kind: 'tool'; name: string; id: string; status: string }
+  | {
+      kind: 'tool'
+      name: string
+      id: string
+      status: string
+      arguments?: Record<string, unknown>
+      output?: string
+    }
 
 export type StreamingState = {
   active: boolean
@@ -308,6 +315,18 @@ function handleAgentEvent(
     'Tool'
   const toolStatus = deriveToolStatus(stream, streamData)
 
+  // Extract tool input (arguments) and output from the event data.
+  // Gateway events may carry these under various field names.
+  const toolArgs =
+    asRecord(streamData?.arguments) ||
+    asRecord(streamData?.input) ||
+    asRecord(streamData?.params) ||
+    null
+  const toolOutput =
+    normalizeString(streamData?.result) ||
+    normalizeString(streamData?.output) ||
+    (stream.includes('result') ? normalizeString(streamData?.text) : '')
+
   options.setState((prev) => {
     // Update tools array (backward compat)
     const tools = [...prev.tools]
@@ -324,11 +343,17 @@ function handleAgentEvent(
     const blockIndex = blocks.findIndex(
       (b) => b.kind === 'tool' && b.id === toolId,
     )
+    const existingBlock = blockIndex >= 0
+      ? (blocks[blockIndex] as StreamContentBlock & { kind: 'tool' })
+      : null
     const nextBlock: StreamContentBlock = {
       kind: 'tool',
       name: toolName,
       id: toolId,
       status: toolStatus,
+      // Merge: keep existing arguments/output if new event doesn't carry them
+      arguments: toolArgs ?? existingBlock?.arguments,
+      output: toolOutput || existingBlock?.output || undefined,
     }
     if (blockIndex >= 0) {
       blocks[blockIndex] = nextBlock
