@@ -35,6 +35,9 @@ export const Route = createFileRoute('/api/stream')({
         // Skip any event whose seq we've already forwarded. This prevents
         // doubled text from duplicate event dispatch in Vite SSR contexts.
         let lastSeq = -1
+        // Content-based dedup: skip consecutive events with identical payloads.
+        // Catches duplicates that carry different seq values.
+        let lastEventFingerprint = ''
 
         function writeChunk(chunk: string) {
           if (closed) return
@@ -80,6 +83,12 @@ export const Route = createFileRoute('/api/stream')({
                 if (event.seq <= lastSeq) return
                 lastSeq = event.seq
               }
+
+              // Content-based dedup: skip consecutive events with identical
+              // event type + payload. Catches duplicates with different seq.
+              const fp = event.event + ':' + JSON.stringify(event.payload)
+              if (fp === lastEventFingerprint) return
+              lastEventFingerprint = fp
 
               // Safety-net filter: the PersistentGatewayConnection already
               // routes events by session key, but we double-check here to

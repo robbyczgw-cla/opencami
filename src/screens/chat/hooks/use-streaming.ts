@@ -61,6 +61,11 @@ export function useStreaming(options: {
   // If we see a seq we've already processed, skip it. This guards against
   // duplicate delivery caused by Vite SSR multi-context dispatch or similar.
   const lastSeqRef = useRef(-1)
+  // Content-based deduplication: if consecutive agent events have identical
+  // payloads (same event type + same data), skip the duplicate. This catches
+  // cases where duplicated events carry *different* seq values (e.g. two WS
+  // connections each forwarding the same gateway event with their own seq).
+  const lastAgentFingerprintRef = useRef('')
   // Track whether we've ever seen a run, to avoid premature onDone when
   // activeRuns is empty simply because no agent events arrived yet.
   const anyRunSeenRef = useRef(false)
@@ -84,6 +89,7 @@ export function useStreaming(options: {
     activeRunsRef.current.clear()
     anyRunSeenRef.current = false
     lastSeqRef.current = -1
+    lastAgentFingerprintRef.current = ''
     if (eventSourceRef.current) {
       eventSourceRef.current.close()
       eventSourceRef.current = null
@@ -126,6 +132,7 @@ export function useStreaming(options: {
     activeRunsRef.current.clear()
     anyRunSeenRef.current = false
     lastSeqRef.current = -1
+    lastAgentFingerprintRef.current = ''
 
     setState({
       active: true,
@@ -158,6 +165,13 @@ export function useStreaming(options: {
         const currentKey = sessionKeyRef.current
 
         if (data.event === 'agent') {
+          // Content-based dedup: skip consecutive agent events with identical
+          // payloads. Catches duplicates that have *different* seq values
+          // (e.g. from parallel WS connections or Vite SSR multi-context).
+          const fp = JSON.stringify(data.payload)
+          if (fp === lastAgentFingerprintRef.current) return
+          lastAgentFingerprintRef.current = fp
+
           handleAgentEvent(data.payload, currentKey, {
             setState,
             onAssistantDelta: onAssistantDeltaRef.current,
