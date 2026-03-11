@@ -23,8 +23,11 @@ export const Route = createFileRoute('/api/send')({
           const friendlyId =
             typeof body.friendlyId === 'string' ? body.friendlyId.trim() : ''
           const message = String(body.message ?? '')
-          const thinking =
+          const rawThinking =
             typeof body.thinking === 'string' ? body.thinking : undefined
+          // When adaptive is selected, omit the thinking param so the gateway
+          // uses its own session-level default (which is typically adaptive).
+          const thinking = rawThinking === 'adaptive' ? undefined : rawThinking
 
           // Parse attachments array
           const rawAttachments = body.attachments

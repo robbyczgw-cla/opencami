@@ -7,11 +7,11 @@ beforeEach(() => {
 })
 
 describe('useThinkingLevelStore', () => {
-  it('should have default level of low', async () => {
+  it('should have default level of adaptive', async () => {
     const { useThinkingLevelStore } = await import('@/hooks/use-thinking-level')
     const state = useThinkingLevelStore.getState()
 
-    expect(state.level).toBe('low')
+    expect(state.level).toBe('adaptive')
   })
 
   it('should update level', async () => {
@@ -27,7 +27,7 @@ describe('useThinkingLevelStore', () => {
   it('should handle all thinking levels', async () => {
     const { useThinkingLevelStore } = await import('@/hooks/use-thinking-level')
 
-    const levels = ['off', 'low', 'medium', 'high'] as const
+    const levels = ['adaptive', 'off', 'low', 'medium', 'high'] as const
     for (const level of levels) {
       act(() => {
         useThinkingLevelStore.getState().setLevel(level)
