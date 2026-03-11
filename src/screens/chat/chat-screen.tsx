@@ -161,9 +161,10 @@ export function ChatScreen({
   const gatewayStatusQuery = useQuery({
     queryKey: ['gateway', 'status'],
     queryFn: fetchGatewayStatus,
-    retry: false,
+    retry: 2,
+    retryDelay: (attempt) => Math.min(2000 * 2 ** attempt, 8000),
     refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
+    refetchOnReconnect: true,
     refetchOnMount: 'always',
   })
   const gatewayStatusMountRef = useRef(Date.now())
@@ -178,6 +179,15 @@ export function ChatScreen({
     void gatewayStatusQuery.refetch()
   }, [gatewayStatusQuery])
   const isSidebarCollapsed = uiQuery.data?.isSidebarCollapsed ?? false
+
+  // Auto-clear stale gateway errors: if sessions loaded successfully after
+  // the ping failed, the gateway is obviously reachable — refetch the status
+  // so the error state gets cleared properly.
+  useEffect(() => {
+    if (sessionsQuery.isSuccess && gatewayStatusQuery.isError) {
+      void gatewayStatusQuery.refetch()
+    }
+  }, [sessionsQuery.isSuccess, gatewayStatusQuery.isError]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sidebar edge-swipe gesture (mobile only)
   const sidebarSwipeHandlers = useSwipeGesture({
@@ -268,35 +278,42 @@ export function ChatScreen({
     async (_sk: string) => {
       // 1. Refetch history so the final persisted message is available
       await historyQuery.refetch()
-      // 2. Close the SSE stream but keep the final streamed payload in state.
-      //    This prevents a one-frame gap if history paint lags behind refetch.
-      stopStream({ preserveState: true })
+      // 2. DON'T close the EventSource — keep it alive for subsequent
+      //    messages. The use-streaming hook already set active=false in the
+      //    onDone handler. Closing it here caused a race condition for the
+      //    second message: the shared gateway client was released, so
+      //    chat.send fell back to a different WS connection.
       streamFinish()
       void queryClient.invalidateQueries({ queryKey: chatQueryKeys.sessions })
     },
-    [historyQuery, queryClient, stopStream, streamFinish],
+    [historyQuery, queryClient, streamFinish],
   )
   handleStreamErrorRef.current = useCallback((_err: string) => {
     console.warn('[stream] SSE error, falling back to polling')
   }, [])
 
-  // Build a synthetic "streaming" assistant message from SSE deltas
+  // Build a synthetic "streaming" assistant message from SSE deltas.
+  // Uses contentBlocks to preserve the correct interleaving of text and
+  // tool-call events (e.g. text → tool → more text).
   const streamingMessage = useMemo<GatewayMessage | null>(() => {
-    // Keep showing streamed text until persisted history has visibly caught up.
-    // The merge step below removes this synthetic message once history's
-    // assistant text is at least as complete.
-    if (!streaming.text) return null
+    if (streaming.contentBlocks.length === 0) return null
+
     const content: GatewayMessage['content'] = []
-    // Add tool call indicators
-    for (const tool of streaming.tools) {
-      content.push({
-        type: 'toolCall' as const,
-        name: tool.name,
-        id: tool.id,
-      })
+    for (const block of streaming.contentBlocks) {
+      if (block.kind === 'text' && block.text) {
+        content.push({ type: 'text' as const, text: block.text })
+      } else if (block.kind === 'tool') {
+        content.push({
+          type: 'toolCall' as const,
+          name: block.name,
+          id: block.id,
+          arguments: block.arguments,
+        })
+      }
     }
-    // Add text
-    content.push({ type: 'text' as const, text: streaming.text })
+
+    if (content.length === 0) return null
+
     return {
       role: 'assistant',
       content,
@@ -304,7 +321,27 @@ export function ChatScreen({
       __streaming: true,
       timestamp: Date.now(),
     } as GatewayMessage
-  }, [streaming.text, streaming.tools])
+  }, [streaming.contentBlocks])
+
+  // Build synthetic tool-result messages for streaming tools that have completed.
+  // These are placed in the message array so `toolResultsByCallId` picks them
+  // up and the Tool component renders them with a ✓ checkmark + output.
+  const streamingToolResults = useMemo(() => {
+    const results: GatewayMessage[] = []
+    for (const block of streaming.contentBlocks) {
+      if (block.kind === 'tool' && block.status === 'done') {
+        results.push({
+          role: 'toolResult',
+          toolCallId: block.id,
+          toolName: block.name,
+          content: block.output
+            ? [{ type: 'text' as const, text: block.output }]
+            : [],
+        } as GatewayMessage)
+      }
+    }
+    return results
+  }, [streaming.contentBlocks])
 
   // Merge streaming message into display messages
   const messagesWithStreaming = useMemo(() => {
@@ -327,19 +364,42 @@ export function ChatScreen({
       typeof lastAssistantIndex === 'number' &&
       (typeof lastUserIndex !== 'number' || lastAssistantIndex > lastUserIndex)
 
+    // Once streaming is done, prefer the persisted history over the streaming
+    // overlay. The streaming state may have accumulated garbled/doubled text
+    // from duplicate event delivery; history is always correct.
+    if (!streaming.active && assistantIsLatestTurn) {
+      return displayMessages
+    }
+
+    let merged: GatewayMessage[]
     if (assistantIsLatestTurn && typeof lastAssistantIndex === 'number') {
       const historyAssistant = displayMessages[lastAssistantIndex]
       const historyText = textFromMessage(historyAssistant)
-      if (historyText.length >= streaming.text.length) return displayMessages
+      // Only suppress the streaming overlay once history text has caught up
+      // AND there are no active tool-call indicators (tool-only responses
+      // have streaming.text === '' but should still show their tool cards).
+      if (
+        historyText.length >= streaming.text.length &&
+        streaming.tools.length === 0
+      ) {
+        return displayMessages
+      }
 
-      const msgs = [...displayMessages]
-      msgs[lastAssistantIndex] = streamingMessage
-      return msgs
+      merged = [...displayMessages]
+      merged[lastAssistantIndex] = streamingMessage
+    } else {
+      // No assistant response for the current turn in history yet — append streaming.
+      merged = [...displayMessages, streamingMessage]
     }
 
-    // No assistant response for the current turn in history yet — append streaming.
-    return [...displayMessages, streamingMessage]
-  }, [displayMessages, streamingMessage, streaming.text])
+    // Append synthetic tool-result messages so the Tool component can show
+    // completed tools with ✓ and output instead of a permanent spinner.
+    if (streamingToolResults.length > 0) {
+      merged = [...merged, ...streamingToolResults]
+    }
+
+    return merged
+  }, [displayMessages, streamingMessage, streamingToolResults, streaming.active, streaming.text, streaming.tools])
 
   const stableContentStyle = useMemo<React.CSSProperties>(() => ({}), [])
   refreshHistoryRef.current = function refreshHistory() {
@@ -983,8 +1043,11 @@ export function ChatScreen({
   const historyLoading =
     (historyQuery.isLoading && !historyQuery.data) || isRedirecting
   const showGatewayDown = Boolean(gatewayStatusError)
+  // Don't show the gateway notice if sessions have loaded successfully —
+  // that proves the gateway is reachable regardless of the ping result.
   const showGatewayNotice =
     showGatewayDown &&
+    !sessionsQuery.isSuccess &&
     gatewayStatusQuery.errorUpdatedAt > gatewayStatusMountRef.current
   const historyEmpty = !historyLoading && displayMessages.length === 0
   const gatewayNotice = useMemo(() => {
