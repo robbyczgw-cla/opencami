@@ -161,9 +161,10 @@ export function ChatScreen({
   const gatewayStatusQuery = useQuery({
     queryKey: ['gateway', 'status'],
     queryFn: fetchGatewayStatus,
-    retry: false,
+    retry: 2,
+    retryDelay: (attempt) => Math.min(2000 * 2 ** attempt, 8000),
     refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
+    refetchOnReconnect: true,
     refetchOnMount: 'always',
   })
   const gatewayStatusMountRef = useRef(Date.now())
@@ -178,6 +179,15 @@ export function ChatScreen({
     void gatewayStatusQuery.refetch()
   }, [gatewayStatusQuery])
   const isSidebarCollapsed = uiQuery.data?.isSidebarCollapsed ?? false
+
+  // Auto-clear stale gateway errors: if sessions loaded successfully after
+  // the ping failed, the gateway is obviously reachable — refetch the status
+  // so the error state gets cleared properly.
+  useEffect(() => {
+    if (sessionsQuery.isSuccess && gatewayStatusQuery.isError) {
+      void gatewayStatusQuery.refetch()
+    }
+  }, [sessionsQuery.isSuccess, gatewayStatusQuery.isError]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sidebar edge-swipe gesture (mobile only)
   const sidebarSwipeHandlers = useSwipeGesture({
@@ -1004,8 +1014,11 @@ export function ChatScreen({
   const historyLoading =
     (historyQuery.isLoading && !historyQuery.data) || isRedirecting
   const showGatewayDown = Boolean(gatewayStatusError)
+  // Don't show the gateway notice if sessions have loaded successfully —
+  // that proves the gateway is reachable regardless of the ping result.
   const showGatewayNotice =
     showGatewayDown &&
+    !sessionsQuery.isSuccess &&
     gatewayStatusQuery.errorUpdatedAt > gatewayStatusMountRef.current
   const historyEmpty = !historyLoading && displayMessages.length === 0
   const gatewayNotice = useMemo(() => {
