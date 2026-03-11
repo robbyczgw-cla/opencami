@@ -71,14 +71,16 @@ export const Route = createFileRoute('/api/stream')({
         try {
           const handle = await acquireGatewayClient(key, {
             onEvent(event) {
-              // Filter events to only forward those relevant to this session.
-              // The gateway broadcasts ALL events to every connected client.
+              // Safety-net filter: the PersistentGatewayConnection already
+              // routes events by session key, but we double-check here to
+              // prevent any cross-session leakage in the SSE stream.
               const p = event.payload as Record<string, unknown> | undefined
               const eventSessionKey = typeof p?.sessionKey === 'string' ? p.sessionKey : ''
 
               // Allow events without a sessionKey (health, presence, tick, etc.)
-              // Allow events matching this session's key (exact or agent: prefixed)
-              if (eventSessionKey && !eventSessionKey.includes(key)) {
+              // Allow events matching this session's key (segment-based match
+              // on ':'-separated parts, e.g. 'agent:main:main' matches 'main').
+              if (eventSessionKey && eventSessionKey !== key && !eventSessionKey.split(':').includes(key)) {
                 return
               }
 

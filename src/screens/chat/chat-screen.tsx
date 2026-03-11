@@ -268,35 +268,41 @@ export function ChatScreen({
     async (_sk: string) => {
       // 1. Refetch history so the final persisted message is available
       await historyQuery.refetch()
-      // 2. Close the SSE stream but keep the final streamed payload in state.
-      //    This prevents a one-frame gap if history paint lags behind refetch.
-      stopStream({ preserveState: true })
+      // 2. DON'T close the EventSource — keep it alive for subsequent
+      //    messages. The use-streaming hook already set active=false in the
+      //    onDone handler. Closing it here caused a race condition for the
+      //    second message: the shared gateway client was released, so
+      //    chat.send fell back to a different WS connection.
       streamFinish()
       void queryClient.invalidateQueries({ queryKey: chatQueryKeys.sessions })
     },
-    [historyQuery, queryClient, stopStream, streamFinish],
+    [historyQuery, queryClient, streamFinish],
   )
   handleStreamErrorRef.current = useCallback((_err: string) => {
     console.warn('[stream] SSE error, falling back to polling')
   }, [])
 
-  // Build a synthetic "streaming" assistant message from SSE deltas
+  // Build a synthetic "streaming" assistant message from SSE deltas.
+  // Uses contentBlocks to preserve the correct interleaving of text and
+  // tool-call events (e.g. text → tool → more text).
   const streamingMessage = useMemo<GatewayMessage | null>(() => {
-    // Keep showing streamed text until persisted history has visibly caught up.
-    // The merge step below removes this synthetic message once history's
-    // assistant text is at least as complete.
-    if (!streaming.text) return null
+    if (streaming.contentBlocks.length === 0) return null
+
     const content: GatewayMessage['content'] = []
-    // Add tool call indicators
-    for (const tool of streaming.tools) {
-      content.push({
-        type: 'toolCall' as const,
-        name: tool.name,
-        id: tool.id,
-      })
+    for (const block of streaming.contentBlocks) {
+      if (block.kind === 'text' && block.text) {
+        content.push({ type: 'text' as const, text: block.text })
+      } else if (block.kind === 'tool') {
+        content.push({
+          type: 'toolCall' as const,
+          name: block.name,
+          id: block.id,
+        })
+      }
     }
-    // Add text
-    content.push({ type: 'text' as const, text: streaming.text })
+
+    if (content.length === 0) return null
+
     return {
       role: 'assistant',
       content,
@@ -304,7 +310,7 @@ export function ChatScreen({
       __streaming: true,
       timestamp: Date.now(),
     } as GatewayMessage
-  }, [streaming.text, streaming.tools])
+  }, [streaming.contentBlocks])
 
   // Merge streaming message into display messages
   const messagesWithStreaming = useMemo(() => {
@@ -330,7 +336,15 @@ export function ChatScreen({
     if (assistantIsLatestTurn && typeof lastAssistantIndex === 'number') {
       const historyAssistant = displayMessages[lastAssistantIndex]
       const historyText = textFromMessage(historyAssistant)
-      if (historyText.length >= streaming.text.length) return displayMessages
+      // Only suppress the streaming overlay once history text has caught up
+      // AND there are no active tool-call indicators (tool-only responses
+      // have streaming.text === '' but should still show their tool cards).
+      if (
+        historyText.length >= streaming.text.length &&
+        streaming.tools.length === 0
+      ) {
+        return displayMessages
+      }
 
       const msgs = [...displayMessages]
       msgs[lastAssistantIndex] = streamingMessage
@@ -339,7 +353,7 @@ export function ChatScreen({
 
     // No assistant response for the current turn in history yet — append streaming.
     return [...displayMessages, streamingMessage]
-  }, [displayMessages, streamingMessage, streaming.text])
+  }, [displayMessages, streamingMessage, streaming.text, streaming.tools])
 
   const stableContentStyle = useMemo<React.CSSProperties>(() => ({}), [])
   refreshHistoryRef.current = function refreshHistory() {
