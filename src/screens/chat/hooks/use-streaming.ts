@@ -6,10 +6,27 @@ import {
   type SetStateAction,
 } from 'react'
 
+// ─── Types ──────────────────────────────────────────────────────────────
+
+export type StreamContentBlock =
+  | { kind: 'text'; text: string }
+  | {
+      kind: 'tool'
+      name: string
+      id: string
+      status: string
+      arguments?: Record<string, unknown>
+      output?: string
+    }
+
 export type StreamingState = {
   active: boolean
+  /** Full accumulated assistant text (derived from contentBlocks). */
   text: string
+  /** Tool invocations (derived from contentBlocks, for backward compat). */
   tools: Array<{ name: string; status: string; id: string }>
+  /** Ordered content blocks — preserves the interleaving of text and tools. */
+  contentBlocks: StreamContentBlock[]
   sessionKey: string | null
 }
 
@@ -31,8 +48,11 @@ const INITIAL_STATE: StreamingState = {
   active: false,
   text: '',
   tools: [],
+  contentBlocks: [],
   sessionKey: null,
 }
+
+// ─── Hook ───────────────────────────────────────────────────────────────
 
 export function useStreaming(options: {
   onDone: (sessionKey: string) => void
@@ -44,6 +64,21 @@ export function useStreaming(options: {
   const doneRef = useRef(false)
   const finalStateRef = useRef(false)
   const activeRunsRef = useRef(new Set<string>())
+  // Seq-based deduplication: gateway events carry an incrementing seq number.
+  // If we see a seq we've already processed, skip it. This guards against
+  // duplicate delivery caused by Vite SSR multi-context dispatch or similar.
+  const lastSeqRef = useRef(-1)
+  // Content-based deduplication: if consecutive agent events have identical
+  // payloads (same event type + same data), skip the duplicate. This catches
+  // cases where duplicated events carry *different* seq values (e.g. two WS
+  // connections each forwarding the same gateway event with their own seq).
+  const lastAgentFingerprintRef = useRef('')
+  // Track whether we've ever seen a run, to avoid premature onDone when
+  // activeRuns is empty simply because no agent events arrived yet.
+  const anyRunSeenRef = useRef(false)
+  // Mutable ref for the current session key so the long-lived EventSource
+  // message handler always reads the latest value (avoids stale closure).
+  const sessionKeyRef = useRef('')
   const onDoneRef = useRef(options.onDone)
   const onErrorRef = useRef(options.onError)
   const onAssistantDeltaRef = useRef(options.onAssistantDelta)
@@ -51,10 +86,17 @@ export function useStreaming(options: {
   onErrorRef.current = options.onError
   onAssistantDeltaRef.current = options.onAssistantDelta
 
+  /**
+   * Full teardown — closes the EventSource and resets all state.
+   * Used when navigating away from a chat session.
+   */
   const stop = useCallback((options?: { preserveState?: boolean }) => {
     doneRef.current = true
     finalStateRef.current = false
     activeRunsRef.current.clear()
+    anyRunSeenRef.current = false
+    lastSeqRef.current = -1
+    lastAgentFingerprintRef.current = ''
     if (eventSourceRef.current) {
       eventSourceRef.current.close()
       eventSourceRef.current = null
@@ -66,35 +108,82 @@ export function useStreaming(options: {
     setState(INITIAL_STATE)
   }, [])
 
+  /**
+   * Start (or resume) streaming for a session.
+   *
+   * If an EventSource is already open and actively streaming (`doneRef` is
+   * false), the call is treated as a key-update (e.g. the second
+   * `startStream(resolvedKey)` after the send response) — state is NOT
+   * reset so in-flight deltas are preserved.
+   *
+   * If the EventSource exists but the previous message is done, state is
+   * reset for the new message while reusing the existing EventSource.
+   *
+   * If no EventSource exists, a fresh one is created.
+   */
   const start = useCallback(function start(sessionKey: string) {
+    // Always keep the ref up to date so the EventSource handler reads the
+    // latest key regardless of which call path we take.
+    sessionKeyRef.current = sessionKey
+
+    // ── Case 1: EventSource open & actively streaming ─────────────
+    // Second startStream call (resolved key) — just update the key.
+    if (eventSourceRef.current && !doneRef.current) {
+      setState((prev) => ({ ...prev, sessionKey, active: true }))
+      return
+    }
+
+    // ── Case 2 & 3: Need a fresh message state ───────────────────
     doneRef.current = false
     finalStateRef.current = false
     activeRunsRef.current.clear()
+    anyRunSeenRef.current = false
+    lastSeqRef.current = -1
+    lastAgentFingerprintRef.current = ''
 
     setState({
       active: true,
       text: '',
       tools: [],
+      contentBlocks: [],
       sessionKey,
     })
 
-    // If we already have an open EventSource for this session, reuse it.
-    // The server stream stays open across multiple messages.
+    // Case 2: EventSource exists but was done — reuse it.
     if (eventSourceRef.current) {
       return
     }
 
+    // ── Case 3: Create a fresh EventSource ────────────────────────
     const es = new EventSource(`/api/stream?sessionKey=${encodeURIComponent(sessionKey)}`)
     eventSourceRef.current = es
 
     es.addEventListener('message', (e) => {
       try {
         const data = JSON.parse(e.data) as RawGatewayEvent
+
+        // Seq-based deduplication: skip events we've already processed.
+        if (typeof data.seq === 'number') {
+          if (data.seq <= lastSeqRef.current) return
+          lastSeqRef.current = data.seq
+        }
+
+        // Read the latest session key from the ref, NOT the closure.
+        const currentKey = sessionKeyRef.current
+
         if (data.event === 'agent') {
-          handleAgentEvent(data.payload, sessionKey, {
+          // Content-based dedup: skip consecutive agent events with identical
+          // payloads. Catches duplicates that have *different* seq values
+          // (e.g. from parallel WS connections or Vite SSR multi-context).
+          const fp = JSON.stringify(data.payload)
+          if (fp === lastAgentFingerprintRef.current) return
+          lastAgentFingerprintRef.current = fp
+
+          handleAgentEvent(data.payload, currentKey, {
             setState,
             onAssistantDelta: onAssistantDeltaRef.current,
             activeRuns: activeRunsRef.current,
+            anyRunSeen: anyRunSeenRef,
           })
           return
         }
@@ -102,17 +191,24 @@ export function useStreaming(options: {
         if (data.event === 'chat') {
           const chatPayload = asRecord(data.payload)
           const eventSessionKey =
-            normalizeString(chatPayload?.sessionKey) || sessionKey
+            normalizeString(chatPayload?.sessionKey) || currentKey
           const chatState = normalizeString(chatPayload?.state)
 
           if (chatState === 'final') {
             finalStateRef.current = true
           }
 
+          // Only fire onDone when:
+          // 1. We haven't already fired it (doneRef)
+          // 2. We've received a final chat state
+          // 3. Either chatState is 'final' now, OR all known runs have
+          //    ended (but only if we've seen at least one run, to avoid
+          //    premature completion before any agent events arrive).
           if (
             !doneRef.current &&
             finalStateRef.current &&
-            (chatState === 'final' || activeRunsRef.current.size === 0)
+            (chatState === 'final' ||
+              (anyRunSeenRef.current && activeRunsRef.current.size === 0))
           ) {
             doneRef.current = true
             // Don't close the EventSource — keep it alive for subsequent
@@ -149,6 +245,8 @@ export function useStreaming(options: {
   return { streaming: state, startStream: start, stopStream: stop }
 }
 
+// ─── Event Handling ─────────────────────────────────────────────────────
+
 function handleAgentEvent(
   payload: unknown,
   fallbackSessionKey: string,
@@ -156,6 +254,7 @@ function handleAgentEvent(
     setState: Dispatch<SetStateAction<StreamingState>>
     onAssistantDelta?: (payload: { text: string; sessionKey: string }) => void
     activeRuns: Set<string>
+    anyRunSeen: { current: boolean }
   },
 ) {
   const agentPayload = asRecord(payload) as RawAgentPayload | null
@@ -165,6 +264,7 @@ function handleAgentEvent(
   const streamData = asRecord(agentPayload?.data)
 
   if (runId) {
+    options.anyRunSeen.current = true
     if (stream === 'lifecycle') {
       const phase = normalizeString(streamData?.phase)
       if (phase === 'end' || phase === 'error' || phase === 'abort') {
@@ -177,18 +277,31 @@ function handleAgentEvent(
     }
   }
 
+  // ── Assistant text deltas ─────────────────────────────────────────
   if (stream === 'assistant') {
     const text = normalizeString(streamData?.delta) || normalizeString(streamData?.text)
     if (!text) return
-    options.setState((prev) => ({
-      ...prev,
-      sessionKey,
-      text: prev.text + text,
-    }))
+    options.setState((prev) => {
+      // Append to the last text block, or create a new one
+      const blocks = [...prev.contentBlocks]
+      const lastBlock = blocks[blocks.length - 1]
+      if (lastBlock?.kind === 'text') {
+        blocks[blocks.length - 1] = { ...lastBlock, text: lastBlock.text + text }
+      } else {
+        blocks.push({ kind: 'text', text })
+      }
+      return {
+        ...prev,
+        sessionKey,
+        text: prev.text + text,
+        contentBlocks: blocks,
+      }
+    })
     options.onAssistantDelta?.({ text, sessionKey })
     return
   }
 
+  // ── Tool events ───────────────────────────────────────────────────
   if (!stream.includes('tool')) return
 
   const toolId =
@@ -202,22 +315,62 @@ function handleAgentEvent(
     'Tool'
   const toolStatus = deriveToolStatus(stream, streamData)
 
+  // Extract tool input (arguments) and output from the event data.
+  // Gateway events may carry these under various field names.
+  const toolArgs =
+    asRecord(streamData?.arguments) ||
+    asRecord(streamData?.input) ||
+    asRecord(streamData?.params) ||
+    null
+  const toolOutput =
+    normalizeString(streamData?.result) ||
+    normalizeString(streamData?.output) ||
+    (stream.includes('result') ? normalizeString(streamData?.text) : '')
+
   options.setState((prev) => {
+    // Update tools array (backward compat)
     const tools = [...prev.tools]
-    const index = tools.findIndex((tool) => tool.id === toolId)
+    const toolIndex = tools.findIndex((tool) => tool.id === toolId)
     const nextTool = { id: toolId, name: toolName, status: toolStatus }
-    if (index >= 0) {
-      tools[index] = nextTool
+    if (toolIndex >= 0) {
+      tools[toolIndex] = nextTool
     } else {
       tools.push(nextTool)
     }
+
+    // Update contentBlocks — preserves interleaving order
+    const blocks = [...prev.contentBlocks]
+    const blockIndex = blocks.findIndex(
+      (b) => b.kind === 'tool' && b.id === toolId,
+    )
+    const existingBlock = blockIndex >= 0
+      ? (blocks[blockIndex] as StreamContentBlock & { kind: 'tool' })
+      : null
+    const nextBlock: StreamContentBlock = {
+      kind: 'tool',
+      name: toolName,
+      id: toolId,
+      status: toolStatus,
+      // Merge: keep existing arguments/output if new event doesn't carry them
+      arguments: toolArgs ?? existingBlock?.arguments,
+      output: toolOutput || existingBlock?.output || undefined,
+    }
+    if (blockIndex >= 0) {
+      blocks[blockIndex] = nextBlock
+    } else {
+      blocks.push(nextBlock)
+    }
+
     return {
       ...prev,
       sessionKey,
       tools,
+      contentBlocks: blocks,
     }
   })
 }
+
+// ─── Helpers ────────────────────────────────────────────────────────────
 
 function deriveToolStatus(stream: string, data: Record<string, unknown> | null): string {
   const explicitStatus =

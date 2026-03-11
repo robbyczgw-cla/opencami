@@ -31,6 +31,13 @@ export const Route = createFileRoute('/api/stream')({
         let closed = false
         let heartbeat: ReturnType<typeof setInterval> | null = null
         let releaseClient: (() => void) | null = null
+        // Seq-based dedup: gateway events carry incrementing seq numbers.
+        // Skip any event whose seq we've already forwarded. This prevents
+        // doubled text from duplicate event dispatch in Vite SSR contexts.
+        let lastSeq = -1
+        // Content-based dedup: skip consecutive events with identical payloads.
+        // Catches duplicates that carry different seq values.
+        let lastEventFingerprint = ''
 
         function writeChunk(chunk: string) {
           if (closed) return
@@ -71,14 +78,28 @@ export const Route = createFileRoute('/api/stream')({
         try {
           const handle = await acquireGatewayClient(key, {
             onEvent(event) {
-              // Filter events to only forward those relevant to this session.
-              // The gateway broadcasts ALL events to every connected client.
+              // Seq-based dedup: skip events already forwarded to this stream.
+              if (typeof event.seq === 'number') {
+                if (event.seq <= lastSeq) return
+                lastSeq = event.seq
+              }
+
+              // Content-based dedup: skip consecutive events with identical
+              // event type + payload. Catches duplicates with different seq.
+              const fp = event.event + ':' + JSON.stringify(event.payload)
+              if (fp === lastEventFingerprint) return
+              lastEventFingerprint = fp
+
+              // Safety-net filter: the PersistentGatewayConnection already
+              // routes events by session key, but we double-check here to
+              // prevent any cross-session leakage in the SSE stream.
               const p = event.payload as Record<string, unknown> | undefined
               const eventSessionKey = typeof p?.sessionKey === 'string' ? p.sessionKey : ''
 
               // Allow events without a sessionKey (health, presence, tick, etc.)
-              // Allow events matching this session's key (exact or agent: prefixed)
-              if (eventSessionKey && !eventSessionKey.includes(key)) {
+              // Allow events matching this session's key (segment-based match
+              // on ':'-separated parts, e.g. 'agent:main:main' matches 'main').
+              if (eventSessionKey && eventSessionKey !== key && !eventSessionKey.split(':').includes(key)) {
                 return
               }
 

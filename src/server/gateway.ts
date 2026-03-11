@@ -47,6 +47,7 @@ export type GatewayEvent = {
   event: string
   payload: Record<string, unknown>
   seq?: number
+  stateVersion?: number
 }
 
 export type StreamListener = (event: GatewayEvent) => void
@@ -56,21 +57,14 @@ type GatewayClientCallbacks = {
   onError?: (error: Error) => void
 }
 
-type GatewayClient = {
-  connect: () => Promise<void>
-  sendReq: <TPayload = unknown>(method: string, params?: unknown) => Promise<TPayload>
-  close: () => void
-  isClosed: () => boolean
-  addCallbacks: (callbacks?: GatewayClientCallbacks) => () => void
-}
-
-type GatewayClientEntry = {
-  refs: number
-  client: GatewayClient
-}
-
 type GatewayClientHandle = {
-  client: GatewayClient
+  client: {
+    connect: () => Promise<void>
+    sendReq: <TPayload = unknown>(method: string, params?: unknown) => Promise<TPayload>
+    close: () => void
+    isClosed: () => boolean
+    addCallbacks: (callbacks?: GatewayClientCallbacks) => () => void
+  }
   release: () => void
 }
 
@@ -401,6 +395,9 @@ class PersistentGatewayConnection {
       const timer = setTimeout(() => {
         if (done) return
         done = true
+        // Clean up the handler to prevent leaking an extra message listener
+        // on the WebSocket (would be harmless but wastes cycles on every frame).
+        ws.off('message', onMessage)
         resolve('')
       }, 3000)
 
@@ -539,6 +536,9 @@ class PersistentGatewayConnection {
           event: parsed.event,
           payload: (parsed.payload ?? {}) as Record<string, unknown>,
           seq: parsed.seq,
+          stateVersion: typeof (parsed as any).stateVersion === 'number'
+            ? (parsed as any).stateVersion
+            : undefined,
         }
 
         // Determine which sessionKey this event belongs to
@@ -549,14 +549,23 @@ class PersistentGatewayConnection {
           try { listener(event) } catch {}
         }
 
-        // Notify session-specific listeners
+        // Notify session-specific listeners (segment match: event sessionKey
+        // may be 'agent:main:main' while subscription key is 'main').
+        // We split on ':' and check if any segment equals the subscription key,
+        // avoiding false positives from plain substring matching.
         if (sessionKey) {
-          const listeners = this.sessionListeners.get(sessionKey)
-          if (listeners && listeners.size > 0) {
-            for (const listener of listeners) {
-              try { listener(event) } catch {}
+          let dispatched = false
+          const eventSegments = sessionKey.split(':')
+          for (const [subKey, listeners] of this.sessionListeners) {
+            if (sessionKey === subKey || eventSegments.includes(subKey)) {
+              dispatched = true
+              for (const listener of listeners) {
+                try { listener(event) } catch {}
+              }
             }
-          } else {
+          }
+
+          if (!dispatched) {
             // No listeners yet — buffer the event so late subscribers can catch up
             let buf = this.eventBuffer.get(sessionKey)
             if (!buf) {
@@ -653,13 +662,21 @@ class PersistentGatewayConnection {
     }
     listeners.add(listener)
 
-    // Flush any buffered events to the new subscriber
-    const buf = this.eventBuffer.get(sessionKey)
-    if (buf) {
-      this.eventBuffer.delete(sessionKey)
-      clearTimeout(buf.timer)
-      for (const event of buf.events) {
-        try { listener(event) } catch {}
+    // Flush any buffered events that match this subscription (segment match)
+    const keysToFlush: string[] = []
+    for (const bufKey of this.eventBuffer.keys()) {
+      if (bufKey === sessionKey || bufKey.split(':').includes(sessionKey)) {
+        keysToFlush.push(bufKey)
+      }
+    }
+    for (const bufKey of keysToFlush) {
+      const buf = this.eventBuffer.get(bufKey)
+      if (buf) {
+        this.eventBuffer.delete(bufKey)
+        clearTimeout(buf.timer)
+        for (const event of buf.events) {
+          try { listener(event) } catch {}
+        }
       }
     }
 
@@ -712,246 +729,36 @@ function getPersistentConnection(): PersistentGatewayConnection {
 }
 
 
-const sharedGatewayClients = new Map<string, GatewayClientEntry>()
-
-function createGatewayClient(): GatewayClient {
-  const pendingRpcs = new Map<string, PendingRpc>()
-  const callbacks = new Set<GatewayClientCallbacks>()
-  let ws: WebSocket | null = null
-  let closed = false
-  let connected = false
-  let connectPromise: Promise<void> | null = null
-
-  function rejectAll(err: Error) {
-    for (const [, pending] of pendingRpcs) {
-      clearTimeout(pending.timer)
-      pending.reject(err)
-    }
-    pendingRpcs.clear()
-  }
-
-  function waitForRes(id: string, timeoutMs = 30_000): Promise<unknown> {
-    return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
-        pendingRpcs.delete(id)
-        reject(new Error(`RPC timeout waiting for ${id}`))
-      }, timeoutMs)
-      pendingRpcs.set(id, { resolve, reject, timer })
-    })
-  }
-
-  function emitError(error: Error) {
-    for (const callback of callbacks) {
-      try {
-        callback.onError?.(error)
-      } catch {}
-    }
-  }
-
-  function emitEvent(event: GatewayEvent) {
-    for (const callback of callbacks) {
-      try {
-        callback.onEvent?.(event)
-      } catch {}
-    }
-  }
-
-  function handleMessage(data: WebSocket.Data) {
-    try {
-      const str = typeof data === 'string' ? data : data.toString()
-      const parsed = JSON.parse(str) as GatewayFrame
-
-      if (parsed.type === 'res') {
-        const pending = pendingRpcs.get(parsed.id)
-        if (!pending) return
-        pendingRpcs.delete(parsed.id)
-        clearTimeout(pending.timer)
-        if (parsed.ok) pending.resolve(parsed.payload)
-        else pending.reject(new GatewayResponseError(parsed.error?.message ?? 'gateway error', parsed.error?.code))
-        return
-      }
-
-      if (parsed.type === 'event') {
-        emitEvent({
-          event: parsed.event,
-          payload: (parsed.payload ?? {}) as Record<string, unknown>,
-          seq: parsed.seq,
-        })
-      }
-    } catch {
-      // Ignore parse errors
-    }
-  }
-
-  function handleClose() {
-    const wasConnected = connected
-    connected = false
-    ws = null
-    rejectAll(new Error('Connection closed'))
-    if (!closed && wasConnected) {
-      emitError(new Error('Gateway client connection closed'))
-    }
-  }
-
-  async function connect(): Promise<void> {
-    if (closed) throw new Error('Gateway client closed')
-    if (connected && ws?.readyState === WebSocket.OPEN) return
-    if (connectPromise) return connectPromise
-
-    connectPromise = (async () => {
-      const { url, token, password } = getGatewayConfig()
-      const origin = process.env.OPENCAMI_ORIGIN?.trim()
-      const nextWs = origin
-        ? new WebSocket(url, { headers: { Origin: origin } })
-        : new WebSocket(url)
-
-      ws = nextWs
-
-      await new Promise<void>((resolve, reject) => {
-        const onOpen = () => { cleanup(); resolve() }
-        const onError = (err: Error) => { cleanup(); reject(new Error(`WS open error: ${err.message}`)) }
-        const cleanup = () => { nextWs.off('open', onOpen); nextWs.off('error', onError) }
-        nextWs.on('open', onOpen)
-        nextWs.on('error', onError)
-      })
-
-      const nonce = await new Promise<string>((resolve) => {
-        let done = false
-        const timer = setTimeout(() => {
-          if (done) return
-          done = true
-          resolve('')
-        }, 3000)
-
-        const onMessage = (data: WebSocket.Data) => {
-          try {
-            const str = typeof data === 'string' ? data : data.toString()
-            const parsed = JSON.parse(str) as GatewayFrame
-            if (parsed.type === 'event' && parsed.event === 'connect.challenge') {
-              const n = (parsed.payload as any)?.nonce
-              if (typeof n === 'string' && n.length > 0) {
-                clearTimeout(timer)
-                nextWs.off('message', onMessage)
-                if (done) return
-                done = true
-                resolve(n)
-              }
-            }
-          } catch {}
-        }
-
-        nextWs.on('message', onMessage)
-      })
-
-      nextWs.on('message', handleMessage)
-      nextWs.on('close', handleClose)
-      nextWs.on('error', (err: Error) => {
-        emitError(new Error(`Gateway client error: ${err.message}`))
-      })
-
-      const connectId = randomUUID()
-      const connectParams = buildConnectParams(url, token, password, nonce)
-      nextWs.send(JSON.stringify({
-        type: 'req',
-        id: connectId,
-        method: 'connect',
-        params: connectParams,
-      }))
-
-      const hello = await waitForRes(connectId, 10_000) as any
-      if (hello?.auth?.deviceToken) {
-        const identity = loadOrCreateDeviceIdentity()
-        storeDeviceToken(identity.deviceId, url, hello.auth.deviceToken)
-      }
-
-      connected = true
-    })()
-
-
-    try {
-      await connectPromise
-    } finally {
-      connectPromise = null
-    }
-  }
-
-  async function sendReq<TPayload = unknown>(method: string, params?: unknown): Promise<TPayload> {
-    await connect()
-    if (!ws || ws.readyState !== WebSocket.OPEN) {
-      throw new Error('Gateway client not connected')
-    }
-    const id = randomUUID()
-    ws.send(JSON.stringify({ type: 'req', id, method, params }))
-    return await waitForRes(id) as TPayload
-  }
-
-  function close() {
-    if (closed) return
-    closed = true
-    connected = false
-    rejectAll(new Error('Gateway client closed'))
-    const currentWs = ws
-    ws = null
-    if (currentWs) {
-      currentWs.off('message', handleMessage)
-      currentWs.off('close', handleClose)
-      currentWs.close()
-    }
-    callbacks.clear()
-  }
-
-  function isClosed() {
-    return closed
-  }
-
-  function addCallbacks(callbacksToAdd?: GatewayClientCallbacks) {
-    if (!callbacksToAdd?.onEvent && !callbacksToAdd?.onError) {
-      return () => {}
-    }
-    callbacks.add(callbacksToAdd)
-    return () => {
-      callbacks.delete(callbacksToAdd)
-    }
-  }
-
-  return { connect, sendReq, close, isClosed, addCallbacks }
-}
-
-function releaseGatewayClient(key: string) {
-  const entry = sharedGatewayClients.get(key)
-  if (!entry) return
-  entry.refs -= 1
-  if (entry.refs > 0) return
-  entry.client.close()
-  sharedGatewayClients.delete(key)
-}
+// ─── Unified Gateway Client ─────────────────────────────────────────────
+//
+// All streaming and RPC now goes through the single PersistentGatewayConnection.
+// This eliminates the connId mismatch bug: chat.send and event streaming always
+// share the same WS connection, so the gateway always routes events correctly.
+//
 
 export async function acquireGatewayClient(
   key: string,
   callbacks?: GatewayClientCallbacks,
 ): Promise<GatewayClientHandle> {
-  const existing = sharedGatewayClients.get(key)
-  if (existing && !existing.client.isClosed()) {
-    existing.refs += 1
-    const removeCallbacks = existing.client.addCallbacks(callbacks)
-    return {
-      client: existing.client,
-      release: () => {
-        removeCallbacks()
-        releaseGatewayClient(key)
-      },
-    }
+  const conn = getPersistentConnection()
+  await conn.ensureConnected()
+
+  let unsubscribe: (() => void) | null = null
+  if (callbacks?.onEvent) {
+    unsubscribe = conn.subscribe(key, callbacks.onEvent)
   }
 
-  const client = createGatewayClient()
-  const removeCallbacks = client.addCallbacks(callbacks)
-  await client.connect()
-  sharedGatewayClients.set(key, { refs: 1, client })
   return {
-    client,
+    client: {
+      connect: () => conn.ensureConnected(),
+      sendReq: <TPayload = unknown>(method: string, params?: unknown) =>
+        conn.rpc<TPayload>(method, params),
+      close: () => { /* no-op: persistent connection stays open */ },
+      isClosed: () => !conn.isConnected,
+      addCallbacks: () => () => {},
+    },
     release: () => {
-      removeCallbacks()
-      releaseGatewayClient(key)
+      unsubscribe?.()
     },
   }
 }
@@ -959,18 +766,11 @@ export async function acquireGatewayClient(
 export async function gatewayRpcShared<TPayload = unknown>(
   method: string,
   params?: unknown,
-  key?: string,
+  _key?: string,
 ): Promise<TPayload> {
-  if (!key) {
-    return gatewayRpc<TPayload>(method, params)
-  }
-
-  const existing = sharedGatewayClients.get(key)
-  if (!existing || existing.client.isClosed()) {
-    return gatewayRpc<TPayload>(method, params)
-  }
-
-  return existing.client.sendReq<TPayload>(method, params)
+  // All RPCs now go through the single persistent connection.
+  // The _key parameter is kept for API compatibility but ignored.
+  return gatewayRpc<TPayload>(method, params)
 }
 
 // ─── Public API ─────────────────────────────────────────────────────────

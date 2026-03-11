@@ -40,7 +40,10 @@ export async function fetchHistory(payload: {
 
 export async function fetchGatewayStatus(): Promise<GatewayStatusResponse> {
   const controller = new AbortController()
-  const timeout = window.setTimeout(() => controller.abort(), 2500)
+  // The first ping can take a while because the server-side WS connection
+  // to the gateway must complete a full handshake (nonce exchange + connect
+  // RPC + optional device auth). 8s is generous enough for slow starts.
+  const timeout = window.setTimeout(() => controller.abort(), 8000)
 
   try {
     const res = await fetch('/api/ping', { signal: controller.signal })
