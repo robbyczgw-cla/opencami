@@ -95,7 +95,7 @@ export function CommandHelp({ className, onCommandSelect }: CommandHelpProps) {
                   onClick={() => handleCommandClick(cmd.command)}
                   className="w-full flex items-start gap-3 px-3 py-2 rounded-lg hover:bg-primary-100 dark:hover:bg-neutral-800 transition-colors text-left"
                 >
-                  <code className="text-sm font-mono font-medium text-primary-700 dark:text-primary-300 bg-primary-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded min-w-[80px]">
+                  <code className="text-sm font-mono font-medium text-primary-700 dark:text-primary-700 bg-primary-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded min-w-[80px]">
                     {cmd.command}
                   </code>
                   <div className="flex-1 min-w-0">
