@@ -137,6 +137,8 @@ export function ChatScreen({
     resolvedSessionKey,
     activeCanonicalKey,
     sessionKeyForHistory,
+    hasMore,
+    loadMore,
   } = useChatHistory({
     activeFriendlyId,
     activeSessionKey,
@@ -1145,6 +1147,8 @@ export function ChatScreen({
                 contentStyle={stableContentStyle}
                 onFollowUpClick={handleFollowUpClick}
                 jumpToMessageId={searchJumpMessageId}
+                hasMore={hasMore}
+                onLoadMore={loadMore}
               />
               <ChatComposer
                 onSubmit={send}

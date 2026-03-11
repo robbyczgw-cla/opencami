@@ -7,6 +7,7 @@ type ChatHistoryResponse = {
   sessionId?: string
   messages: Array<any>
   thinkingLevel?: string
+  hasMore?: boolean
 }
 
 type SessionsResolveResponse = {
@@ -20,9 +21,10 @@ export const Route = createFileRoute('/api/history')({
       GET: async ({ request }) => {
         try {
           const url = new URL(request.url)
-          const limit = Number(url.searchParams.get('limit') || '200')
+          const limit = Number(url.searchParams.get('limit') || '50')
           const rawSessionKey = url.searchParams.get('sessionKey')?.trim()
           const friendlyId = url.searchParams.get('friendlyId')?.trim()
+          const before = url.searchParams.get('before')?.trim() || undefined
 
           let sessionKey =
             rawSessionKey && rawSessionKey.length > 0 ? rawSessionKey : ''
@@ -48,15 +50,19 @@ export const Route = createFileRoute('/api/history')({
             sessionKey = 'main'
           }
 
+          const params: Record<string, unknown> = { sessionKey, limit }
+          if (before) params.before = before
+
           const payload = await gatewayRpc<ChatHistoryResponse>(
             'chat.history',
-            {
-              sessionKey,
-              limit,
-            },
+            params,
           )
 
-          return json(payload)
+          // Infer hasMore: if the gateway returned exactly `limit` messages,
+          // there are likely more. The gateway may also set hasMore explicitly.
+          const hasMore = payload.hasMore ?? payload.messages.length >= limit
+
+          return json({ ...payload, hasMore })
         } catch (err) {
           return json(
             {
