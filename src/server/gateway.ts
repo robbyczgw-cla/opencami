@@ -3,19 +3,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import WebSocket from 'ws'
-
-// ─── Types ──────────────────────────────────────────────────────────────
-
-type GatewayFrame =
-  | { type: 'req'; id: string; method: string; params?: unknown }
-  | {
-      type: 'res'
-      id: string
-      ok: boolean
-      payload?: unknown
-      error?: { code: string; message: string; details?: unknown }
-    }
-  | { type: 'event'; event: string; payload?: unknown; seq?: number }
+import { GatewayFrameSchema, type GatewayFrame } from './gateway-schemas'
 
 type ConnectParams = {
   minProtocol: number
@@ -404,7 +392,9 @@ class PersistentGatewayConnection {
       const onMessage = (data: WebSocket.Data) => {
         try {
           const str = typeof data === 'string' ? data : data.toString()
-          const parsed = JSON.parse(str) as GatewayFrame
+          const result = GatewayFrameSchema.safeParse(JSON.parse(str))
+          if (!result.success) return
+          const parsed = result.data
           if (parsed.type === 'event' && parsed.event === 'connect.challenge') {
             const n = (parsed.payload as any)?.nonce
             if (typeof n === 'string' && n.length > 0) {
@@ -515,7 +505,9 @@ class PersistentGatewayConnection {
   private _onMessage(data: WebSocket.Data) {
     try {
       const str = typeof data === 'string' ? data : data.toString()
-      const parsed = JSON.parse(str) as GatewayFrame
+      const result = GatewayFrameSchema.safeParse(JSON.parse(str))
+      if (!result.success) return // silently drop malformed frames
+      const parsed = result.data
 
       if (parsed.type === 'res') {
         const pending = this.pendingRpcs.get(parsed.id)
@@ -536,9 +528,7 @@ class PersistentGatewayConnection {
           event: parsed.event,
           payload: (parsed.payload ?? {}) as Record<string, unknown>,
           seq: parsed.seq,
-          stateVersion: typeof (parsed as any).stateVersion === 'number'
-            ? (parsed as any).stateVersion
-            : undefined,
+          stateVersion: parsed.stateVersion,
         }
 
         // Determine which sessionKey this event belongs to
