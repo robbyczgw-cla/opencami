@@ -39,6 +39,7 @@ export type ImageContent = {
 export type MessageContent = TextContent | ToolCallContent | ThinkingContent | ImageContent
 
 export type GatewayMessage = {
+  id?: string
   role?: string
   content?: Array<MessageContent>
   toolCallId?: string
@@ -46,6 +47,8 @@ export type GatewayMessage = {
   details?: Record<string, unknown>
   isError?: boolean
   timestamp?: number
+  clientId?: string
+  status?: string
   [key: string]: unknown
   __optimisticId?: string
 }

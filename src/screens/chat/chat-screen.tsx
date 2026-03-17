@@ -1273,8 +1273,8 @@ export function ChatScreen({
                 onRetryMessage={handleRetryMessage}
                 onDismissMessage={handleDismissMessage}
                 hasMore={hasMore}
-                isLoadingMore={isLoadingMore}
                 onLoadMore={loadMore}
+                isLoadingMore={isLoadingMore}
               />
               <ChatComposer
                 onSubmit={send}

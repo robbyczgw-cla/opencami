@@ -9,7 +9,7 @@ import { chatQueryKeys, fetchHistory } from '@/screens/chat/chat-queries'
 
 const SEARCH_PAGE_SIZE = 200
 const GLOBAL_SEARCH_THRESHOLD = 200
-const MAX_HISTORY_FETCH_ITERATIONS = 20
+const MAX_HISTORY_PAGES = 20
 
 export type SearchResult = {
   sessionKey: string
@@ -329,7 +329,10 @@ async function getSearchableHistory({
     : await fetchHistory({
         sessionKey,
         friendlyId,
-        limit: Math.max(minMessages ?? GLOBAL_SEARCH_THRESHOLD, GLOBAL_SEARCH_THRESHOLD),
+        limit: Math.max(
+          minMessages ?? GLOBAL_SEARCH_THRESHOLD,
+          GLOBAL_SEARCH_THRESHOLD,
+        ),
       })
 
   if (signal.aborted) {
@@ -352,26 +355,24 @@ async function getSearchableHistory({
   return nextData
 }
 
-function hasSufficientCachedHistory(
+export export function hasSufficientCachedHistory(
   cachedServerMessages: Array<GatewayMessage>,
   cachedHasMore: boolean,
   fetchAll: boolean,
   minMessages?: number,
 ): boolean {
   if (cachedServerMessages.length === 0) return false
+  const threshold = minMessages ?? GLOBAL_SEARCH_THRESHOLD
   if (fetchAll) {
-    return (
-      !cachedHasMore &&
-      cachedServerMessages.length >= GLOBAL_SEARCH_THRESHOLD
-    )
+    return !cachedHasMore && cachedServerMessages.length >= threshold
   }
-  if (cachedServerMessages.length >= (minMessages ?? GLOBAL_SEARCH_THRESHOLD)) {
+  if (cachedServerMessages.length >= threshold) {
     return true
   }
   return !cachedHasMore
 }
 
-async function fetchEntireHistory({
+export export async function fetchEntireHistory({
   friendlyId,
   sessionKey,
   signal,
@@ -388,7 +389,8 @@ async function fetchEntireHistory({
   let iterations = 0
 
   do {
-    iterations += 1
+    const previousLength = accumulated.length
+    const previousBefore = before
     const page = await fetchHistory({
       sessionKey,
       friendlyId,
@@ -402,14 +404,21 @@ async function fetchEntireHistory({
 
     responseSessionKey = page.sessionKey || responseSessionKey
     sessionId = page.sessionId ?? sessionId
-    const previousCount = accumulated.length
     accumulated = dedupeMessages(page.messages, accumulated)
     hasMore = page.hasMore ?? false
-    if (accumulated.length === previousCount || iterations >= MAX_HISTORY_FETCH_ITERATIONS) {
+    before = getOldestHistoryCursor(accumulated)
+    iterations += 1
+
+    const didGrow = accumulated.length > previousLength
+    const cursorStalled =
+      typeof previousBefore === 'string' &&
+      previousBefore.length > 0 &&
+      previousBefore === before
+
+    if (!didGrow || cursorStalled || iterations >= MAX_HISTORY_PAGES) {
       hasMore = false
       break
     }
-    before = getOldestHistoryCursor(accumulated)
   } while (hasMore && before)
 
   return {
@@ -494,10 +503,6 @@ function messageIdentity(message: GatewayMessage): string {
   ].join('|')
 }
 
-/**
- * Highlights matched text in search results.
- * Returns the matched portion with surrounding context, or null if no match.
- */
 export function highlightMatch(
   text: string,
   query: string,

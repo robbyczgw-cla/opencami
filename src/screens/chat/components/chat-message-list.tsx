@@ -35,26 +35,18 @@ type ChatMessageListProps = {
   notice?: React.ReactNode
   noticePosition?: 'start' | 'end'
   waitingForResponse: boolean
-  /** True while the assistant response is actively being streamed / fast-polled */
   isStreaming?: boolean
   sessionKey?: string
   pinToTop: boolean
   pinGroupMinHeight: number
   headerHeight: number
   contentStyle?: React.CSSProperties
-  /** Callback when a follow-up suggestion is clicked */
   onFollowUpClick?: (suggestion: string) => void
-  /** Message id to scroll to and briefly highlight */
   jumpToMessageId?: string | null
-  /** Called when user clicks Retry on a failed message */
   onRetryMessage?: (message: GatewayMessage) => void
-  /** Called when user clicks Dismiss on a failed message */
   onDismissMessage?: (message: GatewayMessage) => void
-  /** Whether there are earlier messages to load */
   hasMore?: boolean
-  /** Called when user wants to load earlier messages */
   onLoadMore?: () => void
-  /** True while an earlier history page is being fetched */
   isLoadingMore?: boolean
 }
 
@@ -85,18 +77,31 @@ function ChatMessageListComponent({
   const programmaticScroll = useRef(false)
   const prevPinRef = useRef(pinToTop)
   const prevUserIndexRef = useRef<number | undefined>(undefined)
-  const prevFirstMessageIdRef = useRef<string | undefined>(undefined)
-  const loadMoreRequestRef = useRef(false)
+  const prevDisplayLengthRef = useRef(0)
+  const prevFirstMessageKeyRef = useRef<string | null>(null)
+  const prevLastMessageKeyRef = useRef<string | null>(null)
+  const restoreScrollMessageIdRef = useRef<string | null>(null)
+  const pendingScrollRestoreRef = useRef<{
+    scrollHeight: number
+    scrollTop: number
+  } | null>(null)
   const [highlightedMessageId, setHighlightedMessageId] = useState<
     string | null
   >(null)
 
-  // Filter out toolResult messages - they'll be displayed inside their associated tool calls
   const displayMessages = useMemo(() => {
     return messages.filter((msg) => msg.role !== 'toolResult')
   }, [messages])
 
   const deferredDisplayMessages = useDeferredValue(displayMessages)
+
+  const updateDisplaySnapshot = useCallback(() => {
+    prevDisplayLengthRef.current = displayMessages.length
+    prevFirstMessageKeyRef.current = getMessageStableKey(displayMessages[0])
+    prevLastMessageKeyRef.current = getMessageStableKey(
+      displayMessages[displayMessages.length - 1],
+    )
+  }, [displayMessages])
 
   const toolResultsByCallId = useMemo(() => {
     const map = new Map<string, GatewayMessage>()
@@ -143,11 +148,7 @@ function ChatMessageListComponent({
     return parts.join('||')
   }, [deferredDisplayMessages, deferredToolResultsByCallId])
 
-  // Aggregate all search sources across assistant tool outputs for the badge.
-  // Using deferred inputs + a narrow signature avoids reparsing the same JSON
-  // during rapid polling / StrictMode churn.
   const aggregatedSearchSources = useMemo(() => {
-    // Strip Gateway security tags from search result text
     const strip = (s: string) => {
       if (!s) return ''
       return s
@@ -161,7 +162,6 @@ function ChatMessageListComponent({
         .replace(/\n{2,}/g, '\n')
         .trim()
     }
-    // Try to extract search results from any JSON text
     const extractResults = (
       text: string,
       sources: SearchSource[],
@@ -169,8 +169,6 @@ function ChatMessageListComponent({
     ) => {
       try {
         const parsed = JSON.parse(text)
-        // Handle web-search-plus format: { provider, query, results: [...] }
-        // Handle web_search format: { results: [...] } or direct array
         const items = Array.isArray(parsed)
           ? parsed
           : (parsed?.results ?? parsed?.web?.results ?? [])
@@ -213,13 +211,9 @@ function ChatMessageListComponent({
           .trim()
         if (!text) continue
         if (isSearch || isExec) {
-          // For exec: only extract if the output looks like search JSON
-          // (has "results" array with url+title objects)
           if (isExec) {
-            // Quick check: must contain "results" and "url" to be search output
             if (!text.includes('"results"') || !text.includes('"url"')) continue
           }
-          // Try to find JSON in the text (exec output may have extra text before/after)
           let jsonText = text
           const jsonStart = text.indexOf('{')
           if (jsonStart > 0) jsonText = text.slice(jsonStart)
@@ -268,11 +262,9 @@ function ChatMessageListComponent({
     (typeof lastUserIndex !== 'number' ||
       typeof lastAssistantIndex !== 'number' ||
       lastAssistantIndex < lastUserIndex)
-  // Pin the last user+assistant group without adding bottom padding.
   const groupStartIndex = typeof lastUserIndex === 'number' ? lastUserIndex : -1
   const hasGroup = pinToTop && groupStartIndex >= 0
 
-  // Get the last assistant message text for follow-up suggestions
   const lastAssistantMessage =
     typeof lastTextAssistantIndex === 'number'
       ? displayMessages[lastTextAssistantIndex]
@@ -280,10 +272,6 @@ function ChatMessageListComponent({
   const lastAssistantText = lastAssistantMessage
     ? textFromMessage(lastAssistantMessage)
     : ''
-  // Show follow-ups only when:
-  // - Not waiting for response
-  // - There's a last assistant message
-  // - The last message in conversation is from assistant (not user waiting for response)
   const showFollowUps =
     !waitingForResponse &&
     !isStreaming &&
@@ -293,25 +281,31 @@ function ChatMessageListComponent({
       typeof lastTextAssistantIndex !== 'number' ||
       lastTextAssistantIndex > lastUserIndex)
 
-  const firstDisplayMessageId = displayMessages.find(
-    (message) => typeof message.id === 'string' && message.id.length > 0,
-  )?.id
-
   const handleLoadMoreClick = useCallback(() => {
     if (!onLoadMore || isLoadingMore) return
-    loadMoreRequestRef.current = true
+    const firstVisibleMessage = displayMessages.find(
+      (message) => typeof message.id === 'string' && message.id.length > 0,
+    )
+    restoreScrollMessageIdRef.current = firstVisibleMessage?.id ?? null
     onLoadMore()
-  }, [isLoadingMore, onLoadMore])
+  }, [displayMessages, isLoadingMore, onLoadMore])
 
   useLayoutEffect(() => {
     if (loading) return
 
-    const completedLoadMore = loadMoreRequestRef.current && !isLoadingMore
-    if (completedLoadMore) {
-      loadMoreRequestRef.current = false
+    const restoreMessageId = restoreScrollMessageIdRef.current
+    if (restoreMessageId) {
+      restoreScrollMessageIdRef.current = null
+      const target = document.getElementById(`message-${restoreMessageId}`)
+      if (target) {
+        programmaticScroll.current = true
+        target.scrollIntoView({ behavior: 'auto', block: 'start' })
+        window.setTimeout(() => {
+          programmaticScroll.current = false
+        }, 0)
+      }
       prevPinRef.current = pinToTop
       prevUserIndexRef.current = lastUserIndex
-      prevFirstMessageIdRef.current = firstDisplayMessageId
       return
     }
 
@@ -320,7 +314,6 @@ function ChatMessageListComponent({
         !prevPinRef.current || prevUserIndexRef.current !== lastUserIndex
       prevPinRef.current = true
       prevUserIndexRef.current = lastUserIndex
-      prevFirstMessageIdRef.current = firstDisplayMessageId
       if (shouldPin && lastUserRef.current) {
         programmaticScroll.current = true
         lastUserRef.current.scrollIntoView({ behavior: 'auto', block: 'start' })
@@ -333,7 +326,6 @@ function ChatMessageListComponent({
 
     prevPinRef.current = false
     prevUserIndexRef.current = lastUserIndex
-    prevFirstMessageIdRef.current = firstDisplayMessageId
     if (anchorRef.current) {
       programmaticScroll.current = true
       anchorRef.current.scrollIntoView({ behavior: 'auto', block: 'end' })
@@ -342,11 +334,9 @@ function ChatMessageListComponent({
       }, 0)
     }
   }, [
-    firstDisplayMessageId,
-    isLoadingMore,
+    displayMessages,
     lastUserIndex,
     loading,
-    displayMessages.length,
     pinToTop,
     sessionKey,
   ])
@@ -357,7 +347,6 @@ function ChatMessageListComponent({
     const target = document.getElementById(`message-${jumpToMessageId}`)
     if (!target) return
 
-    // Search jump: bring the message into view and briefly highlight it.
     target.scrollIntoView({ behavior: 'smooth', block: 'center' })
     setHighlightedMessageId(jumpToMessageId)
     const timer = window.setTimeout(() => {
@@ -370,7 +359,6 @@ function ChatMessageListComponent({
   }, [jumpToMessageId, loading, displayMessages])
 
   return (
-    // mt-2 is to fix the prompt-input cut off
     <ChatContainerRoot className="flex-1 min-h-0 -mb-4">
       <ChatContainerContent className="pt-6" style={contentStyle}>
         {notice && noticePosition === 'start' ? notice : null}
@@ -388,23 +376,63 @@ function ChatMessageListComponent({
           </div>
         )}
         {empty && !notice ? (
-          (emptyState ?? <div aria-hidden></div>)
+          emptyState ?? <div aria-hidden></div>
         ) : hasGroup ? (
           <>
-            {displayMessages
-              .slice(0, groupStartIndex)
-              .map((chatMessage, index) => {
+            {displayMessages.slice(0, groupStartIndex).map((chatMessage, index) => {
+              const messageId =
+                typeof chatMessage.id === 'string' ? chatMessage.id : undefined
+              const messageKey = messageId || index
+              const forceActionsVisible =
+                typeof lastAssistantIndex === 'number' &&
+                index === lastAssistantIndex
+              const isLastAssistant =
+                typeof lastAssistantIndex === 'number' &&
+                index === lastAssistantIndex
+              const hasToolCalls =
+                chatMessage.role === 'assistant' &&
+                getToolCallsFromMessage(chatMessage).length > 0
+              return (
+                <MessageItem
+                  key={messageKey}
+                  message={chatMessage}
+                  toolResultsByCallId={
+                    hasToolCalls ? toolResultsByCallId : undefined
+                  }
+                  forceActionsVisible={forceActionsVisible}
+                  isStreaming={isLastAssistant && isStreaming}
+                  isLastAssistant={isLastAssistant}
+                  aggregatedSearchSources={
+                    isLastAssistant ? aggregatedSearchSources : undefined
+                  }
+                  messageDomId={messageId ? `message-${messageId}` : undefined}
+                  highlighted={highlightedMessageId === messageId}
+                  onRetry={onRetryMessage}
+                  onDismiss={onDismissMessage}
+                />
+              )
+            })}
+            <div
+              className="flex flex-col gap-[var(--opencami-msg-gap)]"
+              style={{ minHeight: `${Math.max(0, pinGroupMinHeight)}px` }}
+            >
+              {displayMessages.slice(groupStartIndex).map((chatMessage, index) => {
+                const realIndex = groupStartIndex + index
                 const messageId =
-                  typeof chatMessage.id === 'string'
-                    ? chatMessage.id
-                    : undefined
-                const messageKey = messageId || index
+                  typeof chatMessage.id === 'string' ? chatMessage.id : undefined
+                const messageKey = messageId || realIndex
                 const forceActionsVisible =
                   typeof lastAssistantIndex === 'number' &&
-                  index === lastAssistantIndex
+                  realIndex === lastAssistantIndex
                 const isLastAssistant =
                   typeof lastAssistantIndex === 'number' &&
-                  index === lastAssistantIndex
+                  realIndex === lastAssistantIndex
+                const wrapperRef =
+                  realIndex === lastUserIndex ? lastUserRef : undefined
+                const wrapperClassName =
+                  realIndex === lastUserIndex ? 'scroll-mt-0' : undefined
+                const wrapperScrollMarginTop =
+                  realIndex === lastUserIndex ? headerHeight : undefined
                 const hasToolCalls =
                   chatMessage.role === 'assistant' &&
                   getToolCallsFromMessage(chatMessage).length > 0
@@ -421,69 +449,16 @@ function ChatMessageListComponent({
                     aggregatedSearchSources={
                       isLastAssistant ? aggregatedSearchSources : undefined
                     }
-                    messageDomId={
-                      messageId ? `message-${messageId}` : undefined
-                    }
+                    wrapperRef={wrapperRef}
+                    wrapperClassName={wrapperClassName}
+                    wrapperScrollMarginTop={wrapperScrollMarginTop}
+                    messageDomId={messageId ? `message-${messageId}` : undefined}
                     highlighted={highlightedMessageId === messageId}
                     onRetry={onRetryMessage}
                     onDismiss={onDismissMessage}
                   />
                 )
               })}
-            {/* Keep the last exchange pinned while honoring current message density. */}
-            <div
-              className="flex flex-col gap-[var(--opencami-msg-gap)]"
-              style={{ minHeight: `${Math.max(0, pinGroupMinHeight)}px` }}
-            >
-              {displayMessages
-                .slice(groupStartIndex)
-                .map((chatMessage, index) => {
-                  const realIndex = groupStartIndex + index
-                  const messageId =
-                    typeof chatMessage.id === 'string'
-                      ? chatMessage.id
-                      : undefined
-                  const messageKey = messageId || realIndex
-                  const forceActionsVisible =
-                    typeof lastAssistantIndex === 'number' &&
-                    realIndex === lastAssistantIndex
-                  const isLastAssistant =
-                    typeof lastAssistantIndex === 'number' &&
-                    realIndex === lastAssistantIndex
-                  const wrapperRef =
-                    realIndex === lastUserIndex ? lastUserRef : undefined
-                  const wrapperClassName =
-                    realIndex === lastUserIndex ? 'scroll-mt-0' : undefined
-                  const wrapperScrollMarginTop =
-                    realIndex === lastUserIndex ? headerHeight : undefined
-                  const hasToolCalls =
-                    chatMessage.role === 'assistant' &&
-                    getToolCallsFromMessage(chatMessage).length > 0
-                  return (
-                    <MessageItem
-                      key={messageKey}
-                      message={chatMessage}
-                      toolResultsByCallId={
-                        hasToolCalls ? toolResultsByCallId : undefined
-                      }
-                      forceActionsVisible={forceActionsVisible}
-                      isStreaming={isLastAssistant && isStreaming}
-                      isLastAssistant={isLastAssistant}
-                      aggregatedSearchSources={
-                        isLastAssistant ? aggregatedSearchSources : undefined
-                      }
-                      wrapperRef={wrapperRef}
-                      wrapperClassName={wrapperClassName}
-                      wrapperScrollMarginTop={wrapperScrollMarginTop}
-                      messageDomId={
-                        messageId ? `message-${messageId}` : undefined
-                      }
-                      highlighted={highlightedMessageId === messageId}
-                      onRetry={onRetryMessage}
-                      onDismiss={onDismissMessage}
-                    />
-                  )
-                })}
               {showTypingIndicator ? (
                 <div className="py-2">
                   <TypingIndicator />
@@ -553,6 +528,21 @@ function ChatMessageListComponent({
       </ChatContainerContent>
     </ChatContainerRoot>
   )
+}
+
+function getMessageStableKey(message: GatewayMessage | undefined): string | null {
+  if (!message) return null
+  if (typeof message.id === 'string' && message.id.length > 0) {
+    return `id:${message.id}`
+  }
+  if (typeof message.clientId === 'string' && message.clientId.length > 0) {
+    return `client:${message.clientId}`
+  }
+  return [
+    message.role ?? '',
+    message.timestamp ?? '',
+    textFromMessage(message),
+  ].join('|')
 }
 
 function areChatMessageListEqual(

@@ -71,11 +71,11 @@ export function SearchDialog({
 
     return () => window.clearTimeout(timer)
   }, [
-    clearSearch,
     localQuery,
     mode,
     searchAllSessions,
     searchCurrentConversation,
+    clearSearch,
   ])
 
   useEffect(() => {
@@ -137,99 +137,186 @@ export function SearchDialog({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (results.length === 0) return
-
-      if (e.key === 'ArrowDown') {
-        e.preventDefault()
-        setSelectedIndex((prev) => Math.min(prev + 1, results.length - 1))
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault()
-        setSelectedIndex((prev) => Math.max(prev - 1, 0))
-      } else if (e.key === 'Enter') {
-        e.preventDefault()
-        const result = results[selectedIndex]
-        if (result) handleSelectResult(result)
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault()
+          setSelectedIndex((i) => Math.min(i + 1, results.length - 1))
+          break
+        case 'ArrowUp':
+          e.preventDefault()
+          setSelectedIndex((i) => Math.max(i - 1, 0))
+          break
+        case 'Enter':
+          e.preventDefault()
+          if (results[selectedIndex]) {
+            handleSelectResult(results[selectedIndex])
+          }
+          break
+        case 'Escape':
+          e.preventDefault()
+          onOpenChange(false)
+          break
       }
     },
-    [handleSelectResult, results, selectedIndex],
+    [results, selectedIndex, handleSelectResult, onOpenChange],
   )
+
+  const placeholder =
+    mode === 'global'
+      ? 'Search across all conversations...'
+      : 'Search in this conversation...'
 
   return (
     <DialogRoot open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl p-0 gap-0 overflow-hidden">
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-border/50">
-          <HugeiconsIcon icon={Search01Icon} className="size-5 text-muted-foreground" />
+      <DialogContent className="w-[min(600px,92vw)] max-h-[80vh] flex flex-col overflow-hidden">
+        <div className="flex items-center gap-3 p-4 border-b border-primary-200">
+          <HugeiconsIcon
+            icon={Search01Icon}
+            size={20}
+            className="text-primary-500 shrink-0"
+          />
           <input
             ref={inputRef}
+            type="text"
             value={localQuery}
             onChange={(e) => setLocalQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={
-              mode === 'global'
-                ? 'Search all conversations...'
-                : 'Search this conversation...'
-            }
-            className="flex-1 bg-transparent outline-none text-sm placeholder:text-muted-foreground"
+            placeholder={placeholder}
+            className="flex-1 bg-transparent text-primary-900 placeholder:text-primary-400 outline-none text-base"
           />
-          {isSearching ? (
-            <HugeiconsIcon icon={Loading03Icon} className="size-5 text-muted-foreground animate-spin" />
-          ) : localQuery ? (
+          {localQuery && (
             <button
               type="button"
-              onClick={() => setLocalQuery('')}
-              className="text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => {
+                setLocalQuery('')
+                clearSearch()
+              }}
+              className="p-1 hover:bg-primary-200 rounded transition-colors"
             >
-              <HugeiconsIcon icon={Cancel01Icon} className="size-5" />
+              <HugeiconsIcon
+                icon={Cancel01Icon}
+                size={16}
+                className="text-primary-500"
+              />
             </button>
-          ) : null}
+          )}
+          {isSearching && (
+            <HugeiconsIcon
+              icon={Loading03Icon}
+              size={20}
+              className="text-primary-500 animate-spin"
+            />
+          )}
         </div>
 
-        <div ref={resultsRef} className="max-h-[60vh] overflow-y-auto p-2">
-          {localQuery.trim() && results.length === 0 && !isSearching ? (
-            <div className="px-3 py-8 text-sm text-center text-muted-foreground">
-              No results found
+        <div ref={resultsRef} className="flex-1 overflow-y-auto p-2 min-h-0">
+          {!localQuery.trim() ? (
+            <div className="text-center text-primary-500 py-8 text-sm">
+              {mode === 'global'
+                ? 'Type to search across all your conversations'
+                : 'Type to search within this conversation'}
+            </div>
+          ) : results.length === 0 && !isSearching ? (
+            <div className="text-center text-primary-500 py-8 text-sm">
+              No results found for "{localQuery}"
             </div>
           ) : (
-            results.map((result, index) => {
-              const highlighted = highlightMatch(result.messageText, localQuery)
-              return (
-                <button
-                  key={`${result.sessionKey}-${result.messageId || result.messageIndex}`}
-                  type="button"
+            <div className="flex flex-col gap-1">
+              {results.map((result, index) => (
+                <SearchResultItem
+                  key={`${result.friendlyId}-${result.messageIndex}`}
+                  result={result}
+                  query={localQuery}
+                  isSelected={index === selectedIndex}
+                  showSessionTitle={mode === 'global'}
                   onClick={() => handleSelectResult(result)}
-                  data-selected={index === selectedIndex}
-                  className={cn(
-                    'w-full text-left px-3 py-2 rounded-lg transition-colors',
-                    index === selectedIndex
-                      ? 'bg-accent text-accent-foreground'
-                      : 'hover:bg-accent/50',
-                  )}
-                >
-                  <div className="flex items-center justify-between gap-3 mb-1">
-                    <div className="text-sm font-medium truncate">{result.sessionTitle}</div>
-                    <div className="text-xs text-muted-foreground shrink-0">
-                      {result.messageRole}
-                    </div>
-                  </div>
-                  <div className="text-sm text-muted-foreground line-clamp-2 break-words">
-                    {highlighted ? (
-                      <>
-                        {highlighted.before}
-                        <mark className="bg-yellow-200/80 text-foreground rounded px-0.5">
-                          {highlighted.match}
-                        </mark>
-                        {highlighted.after}
-                      </>
-                    ) : (
-                      result.messageText
-                    )}
-                  </div>
-                </button>
-              )
-            })
+                  onMouseEnter={() => setSelectedIndex(index)}
+                />
+              ))}
+            </div>
           )}
+        </div>
+
+        <div className="flex items-center justify-between px-4 py-2 border-t border-primary-200 text-xs text-primary-500">
+          <div className="flex items-center gap-4">
+            <span className="flex items-center gap-1">
+              <kbd className="px-1.5 py-0.5 bg-primary-100 rounded text-[10px]">↑</kbd>
+              <kbd className="px-1.5 py-0.5 bg-primary-100 rounded text-[10px]">↓</kbd>
+              to navigate
+            </span>
+            <span className="flex items-center gap-1">
+              <kbd className="px-1.5 py-0.5 bg-primary-100 rounded text-[10px]">Enter</kbd>
+              to select
+            </span>
+            <span className="flex items-center gap-1">
+              <kbd className="px-1.5 py-0.5 bg-primary-100 rounded text-[10px]">Esc</kbd>
+              to close
+            </span>
+          </div>
+          <span>{results.length} result{results.length !== 1 ? 's' : ''}</span>
         </div>
       </DialogContent>
     </DialogRoot>
+  )
+}
+
+type SearchResultItemProps = {
+  result: SearchResult
+  query: string
+  isSelected: boolean
+  showSessionTitle: boolean
+  onClick: () => void
+  onMouseEnter: () => void
+}
+
+function SearchResultItem({
+  result,
+  query,
+  isSelected,
+  showSessionTitle,
+  onClick,
+  onMouseEnter,
+}: SearchResultItemProps) {
+  const highlight = highlightMatch(result.messageText, query)
+
+  return (
+    <button
+      type="button"
+      data-selected={isSelected}
+      className={cn(
+        'w-full text-left px-3 py-2 rounded-lg transition-colors border',
+        isSelected
+          ? 'bg-primary-100 border-primary-300'
+          : 'border-transparent hover:bg-primary-50',
+      )}
+      onClick={onClick}
+      onMouseEnter={onMouseEnter}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          {showSessionTitle && (
+            <div className="text-xs font-medium text-primary-600 mb-1 truncate">
+              {result.sessionTitle}
+            </div>
+          )}
+          <div className="text-sm text-primary-900 line-clamp-2 break-words">
+            {highlight ? (
+              <>
+                <span>{highlight.before}</span>
+                <mark className="bg-yellow-200 text-inherit rounded px-0.5">
+                  {highlight.match}
+                </mark>
+                <span>{highlight.after}</span>
+              </>
+            ) : (
+              result.messageText
+            )}
+          </div>
+          <div className="mt-1 text-xs text-primary-500 capitalize">
+            {result.messageRole}
+          </div>
+        </div>
+      </div>
+    </button>
   )
 }

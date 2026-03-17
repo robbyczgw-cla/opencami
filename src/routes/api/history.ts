@@ -5,7 +5,7 @@ import { gatewayRpc } from '../../server/gateway'
 type ChatHistoryResponse = {
   sessionKey: string
   sessionId?: string
-  messages: Array<any>
+  messages: Array<unknown>
   thinkingLevel?: string
   hasMore?: boolean
 }
@@ -21,7 +21,11 @@ export const Route = createFileRoute('/api/history')({
       GET: async ({ request }) => {
         try {
           const url = new URL(request.url)
-          const limit = Number(url.searchParams.get('limit') || '50')
+          const rawLimit = Number(url.searchParams.get('limit') || '50')
+          const limit =
+            Number.isFinite(rawLimit) && rawLimit > 0
+              ? Math.min(Math.trunc(rawLimit), 200)
+              : 50
           const rawSessionKey = url.searchParams.get('sessionKey')?.trim()
           const friendlyId = url.searchParams.get('friendlyId')?.trim()
           const before = url.searchParams.get('before')?.trim() || undefined
@@ -50,7 +54,12 @@ export const Route = createFileRoute('/api/history')({
             sessionKey = 'main'
           }
 
-          const params: Record<string, unknown> = { sessionKey, limit }
+          // Ask the gateway for one extra message so hasMore can be inferred
+          // without the exact-limit false positive.
+          const params: Record<string, unknown> = {
+            sessionKey,
+            limit: limit + 1,
+          }
           if (before) params.before = before
 
           const payload = await gatewayRpc<ChatHistoryResponse>(
@@ -58,11 +67,14 @@ export const Route = createFileRoute('/api/history')({
             params,
           )
 
-          // Infer hasMore: if the gateway returned exactly `limit` messages,
-          // there are likely more. The gateway may also set hasMore explicitly.
-          const hasMore = payload.hasMore ?? payload.messages.length >= limit
+          const messages = Array.isArray(payload.messages)
+            ? payload.messages.slice(-limit)
+            : []
+          const hasMore =
+            payload.hasMore ??
+            (Array.isArray(payload.messages) && payload.messages.length > limit)
 
-          return json({ ...payload, hasMore })
+          return json({ ...payload, messages, hasMore })
         } catch (err) {
           return json(
             {
