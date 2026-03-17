@@ -83,6 +83,49 @@ type ChatScreenProps = {
   forcedSessionKey?: string
 }
 
+type SendAttachmentPayload = {
+  mimeType: string
+  content: string
+}
+
+function extractRetryImageAttachments(message: GatewayMessage): {
+  attachments: AttachmentFile[]
+  payload: SendAttachmentPayload[]
+} {
+  const parts = Array.isArray(message.content) ? message.content : []
+  const attachments: AttachmentFile[] = []
+  const payload: SendAttachmentPayload[] = []
+
+  for (const [index, part] of parts.entries()) {
+    if (
+      part.type !== 'image' ||
+      !('source' in part) ||
+      typeof part.source?.data !== 'string' ||
+      part.source.data.length === 0
+    ) {
+      continue
+    }
+
+    const mimeType =
+      typeof part.source?.media_type === 'string' &&
+      part.source.media_type.length > 0
+        ? part.source.media_type
+        : 'image/jpeg'
+    const content = part.source.data
+
+    attachments.push({
+      id: crypto.randomUUID(),
+      file: new File([], `retry-attachment-${index + 1}`, { type: mimeType }),
+      preview: null,
+      type: 'image',
+      base64: content,
+    })
+    payload.push({ mimeType, content })
+  }
+
+  return { attachments, payload }
+}
+
 export function ChatScreen({
   activeFriendlyId,
   isNewChat = false,
@@ -719,6 +762,7 @@ export function ChatScreen({
     skipOptimistic = false,
     attachments?: AttachmentFile[],
     model?: string,
+    retryAttachmentsPayload?: SendAttachmentPayload[],
   ) {
     let optimisticClientId = ''
     if (!skipOptimistic) {
@@ -748,10 +792,18 @@ export function ChatScreen({
     setPinToTop(true)
 
     // Build attachments payload for API (Gateway expects mimeType + content)
-    const attachmentsPayload = attachments?.map((a) => ({
-      mimeType: a.file.type,
-      content: a.base64,
-    }))
+    const attachmentsPayload =
+      retryAttachmentsPayload ??
+      attachments?.flatMap((a) =>
+        a.base64
+          ? [
+              {
+                mimeType: a.file.type,
+                content: a.base64,
+              },
+            ]
+          : [],
+      )
 
     // Start SSE streaming AFTER sending — use the resolved sessionKey from the
     // server response to avoid subscribing to the wrong key when activeSessionKey
@@ -959,6 +1011,76 @@ export function ChatScreen({
     })
   }, [queryClient])
 
+  // Handle retry on a failed message — re-send the original text and images
+  const handleRetryMessage = useCallback(
+    (message: GatewayMessage) => {
+      const messageText = textFromMessage(message)
+      const {
+        attachments: retryAttachments,
+        payload: retryAttachmentsPayload,
+      } = extractRetryImageAttachments(message)
+      if (!messageText && retryAttachments.length === 0) return
+      const sessionKeyForSend =
+        forcedSessionKey || resolvedSessionKey || activeSessionKey
+      if (!sessionKeyForSend) return
+      const clientId = message.clientId as string | undefined
+      const optimisticId = message.__optimisticId
+      if (clientId) {
+        removeHistoryMessageByClientId(
+          queryClient,
+          activeFriendlyId,
+          sessionKeyForSend,
+          clientId,
+          optimisticId,
+        )
+      }
+      sendMessage(
+        sessionKeyForSend,
+        activeFriendlyId,
+        messageText,
+        false,
+        retryAttachments,
+        undefined,
+        retryAttachmentsPayload,
+      )
+    },
+    [
+      activeFriendlyId,
+      activeSessionKey,
+      forcedSessionKey,
+      queryClient,
+      resolvedSessionKey,
+    ],
+  )
+
+  // Handle dismiss on a failed message — remove it from history
+  const handleDismissMessage = useCallback(
+    (message: GatewayMessage) => {
+      const sessionKeyForSend =
+        forcedSessionKey || resolvedSessionKey || activeSessionKey
+      if (!sessionKeyForSend) return
+      const clientId = message.clientId as string | undefined
+      const optimisticId = message.__optimisticId
+      if (clientId) {
+        removeHistoryMessageByClientId(
+          queryClient,
+          activeFriendlyId,
+          sessionKeyForSend,
+          clientId,
+          optimisticId,
+        )
+      }
+      setError(null)
+    },
+    [
+      activeFriendlyId,
+      activeSessionKey,
+      forcedSessionKey,
+      queryClient,
+      resolvedSessionKey,
+    ],
+  )
+
   // Handle follow-up suggestion clicks - sends the suggestion as a new message
   const handleFollowUpClick = useCallback(
     (suggestion: string) => {
@@ -1145,6 +1267,8 @@ export function ChatScreen({
                 contentStyle={stableContentStyle}
                 onFollowUpClick={handleFollowUpClick}
                 jumpToMessageId={searchJumpMessageId}
+                onRetryMessage={handleRetryMessage}
+                onDismissMessage={handleDismissMessage}
               />
               <ChatComposer
                 onSubmit={send}
