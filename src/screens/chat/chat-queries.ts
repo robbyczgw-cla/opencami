@@ -31,12 +31,15 @@ export async function fetchHistory(payload: {
   friendlyId: string
   limit?: number
   before?: string
+  signal?: AbortSignal
 }): Promise<HistoryResponse> {
   const query = new URLSearchParams({ limit: String(payload.limit ?? 50) })
   if (payload.sessionKey) query.set('sessionKey', payload.sessionKey)
   if (payload.friendlyId) query.set('friendlyId', payload.friendlyId)
   if (payload.before) query.set('before', payload.before)
-  const res = await fetch(`/api/history?${query.toString()}`)
+  const res = await fetch(`/api/history?${query.toString()}`, {
+    signal: payload.signal,
+  })
   if (!res.ok) throw new Error(await readError(res))
   return (await res.json()) as HistoryResponse
 }

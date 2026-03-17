@@ -355,7 +355,7 @@ async function getSearchableHistory({
   return nextData
 }
 
-export export function hasSufficientCachedHistory(
+export function hasSufficientCachedHistory(
   cachedServerMessages: Array<GatewayMessage>,
   cachedHasMore: boolean,
   fetchAll: boolean,
@@ -364,7 +364,10 @@ export export function hasSufficientCachedHistory(
   if (cachedServerMessages.length === 0) return false
   const threshold = minMessages ?? GLOBAL_SEARCH_THRESHOLD
   if (fetchAll) {
-    return !cachedHasMore && cachedServerMessages.length >= threshold
+    // If we know there's no more history (hasMore=false), the cache is complete regardless of size
+    if (!cachedHasMore) return true
+    // Otherwise need enough messages to be confident
+    return cachedServerMessages.length >= threshold
   }
   if (cachedServerMessages.length >= threshold) {
     return true
@@ -372,7 +375,7 @@ export export function hasSufficientCachedHistory(
   return !cachedHasMore
 }
 
-export export async function fetchEntireHistory({
+export async function fetchEntireHistory({
   friendlyId,
   sessionKey,
   signal,
@@ -396,6 +399,7 @@ export export async function fetchEntireHistory({
       friendlyId,
       limit: SEARCH_PAGE_SIZE,
       before,
+      signal,
     })
 
     if (signal.aborted) {
