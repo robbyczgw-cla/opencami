@@ -1303,7 +1303,7 @@ export function ChatScreen({
             onOpenChange={setShowSearchDialog}
             sessions={sessions}
             currentFriendlyId={activeFriendlyId}
-            currentSessionKey={activeSessionKey}
+            currentSessionKey={resolvedSessionKey || activeSessionKey}
             mode={searchMode}
             onJumpToMessage={(result: SearchResult) => {
               setShowSearchDialog(false)
