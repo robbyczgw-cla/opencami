@@ -324,8 +324,7 @@ class PersistentGatewayConnection {
   private connectPromise: Promise<void> | null = null
   private pendingRpcs = new Map<string, PendingRpc>()
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
-  private reconnectDelay = 1000
-  private maxReconnectDelay = 30_000
+  private reconnectAttempt = 0
   private destroyed = false
   private _devicePending = false
   private _deviceId = ''
@@ -508,7 +507,7 @@ class PersistentGatewayConnection {
     }
 
     this.connected = true
-    this.reconnectDelay = 1000
+    this.reconnectAttempt = 0
     console.log('[gateway-ws] Persistent connection established')
   }
 
@@ -617,15 +616,20 @@ class PersistentGatewayConnection {
 
   private _scheduleReconnect() {
     if (this.reconnectTimer) return
-    const delay = this.reconnectDelay
-    this.reconnectDelay = Math.min(this.reconnectDelay * 2, this.maxReconnectDelay)
-    console.log(`[gateway-ws] Reconnecting in ${delay}ms...`)
+    // Full jitter exponential backoff: random(0, min(cap, base * 2^attempt))
+    // Prevents thundering herd when gateway restarts and all clients reconnect.
+    const base = 1000
+    const cap = 30_000
+    const exponential = Math.min(cap, base * 2 ** this.reconnectAttempt)
+    const delay = Math.round(Math.random() * exponential)
+    this.reconnectAttempt++
+    console.log(`[gateway-ws] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempt})...`)
     this.reconnectTimer = setTimeout(async () => {
       this.reconnectTimer = null
       try {
         await this.ensureConnected()
       } catch (err) {
-        console.error('[gateway-ws] Reconnect failed:', err instanceof Error ? err.message : err)
+        console.error(`[gateway-ws] Reconnect attempt ${this.reconnectAttempt} failed:`, err instanceof Error ? err.message : err)
         // _onClose will schedule the next attempt
       }
     }, delay)
