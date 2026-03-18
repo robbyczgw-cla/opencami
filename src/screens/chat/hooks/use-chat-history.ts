@@ -124,36 +124,83 @@ function mergeOptimisticHistoryMessages(
 
   const merged = [...serverMessages]
   for (const optimisticMessage of optimisticMessages) {
-    const hasMatch = serverMessages.some((serverMessage) => {
-      if (
-        optimisticMessage.clientId &&
-        serverMessage.clientId &&
-        optimisticMessage.clientId === serverMessage.clientId
-      ) {
-        return true
-      }
-      if (
-        optimisticMessage.__optimisticId &&
-        serverMessage.__optimisticId &&
-        optimisticMessage.__optimisticId === serverMessage.__optimisticId
-      ) {
-        return true
-      }
-      if (optimisticMessage.role && serverMessage.role) {
-        if (optimisticMessage.role !== serverMessage.role) return false
-      }
-      const optimisticText = textFromMessage(optimisticMessage)
-      if (!optimisticText) return false
-      if (optimisticText !== textFromMessage(serverMessage)) return false
-      const optimisticTime = getMessageTimestamp(optimisticMessage)
-      const serverTime = getMessageTimestamp(serverMessage)
-      return Math.abs(optimisticTime - serverTime) <= 10000
-    })
+    const matchIndex = merged.findIndex((serverMessage) =>
+      messagesMatch(serverMessage, optimisticMessage),
+    )
 
-    if (!hasMatch) {
-      merged.push(optimisticMessage)
+    if (matchIndex >= 0) {
+      merged[matchIndex] = mergeMatchedMessage(
+        merged[matchIndex],
+        optimisticMessage,
+      )
+      continue
     }
+
+    merged.push(optimisticMessage)
   }
 
   return merged
+}
+
+function messagesMatch(
+  serverMessage: GatewayMessage,
+  optimisticMessage: GatewayMessage,
+): boolean {
+  if (
+    optimisticMessage.clientId &&
+    serverMessage.clientId &&
+    optimisticMessage.clientId === serverMessage.clientId
+  ) {
+    return true
+  }
+  if (
+    optimisticMessage.__optimisticId &&
+    serverMessage.__optimisticId &&
+    optimisticMessage.__optimisticId === serverMessage.__optimisticId
+  ) {
+    return true
+  }
+  if (optimisticMessage.role && serverMessage.role) {
+    if (optimisticMessage.role !== serverMessage.role) return false
+  }
+  const optimisticText = textFromMessage(optimisticMessage)
+  if (!optimisticText) return false
+  if (optimisticText !== textFromMessage(serverMessage)) return false
+  const optimisticTime = getMessageTimestamp(optimisticMessage)
+  const serverTime = getMessageTimestamp(serverMessage)
+  return Math.abs(optimisticTime - serverTime) <= 10000
+}
+
+function mergeMatchedMessage(
+  serverMessage: GatewayMessage,
+  optimisticMessage: GatewayMessage,
+): GatewayMessage {
+  const optimisticImages = extractImageParts(optimisticMessage)
+  if (!optimisticImages.length) return serverMessage
+
+  const serverImages = extractImageParts(serverMessage)
+  if (serverImages.length) return serverMessage
+
+  const serverContent = Array.isArray(serverMessage.content)
+    ? serverMessage.content
+    : []
+  const textParts = serverContent.filter((part) => part.type !== 'image')
+
+  return {
+    ...serverMessage,
+    content: [...optimisticImages, ...textParts],
+    __optimisticId:
+      serverMessage.__optimisticId ?? optimisticMessage.__optimisticId,
+  }
+}
+
+function extractImageParts(message: GatewayMessage) {
+  const content = Array.isArray(message.content) ? message.content : []
+  return content.filter(
+    (part) =>
+      part.type === 'image' &&
+      'source' in part &&
+      typeof part.source?.data === 'string' &&
+      part.source.data.length > 0,
+  )
 }
