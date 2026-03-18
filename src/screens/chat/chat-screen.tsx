@@ -831,7 +831,11 @@ export function ChatScreen({
       }),
     })
       .then(async (res) => {
-        if (!res.ok) throw new Error(await readError(res))
+        if (!res.ok) {
+          const httpErr = new Error(await readError(res)) as Error & { status?: number }
+          httpErr.status = res.status
+          throw httpErr
+        }
         // Parse response to get the actual resolved sessionKey, then start
         // SSE with the correct key. Server event buffer holds events for 10s
         // so late subscription still gets all deltas.
@@ -867,8 +871,9 @@ export function ChatScreen({
         // network unreachable). For ambiguous server errors (5xx, lost
         // HTTP response after RPC was sent), keep SSE alive — the assistant
         // may still be running and will deliver its response via the stream.
+        const httpStatus = (err as Error & { status?: number }).status
         const isDefinitiveFailure =
-          /^(4\d\d)\b/.test(messageText) ||
+          (httpStatus !== undefined && httpStatus >= 400 && httpStatus < 500) ||
           /fetch|network|ECONNREFUSED|ERR_CONNECTION/i.test(messageText)
         if (isDefinitiveFailure) {
           streamStop()
