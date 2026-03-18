@@ -866,20 +866,13 @@ export function ChatScreen({
           )
         }
         setError(`Failed to send message. ${messageText}`)
-        // Only tear down the stream for definitive client-side failures where
-        // we know the gateway never accepted the message (4xx client errors,
-        // network unreachable). For ambiguous server errors (5xx, lost
-        // HTTP response after RPC was sent), keep SSE alive — the assistant
-        // may still be running and will deliver its response via the stream.
-        const httpStatus = (err as Error & { status?: number }).status
-        const isDefinitiveFailure =
-          (httpStatus !== undefined && httpStatus >= 400 && httpStatus < 500) ||
-          /fetch|network|ECONNREFUSED|ERR_CONNECTION/i.test(messageText)
-        if (isDefinitiveFailure) {
-          streamStop()
-          stopStream()
-          setIsStreaming(false)
-        }
+        // Don't tear down the SSE stream here — /api/send may have failed at
+        // the HTTP layer after chat.send was already accepted by the gateway
+        // (e.g. 500 from sessions.resolve, lost response body, network drop
+        // after the frame was sent). The existing stream may still deliver
+        // the assistant reply. Let the stream's own onDone/onError handlers
+        // handle teardown. Only clear UI loading flags so the user isn't
+        // stuck in "generating" state while the stream decides.
         setPendingGeneration(false)
         setWaitingForResponse(false)
         setPinToTop(false)
