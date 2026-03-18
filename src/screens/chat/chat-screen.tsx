@@ -862,13 +862,21 @@ export function ChatScreen({
           )
         }
         setError(`Failed to send message. ${messageText}`)
-        // Full cleanup: stop SSE stream and polling to avoid leaked
-        // connections and stale loading states after a failed send.
-        streamStop()
-        stopStream()
+        // Only tear down the stream for definitive client-side failures where
+        // we know the gateway never accepted the message (4xx client errors,
+        // network unreachable). For ambiguous server errors (5xx, lost
+        // HTTP response after RPC was sent), keep SSE alive — the assistant
+        // may still be running and will deliver its response via the stream.
+        const isDefinitiveFailure =
+          /^(4\d\d)\b/.test(messageText) ||
+          /fetch|network|ECONNREFUSED|ERR_CONNECTION/i.test(messageText)
+        if (isDefinitiveFailure) {
+          streamStop()
+          stopStream()
+          setIsStreaming(false)
+        }
         setPendingGeneration(false)
         setWaitingForResponse(false)
-        setIsStreaming(false)
         setPinToTop(false)
       })
       .finally(() => {
