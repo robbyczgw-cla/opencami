@@ -842,6 +842,11 @@ export function ChatScreen({
       .catch((err) => {
         const messageText = err instanceof Error ? err.message : String(err)
         if (isMissingGatewayAuth(messageText)) {
+          streamStop()
+          stopStream()
+          setIsStreaming(false)
+          setPendingGeneration(false)
+          setWaitingForResponse(false)
           navigate({ to: '/connect', replace: true })
           return
         }
