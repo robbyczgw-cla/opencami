@@ -45,67 +45,22 @@ export function useChatHistory({
             return Boolean(message.clientId)
           })
         : []
-
-      // Capture all cached messages (including non-optimistic) with image parts
-      // before fetching, so we can restore them after the server response
-      const cachedMessages = Array.isArray(cached?.messages) ? cached.messages : []
-      const cachedMessagesWithImages = cachedMessages.filter((m) => {
-        if (!Array.isArray(m.content)) return false
-        return m.content.some(
-          (part) =>
-            typeof part === 'object' &&
-            part !== null &&
-            (part as Record<string, unknown>).type === 'image',
-        )
-      })
+      const cachedMessages = Array.isArray(cached?.messages)
+        ? cached.messages
+        : []
 
       const serverData = await fetchHistory({
         sessionKey: sessionKeyForHistory,
         friendlyId: activeFriendlyId,
       })
+      const serverMessages = restoreCachedImageParts(
+        serverData.messages,
+        cachedMessages,
+      )
 
-      // Restore images from cache into server messages that lost them
-      let serverMessages = serverData.messages
-      if (cachedMessagesWithImages.length > 0) {
-        serverMessages = serverData.messages.map((serverMsg) => {
-          const hasImages =
-            Array.isArray(serverMsg.content) &&
-            serverMsg.content.some(
-              (p) =>
-                typeof p === 'object' &&
-                p !== null &&
-                (p as Record<string, unknown>).type === 'image',
-            )
-          if (hasImages) return serverMsg
-
-          // Try to find a matching cached message with images
-          const cachedMatch = cachedMessagesWithImages.find((cachedMsg) => {
-            if (serverMsg.role !== cachedMsg.role) return false
-            if (serverMsg.id && cachedMsg.id && serverMsg.id === cachedMsg.id) return true
-            if (serverMsg.clientId && cachedMsg.clientId && serverMsg.clientId === cachedMsg.clientId) return true
-            const serverText = textFromMessage(serverMsg)
-            const cachedText = textFromMessage(cachedMsg)
-            if (!serverText || serverText !== cachedText) return false
-            const timeDiff = Math.abs(getMessageTimestamp(serverMsg) - getMessageTimestamp(cachedMsg))
-            return timeDiff <= 30000
-          })
-
-          if (!cachedMatch || !Array.isArray(cachedMatch.content)) return serverMsg
-          const imageParts = cachedMatch.content.filter(
-            (p) =>
-              typeof p === 'object' &&
-              p !== null &&
-              (p as Record<string, unknown>).type === 'image',
-          )
-          if (imageParts.length === 0) return serverMsg
-          return {
-            ...serverMsg,
-            content: [...imageParts, ...(Array.isArray(serverMsg.content) ? serverMsg.content : [])] as typeof serverMsg.content,
-          }
-        })
+      if (!optimisticMessages.length) {
+        return { ...serverData, messages: serverMessages }
       }
-
-      if (!optimisticMessages.length) return { ...serverData, messages: serverMessages }
 
       const merged = mergeOptimisticHistoryMessages(
         serverMessages,
@@ -202,19 +157,70 @@ function findMatchIndex(
   })
 }
 
-function getImageParts(message: GatewayMessage): Array<unknown> {
+export function getImageParts(message: GatewayMessage): Array<unknown> {
   if (!Array.isArray(message.content)) return []
   return message.content.filter((part) => {
     if (typeof part !== 'object' || part === null) return false
     const p = part as Record<string, unknown>
     if (p.type !== 'image') return false
-    // Only count images that actually have renderable data (base64 bytes)
     const source = p.source as Record<string, unknown> | undefined
     return typeof source?.data === 'string' && source.data.length > 0
   })
 }
 
-function mergeOptimisticHistoryMessages(
+export function restoreCachedImageParts(
+  serverMessages: Array<GatewayMessage>,
+  cachedMessages: Array<GatewayMessage>,
+): Array<GatewayMessage> {
+  const cachedMessagesWithImages = cachedMessages.filter(
+    (message) => getImageParts(message).length > 0,
+  )
+  if (!cachedMessagesWithImages.length) return serverMessages
+
+  return serverMessages.map((serverMessage) => {
+    if (getImageParts(serverMessage).length > 0) return serverMessage
+
+    const cachedMatch = cachedMessagesWithImages.find((cachedMessage) => {
+      if (serverMessage.role !== cachedMessage.role) return false
+      if (
+        serverMessage.id &&
+        cachedMessage.id &&
+        serverMessage.id === cachedMessage.id
+      ) {
+        return true
+      }
+      if (
+        serverMessage.clientId &&
+        cachedMessage.clientId &&
+        serverMessage.clientId === cachedMessage.clientId
+      ) {
+        return true
+      }
+      const serverText = textFromMessage(serverMessage)
+      const cachedText = textFromMessage(cachedMessage)
+      if (!serverText || serverText !== cachedText) return false
+      const timeDiff = Math.abs(
+        getMessageTimestamp(serverMessage) -
+          getMessageTimestamp(cachedMessage),
+      )
+      return timeDiff <= 30000
+    })
+
+    if (!cachedMatch) return serverMessage
+    const imageParts = getImageParts(cachedMatch)
+    if (!imageParts.length) return serverMessage
+
+    return {
+      ...serverMessage,
+      content: [
+        ...imageParts,
+        ...(Array.isArray(serverMessage.content) ? serverMessage.content : []),
+      ] as typeof serverMessage.content,
+    }
+  })
+}
+
+export function mergeOptimisticHistoryMessages(
   serverMessages: Array<GatewayMessage>,
   optimisticMessages: Array<GatewayMessage>,
 ): Array<GatewayMessage> {
@@ -226,30 +232,40 @@ function mergeOptimisticHistoryMessages(
 
     if (matchIndex === -1) {
       merged.push(optimisticMessage)
-    } else {
-      // Preserve image parts from optimistic message if server message lost them.
-      // Also preserve __optimisticId/clientId so subsequent refetches keep merging correctly.
-      const imageParts = getImageParts(optimisticMessage)
-      const serverMessage = merged[matchIndex]
-      const serverImageParts = getImageParts(serverMessage)
-      const needsImages = imageParts.length > 0 && serverImageParts.length === 0
-      const needsMarkers =
-        optimisticMessage.__optimisticId && !serverMessage.__optimisticId
+      continue
+    }
 
-      if ((needsImages || needsMarkers) && Array.isArray(serverMessage.content)) {
-        merged[matchIndex] = {
-          ...serverMessage,
-          ...(needsMarkers
-            ? {
-                __optimisticId: optimisticMessage.__optimisticId,
-                clientId: serverMessage.clientId ?? optimisticMessage.clientId,
-              }
-            : {}),
-          content: needsImages
-            ? ([...imageParts, ...serverMessage.content] as typeof serverMessage.content)
-            : serverMessage.content,
-        }
-      }
+    const imageParts = getImageParts(optimisticMessage)
+    const serverMessage = merged[matchIndex]
+    const serverImageParts = getImageParts(serverMessage)
+    const needsImages = imageParts.length > 0 && serverImageParts.length === 0
+    const needsOptimisticId = Boolean(
+      optimisticMessage.__optimisticId && !serverMessage.__optimisticId,
+    )
+    const needsClientId = Boolean(
+      optimisticMessage.clientId && !serverMessage.clientId,
+    )
+
+    if (!needsImages && !needsOptimisticId && !needsClientId) continue
+
+    merged[matchIndex] = {
+      ...serverMessage,
+      ...(needsOptimisticId
+        ? { __optimisticId: optimisticMessage.__optimisticId }
+        : {}),
+      ...(needsClientId
+        ? { clientId: optimisticMessage.clientId }
+        : {}),
+      ...(needsImages
+        ? {
+            content: [
+              ...imageParts,
+              ...(Array.isArray(serverMessage.content)
+                ? serverMessage.content
+                : []),
+            ] as typeof serverMessage.content,
+          }
+        : {}),
     }
   }
 
