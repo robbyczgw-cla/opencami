@@ -129,11 +129,21 @@ export function useStreaming(options: {
     // close the old EventSource and fall through to create a new one so we
     // subscribe to the correct server-side stream.
     if (eventSourceRef.current && !doneRef.current) {
-      if (sessionKey === previousKey) {
+      // Gateway uses segment matching: subscribing to 'main' covers events
+      // for 'agent:main:main'. Only reconnect if the new key is genuinely
+      // unrelated to the previous one (not an alias/parent segment).
+      const prevSegments = previousKey ? previousKey.split(':') : []
+      const newSegments = sessionKey.split(':')
+      const isAlias =
+        sessionKey === previousKey ||
+        prevSegments.includes(sessionKey) ||
+        newSegments.includes(previousKey ?? '')
+
+      if (isAlias) {
         setState((prev) => ({ ...prev, sessionKey, active: true }))
         return
       }
-      // Key changed — tear down old EventSource, fall through to Case 3.
+      // Genuinely different session — tear down old EventSource.
       eventSourceRef.current.close()
       eventSourceRef.current = null
     }
