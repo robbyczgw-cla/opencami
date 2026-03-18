@@ -3,6 +3,19 @@
 All notable changes to OpenCami are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [Semantic Versioning](https://semver.org/).
 
+## [1.9.1] - 2026-03-18
+
+### Fixed
+
+- **Image attachments preserved after stream** — images sent with a message no longer disappear when the assistant response finishes streaming. Root cause: history refetch after stream completion was merging server responses without restoring attachment data. Now `use-chat-history` captures renderable image parts from the cache before each refetch and restores them into matched server messages. Optimistic markers (`__optimisticId`, `clientId`) are also preserved across refetches for stable repeated merge (#19) — by [@robbyczgw-cla](https://github.com/robbyczgw-cla)
+- **Retry UI handles attachment-only messages** — retry now works when the original message contained only images with no text (#15) — by [@robbyczgw-cla](https://github.com/robbyczgw-cla)
+- **Retry preserves attachments** — retrying a failed message re-sends original image attachments instead of text-only (#15) — by [@robbyczgw-cla](https://github.com/robbyczgw-cla)
+- **Reconnect jitter** — gateway reconnect backoff now uses jitter to prevent thundering herd on reconnect (#14) — by [@robbyczgw-cla](https://github.com/robbyczgw-cla)
+
+### Improved
+
+- Streaming event processing extracted into testable helpers with unit test coverage (#18)
+
 ## [1.9.0] - 2026-03-11
 
 ### Fixed
