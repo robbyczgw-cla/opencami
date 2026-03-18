@@ -158,6 +158,7 @@ export function ChatScreen({
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
   const streamTimer = useRef<number | null>(null)
   const streamIdleTimer = useRef<number | null>(null)
+  const sendFailureWatchdogRef = useRef<number | null>(null)
   const lastAssistantSignature = useRef('')
   const refreshHistoryRef = useRef<() => void>(() => {})
   const pendingStartRef = useRef(false)
@@ -309,6 +310,11 @@ export function ChatScreen({
     onDone: (sk: string) => handleStreamDoneRef.current(sk),
     onError: (err: string) => handleStreamErrorRef.current(err),
     onAssistantDelta: ({ text }) => {
+      // Stream is alive — cancel any send-failure watchdog
+      if (sendFailureWatchdogRef.current) {
+        window.clearTimeout(sendFailureWatchdogRef.current)
+        sendFailureWatchdogRef.current = null
+      }
       streamingNotificationTextRef.current += text
       maybeNotifyAssistantMessage({
         text: streamingNotificationTextRef.current,
@@ -319,6 +325,11 @@ export function ChatScreen({
 
   handleStreamDoneRef.current = useCallback(
     async (_sk: string) => {
+      // Stream delivered — cancel any send-failure watchdog
+      if (sendFailureWatchdogRef.current) {
+        window.clearTimeout(sendFailureWatchdogRef.current)
+        sendFailureWatchdogRef.current = null
+      }
       // 1. Refetch history so the final persisted message is available
       await historyQuery.refetch()
       // 2. DON'T close the EventSource — keep it alive for subsequent
@@ -866,16 +877,23 @@ export function ChatScreen({
           )
         }
         setError(`Failed to send message. ${messageText}`)
-        // Don't tear down the SSE stream here — /api/send may have failed at
-        // the HTTP layer after chat.send was already accepted by the gateway
-        // (e.g. 500 from sessions.resolve, lost response body, network drop
-        // after the frame was sent). The existing stream may still deliver
-        // the assistant reply. Let the stream's own onDone/onError handlers
-        // handle teardown. Only clear UI loading flags so the user isn't
-        // stuck in "generating" state while the stream decides.
+        // Don't tear down the SSE stream immediately — /api/send may have
+        // failed at the HTTP layer after chat.send was already accepted by
+        // the gateway. The stream may still deliver the assistant reply.
+        // Clear UI loading flags so the user isn't stuck, but set a watchdog:
+        // if no SSE events arrive within 8 seconds, do full stream cleanup.
         setPendingGeneration(false)
         setWaitingForResponse(false)
         setPinToTop(false)
+        if (sendFailureWatchdogRef.current) {
+          window.clearTimeout(sendFailureWatchdogRef.current)
+        }
+        sendFailureWatchdogRef.current = window.setTimeout(() => {
+          sendFailureWatchdogRef.current = null
+          streamStop()
+          stopStream()
+          setIsStreaming(false)
+        }, 8000)
       })
       .finally(() => {
         setSending(false)
