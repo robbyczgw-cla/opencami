@@ -857,8 +857,13 @@ export function ChatScreen({
           )
         }
         setError(`Failed to send message. ${messageText}`)
+        // Full cleanup: stop SSE stream and polling to avoid leaked
+        // connections and stale loading states after a failed send.
+        streamStop()
+        stopStream()
         setPendingGeneration(false)
         setWaitingForResponse(false)
+        setIsStreaming(false)
         setPinToTop(false)
       })
       .finally(() => {

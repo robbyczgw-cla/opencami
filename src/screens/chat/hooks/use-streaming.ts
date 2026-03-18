@@ -118,15 +118,24 @@ export function useStreaming(options: {
    * If no EventSource exists, a fresh one is created.
    */
   const start = useCallback(function start(sessionKey: string) {
+    const previousKey = sessionKeyRef.current
     // Always keep the ref up to date so the EventSource handler reads the
     // latest key regardless of which call path we take.
     sessionKeyRef.current = sessionKey
 
     // ── Case 1: EventSource open & actively streaming ─────────────
     // Second startStream call (resolved key) — just update the key.
+    // If the key changed (e.g. pre-send friendlyId → resolved sessionKey),
+    // close the old EventSource and fall through to create a new one so we
+    // subscribe to the correct server-side stream.
     if (eventSourceRef.current && !doneRef.current) {
-      setState((prev) => ({ ...prev, sessionKey, active: true }))
-      return
+      if (sessionKey === previousKey) {
+        setState((prev) => ({ ...prev, sessionKey, active: true }))
+        return
+      }
+      // Key changed — tear down old EventSource, fall through to Case 3.
+      eventSourceRef.current.close()
+      eventSourceRef.current = null
     }
 
     // ── Case 2 & 3: Need a fresh message state ───────────────────
