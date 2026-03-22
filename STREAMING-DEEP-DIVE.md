@@ -242,10 +242,10 @@ Our `use-streaming.ts` is a simplified version of upstream's `use-chat-stream.ts
 ### Test SSE stream directly (curl):
 ```bash
 # Start a stream listener
-curl -N "http://100.87.165.6:3003/api/stream?sessionKey=webchat" &
+curl -N "http://YOUR_SERVER_IP:3003/api/stream?sessionKey=webchat" &
 
 # Send a message
-curl -X POST "http://100.87.165.6:3003/api/send" \
+curl -X POST "http://YOUR_SERVER_IP:3003/api/send" \
   -H "Content-Type: application/json" \
   -d '{"sessionKey":"webchat","message":"hello"}'
 ```
@@ -256,8 +256,8 @@ curl -X POST "http://100.87.165.6:3003/api/send" \
 ```
 
 ### OpenCami URLs:
-- Direct: `http://100.87.165.6:3003`
-- Tailscale: `https://openclaw-server.tail8a9ea9.ts.net:3001` (proxies to 3003)
+- Direct: `http://YOUR_SERVER_IP:3003`
+- Tailscale: `https://your-openclaw-server.ts.net:3001` (proxies to 3003)
 
 ---
 
