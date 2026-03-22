@@ -9,7 +9,7 @@ const config: CapacitorConfig = {
   // native shell loads the live web app and gains access to native APIs
   // (push notifications, haptics, etc.) via Capacitor plugins.
   server: {
-    url: 'https://openclaw-server.tail8a9ea9.ts.net:3001',
+    url: 'https://your-openclaw-server.ts.net:3001',
     cleartext: false,
   },
   // Fallback webDir is required by the CLI even when using server.url.
