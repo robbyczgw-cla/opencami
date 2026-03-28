@@ -12,6 +12,7 @@ type ThinkingOption = {
 }
 
 const THINKING_OPTIONS: Array<ThinkingOption> = [
+  { value: 'adaptive', label: 'Adaptive', description: 'Auto-adjust per turn', shortLabel: 'Adaptive' },
   { value: 'off', label: 'Off', description: 'No reasoning', shortLabel: 'Off' },
   { value: 'low', label: 'Low', description: 'Think', shortLabel: 'Low' },
   { value: 'medium', label: 'Medium', description: 'Think harder', shortLabel: 'Medium' },

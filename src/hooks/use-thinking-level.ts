@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-export type ThinkingLevel = 'off' | 'low' | 'medium' | 'high'
+export type ThinkingLevel = 'adaptive' | 'off' | 'low' | 'medium' | 'high'
 
 type ThinkingLevelState = {
   level: ThinkingLevel
@@ -11,7 +11,7 @@ type ThinkingLevelState = {
 export const useThinkingLevelStore = create<ThinkingLevelState>()(
   persist(
     (set) => ({
-      level: 'low',
+      level: 'adaptive',
       setLevel: (level) => set({ level }),
     }),
     { name: 'thinking-level' },
