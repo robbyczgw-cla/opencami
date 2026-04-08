@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils'
 
 type FollowUpSuggestionsProps = {
   responseText: string
-  contextSummary?: string
+  conversationContext?: string
   onSuggestionClick: (suggestion: string) => void
   disabled?: boolean
   className?: string
@@ -14,14 +14,14 @@ type FollowUpSuggestionsProps = {
 
 function FollowUpSuggestionsComponent({
   responseText,
-  contextSummary,
+  conversationContext,
   onSuggestionClick,
   disabled = false,
   className,
 }: FollowUpSuggestionsProps) {
   const { suggestions, isLoading, source } = useFollowUpSuggestions(
     responseText,
-    contextSummary,
+    conversationContext,
     {
       minResponseLength: 50,
       timeoutMs: 8000,
@@ -32,9 +32,11 @@ function FollowUpSuggestionsComponent({
     return null
   }
 
+  const showHeader = isLoading || suggestions.length > 0
+
   return (
     <div className={cn('flex flex-col gap-2 mt-3', className)}>
-      <div className="flex items-center gap-1.5 text-xs text-primary-500">
+      {showHeader ? <div className="flex items-center gap-1.5 text-xs text-primary-500">
         <span className="text-primary-400">✨</span>
         <span>
           {isLoading ? (
@@ -53,7 +55,7 @@ function FollowUpSuggestionsComponent({
             'Follow-up suggestions'
           )}
         </span>
-      </div>
+      </div> : null}
       <div className="flex flex-wrap gap-2">
         {suggestions.map((suggestion, index) => (
           <button

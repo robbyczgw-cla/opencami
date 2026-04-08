@@ -46,8 +46,8 @@ export function handleAgentEvent(
 
   // ── Assistant text deltas ─────────────────────────────────────────
   if (stream === 'assistant') {
-    const text = normalizeString(streamData?.delta) || normalizeString(streamData?.text)
-    if (!text) return
+    const text = rawString(streamData?.delta) || rawString(streamData?.text)
+    if (text.length === 0) return
     options.setState((prev) => {
       // Append to the last text block, or create a new one
       const blocks = [...prev.contentBlocks]
@@ -158,4 +158,8 @@ export function asRecord(value: unknown): Record<string, unknown> | null {
 
 export function normalizeString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : ''
+}
+
+export function rawString(value: unknown): string {
+  return typeof value === 'string' ? value : ''
 }

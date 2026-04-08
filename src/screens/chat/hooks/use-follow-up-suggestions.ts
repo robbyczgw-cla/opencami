@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { getHeuristicFollowUpTexts } from '../lib/follow-up-generator'
+import { useChatSettings } from '@/hooks/use-chat-settings'
 
 type UseFollowUpSuggestionsOptions = {
   minResponseLength?: number
   timeoutMs?: number
   heuristicsOnly?: boolean
+  enabled?: boolean
 }
 
 type UseFollowUpSuggestionsResult = {
@@ -16,6 +17,7 @@ type UseFollowUpSuggestionsResult = {
 
 async function fetchFollowUpsViaOpenclaw(
   conversationContext: string,
+  model?: string,
   signal?: AbortSignal,
 ): Promise<string[]> {
   const res = await fetch('/api/llm-features', {
@@ -26,6 +28,7 @@ async function fetchFollowUpsViaOpenclaw(
     body: JSON.stringify({
       action: 'followups',
       conversationContext,
+      model,
     }),
     signal,
   })
@@ -50,10 +53,12 @@ async function fetchFollowUpsViaOpenclaw(
 
 export function useFollowUpSuggestions(
   responseText: string,
-  contextSummary?: string,
+  conversationContext?: string,
   options?: UseFollowUpSuggestionsOptions,
 ): UseFollowUpSuggestionsResult {
-  const { minResponseLength = 50, heuristicsOnly = false } = options ?? {}
+  const { settings } = useChatSettings()
+  const { minResponseLength = 50, heuristicsOnly = false, enabled = true } =
+    options ?? {}
 
   const [suggestions, setSuggestions] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -64,6 +69,17 @@ export function useFollowUpSuggestions(
   const abortControllerRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
+    if (!enabled) {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+      setSuggestions([])
+      setSource(null)
+      setIsLoading(false)
+      setError(null)
+      return
+    }
+
     if (!responseText || responseText.trim().length < minResponseLength) {
       setSuggestions([])
       setSource(null)
@@ -72,7 +88,7 @@ export function useFollowUpSuggestions(
       return
     }
 
-    const responseKey = responseText.slice(0, 200) + responseText.length
+    const responseKey = `${settings.llmFeaturesModel}:${responseText.slice(0, 200)}${responseText.length}`
     if (responseKey === lastResponseRef.current) {
       return
     }
@@ -83,9 +99,8 @@ export function useFollowUpSuggestions(
     }
 
     if (heuristicsOnly) {
-      const heuristicSuggestions = getHeuristicFollowUpTexts(responseText)
-      setSuggestions(heuristicSuggestions)
-      setSource('heuristic')
+      setSuggestions([])
+      setSource(null)
       setIsLoading(false)
       setError(null)
       return
@@ -95,16 +110,20 @@ export function useFollowUpSuggestions(
     abortControllerRef.current = controller
     setIsLoading(true)
     setError(null)
+    setSuggestions([])
+    setSource(null)
 
-    const heuristicSuggestions = getHeuristicFollowUpTexts(responseText)
-    setSuggestions(heuristicSuggestions)
-    setSource('heuristic')
-
-    const conversationContext = contextSummary
-      ? `Context: ${contextSummary}\n\nAssistant's response:\n${responseText.slice(0, 2000)}`
+    const requestContext = conversationContext?.trim().length
+      ? conversationContext.trim()
       : `Assistant's response:\n${responseText.slice(0, 2000)}`
 
-    fetchFollowUpsViaOpenclaw(conversationContext, controller.signal)
+    fetchFollowUpsViaOpenclaw(
+      requestContext,
+      settings.llmFeaturesModel
+        ? `openclaw/${settings.llmFeaturesModel}`
+        : undefined,
+      controller.signal,
+    )
       .then((openclawSuggestions) => {
         if (controller.signal.aborted) return
 
@@ -116,10 +135,19 @@ export function useFollowUpSuggestions(
       })
       .catch((err) => {
         if (controller.signal.aborted) return
+        setSuggestions([])
+        setSource(null)
         setError(err instanceof Error ? err.message : String(err))
         setIsLoading(false)
       })
-  }, [responseText, contextSummary, minResponseLength, heuristicsOnly])
+  }, [
+    responseText,
+    conversationContext,
+    enabled,
+    minResponseLength,
+    heuristicsOnly,
+    settings.llmFeaturesModel,
+  ])
 
   return { suggestions, isLoading, error, source }
 }

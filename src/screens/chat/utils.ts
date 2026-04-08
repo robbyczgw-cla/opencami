@@ -67,12 +67,22 @@ export function stripInboundMeta(text: string): string {
   return s.trim()
 }
 
+function joinTextParts(parts: string[]): string {
+  return parts.reduce((joined, part) => {
+    if (!part) return joined
+    if (!joined) return part
+    if (/\s$/.test(joined) || /^\s/.test(part)) return `${joined}${part}`
+    if (/[([{"'`„“‚‘]$/.test(joined)) return `${joined}${part}`
+    if (/^[,.;:!?%\])}"'`]/.test(part)) return `${joined}${part}`
+    return `${joined} ${part}`
+  }, '')
+}
+
 export function textFromMessage(msg: GatewayMessage): string {
   const parts = Array.isArray(msg.content) ? msg.content : []
-  const raw = parts
-    .map((part) => (part.type === 'text' ? String(part.text ?? '') : ''))
-    .join('')
-    .trim()
+  const raw = joinTextParts(
+    parts.map((part) => (part.type === 'text' ? String(part.text ?? '') : '')),
+  ).trim()
   // Strip OpenClaw metadata prefix from any message content that includes it.
   return stripInboundMeta(raw)
 }

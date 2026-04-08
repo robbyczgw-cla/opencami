@@ -78,6 +78,26 @@ export function updateHistoryMessages(
   })
 }
 
+function normalizeId(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : ''
+}
+
+function areSameHistoryMessage(a: GatewayMessage, b: GatewayMessage): boolean {
+  const aId = normalizeId((a as { id?: unknown }).id)
+  const bId = normalizeId((b as { id?: unknown }).id)
+  if (aId && bId) return aId === bId
+
+  const aClientId = normalizeId(a.clientId)
+  const bClientId = normalizeId(b.clientId)
+  if (aClientId && bClientId) return aClientId === bClientId
+
+  const aOptimisticId = normalizeId(a.__optimisticId)
+  const bOptimisticId = normalizeId(b.__optimisticId)
+  if (aOptimisticId && bOptimisticId) return aOptimisticId === bOptimisticId
+
+  return false
+}
+
 export function appendHistoryMessage(
   queryClient: QueryClient,
   friendlyId: string,
@@ -89,6 +109,9 @@ export function appendHistoryMessage(
     friendlyId,
     sessionKey,
     function append(messages) {
+      if (messages.some((existing) => areSameHistoryMessage(existing, message))) {
+        return messages
+      }
       return [...messages, message]
     },
   )
@@ -262,7 +285,14 @@ export async function updateSessionLabel(
     if (!res.ok) {
       const errorText = await readError(res)
       console.error('[updateSessionLabel] Failed to persist:', errorText)
+      return
     }
+
+    // Refresh session metadata from the server as soon as the patch lands.
+    // The first title update can race with initial session creation, and the
+    // active title falls back to derived/raw ids until the sessions query sees
+    // the persisted label.
+    await queryClient.invalidateQueries({ queryKey: chatQueryKeys.sessions })
   } catch (err) {
     console.error('[updateSessionLabel] Network error:', err)
   }

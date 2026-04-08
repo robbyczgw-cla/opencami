@@ -14,10 +14,12 @@ import {
 
 type TitleRequest = {
   message: string
+  model?: string
 }
 
 type FollowUpsRequest = {
   conversationContext: string
+  model?: string
 }
 
 type StatusResponse = {
@@ -98,7 +100,7 @@ export const Route = createFileRoute('/api/llm-features')({
 
           switch (action) {
             case 'title': {
-              const { message } = body as TitleRequest & { action: string }
+              const { message, model } = body as TitleRequest & { action: string }
 
               if (!message || typeof message !== 'string' || message.trim().length < 3) {
                 return json<TitleResponse>(
@@ -111,7 +113,7 @@ export const Route = createFileRoute('/api/llm-features')({
               }
 
               try {
-                const title = await generateTitleViaOpenclaw(message)
+                const title = await generateTitleViaOpenclaw(message, model)
                 return json<TitleResponse>({
                   ok: true,
                   title,
@@ -129,7 +131,7 @@ export const Route = createFileRoute('/api/llm-features')({
             }
 
             case 'followups': {
-              const { conversationContext } = body as FollowUpsRequest & { action: string }
+              const { conversationContext, model } = body as FollowUpsRequest & { action: string }
 
               if (
                 !conversationContext ||
@@ -144,7 +146,11 @@ export const Route = createFileRoute('/api/llm-features')({
               }
 
               try {
-                const suggestions = await generateFollowUpsViaOpenclaw(conversationContext)
+                const suggestions = await generateFollowUpsViaOpenclaw(
+                  conversationContext,
+                  undefined,
+                  model,
+                )
                 return json<FollowUpsResponse>({
                   ok: true,
                   suggestions,

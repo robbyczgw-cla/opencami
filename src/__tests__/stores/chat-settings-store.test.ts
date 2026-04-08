@@ -14,7 +14,9 @@ describe('useChatSettingsStore', () => {
     expect(state.settings.showToolMessages).toBe(true)
     expect(state.settings.showReasoningBlocks).toBe(true)
     expect(state.settings.showSearchSources).toBe(true)
+    expect(state.settings.showFollowUps).toBe(true)
     expect(state.settings.inlineFilePreview).toBe(false)
+    expect(state.settings.llmFeaturesModel).toBe('gpt54mini')
     expect(state.settings.theme).toBe('system')
     expect(state.settings.fontFamily).toBe('system')
     expect(state.settings.density).toBe('comfortable')
@@ -31,6 +33,7 @@ describe('useChatSettingsStore', () => {
       useChatSettingsStore.getState().updateSettings({
         theme: 'dark',
         showToolMessages: false,
+        showFollowUps: false,
         accentColor: 'blue',
       })
     })
@@ -38,6 +41,7 @@ describe('useChatSettingsStore', () => {
     const state = useChatSettingsStore.getState()
     expect(state.settings.theme).toBe('dark')
     expect(state.settings.showToolMessages).toBe(false)
+    expect(state.settings.showFollowUps).toBe(false)
     expect(state.settings.accentColor).toBe('blue')
     // Other settings unchanged
     expect(state.settings.showReasoningBlocks).toBe(true)
@@ -50,6 +54,7 @@ describe('useChatSettingsStore', () => {
       useChatSettingsStore.getState().updateSettings({
         theme: 'chameleon',
         density: 'spacious',
+        showFollowUps: false,
       })
     })
 
@@ -58,6 +63,7 @@ describe('useChatSettingsStore', () => {
     const parsed = JSON.parse(stored!)
     expect(parsed.state.settings.theme).toBe('chameleon')
     expect(parsed.state.settings.density).toBe('spacious')
+    expect(parsed.state.settings.showFollowUps).toBe(false)
   })
 
   it('should handle all theme modes', async () => {

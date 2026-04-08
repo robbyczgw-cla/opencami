@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
+import { useChatSettings } from '@/hooks/use-chat-settings'
 
 type GenerateTitleResult = {
   title: string
@@ -14,6 +15,7 @@ type UseSmartTitleResult = {
 }
 
 export function useSmartTitle(): UseSmartTitleResult {
+  const { settings } = useChatSettings()
   const [isGenerating, setIsGenerating] = useState(false)
   const [lastTitle, setLastTitle] = useState<string | null>(null)
   const [lastSource, setLastSource] = useState<'openclaw' | 'heuristic' | null>(null)
@@ -37,6 +39,9 @@ export function useSmartTitle(): UseSmartTitleResult {
         body: JSON.stringify({
           action: 'title',
           message,
+          model: settings.llmFeaturesModel
+            ? `openclaw/${settings.llmFeaturesModel}`
+            : undefined,
         }),
         signal: controller.signal,
       })
@@ -88,7 +93,7 @@ export function useSmartTitle(): UseSmartTitleResult {
         abortControllerRef.current = null
       }
     }
-  }, [])
+  }, [settings.llmFeaturesModel])
 
   return {
     generateTitle,

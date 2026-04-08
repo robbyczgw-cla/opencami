@@ -53,8 +53,9 @@ export function useChatHistory({
         sessionKey: sessionKeyForHistory,
         friendlyId: activeFriendlyId,
       })
+      const dedupedServerMessages = dedupeHistoryMessages(serverData.messages)
       const serverMessages = restoreCachedImageParts(
-        serverData.messages,
+        dedupedServerMessages,
         cachedMessages,
       )
 
@@ -155,6 +156,52 @@ function findMatchIndex(
     const serverTime = getMessageTimestamp(serverMessage)
     return Math.abs(optimisticTime - serverTime) <= 10000
   })
+}
+
+function normalizeMessageIdValue(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : ''
+}
+
+function getMessageIdentity(message: GatewayMessage): string {
+  const id = normalizeMessageIdValue((message as { id?: unknown }).id)
+  if (id) return `id:${id}`
+
+  const clientId = normalizeMessageIdValue(message.clientId)
+  if (clientId) return `client:${clientId}`
+
+  const optimisticId = normalizeMessageIdValue(message.__optimisticId)
+  if (optimisticId) return `optimistic:${optimisticId}`
+
+  const toolCallId = normalizeMessageIdValue(message.toolCallId)
+  if (message.role === 'toolResult' && toolCallId) {
+    return `tool-result:${toolCallId}`
+  }
+
+  const timestampBucket = Math.floor(getMessageTimestamp(message) / 1000)
+  const text = textFromMessage(message)
+  if (text) {
+    return `fallback:${message.role ?? 'unknown'}:${timestampBucket}:${text}`
+  }
+
+  return `fallback:${message.role ?? 'unknown'}:${timestampBucket}:${JSON.stringify(message.content ?? [])}`
+}
+
+export function dedupeHistoryMessages(
+  messages: Array<GatewayMessage>,
+): Array<GatewayMessage> {
+  if (!Array.isArray(messages) || messages.length <= 1) return messages
+
+  const deduped: Array<GatewayMessage> = []
+  const seen = new Set<string>()
+
+  for (const message of messages) {
+    const identity = getMessageIdentity(message)
+    if (seen.has(identity)) continue
+    seen.add(identity)
+    deduped.push(message)
+  }
+
+  return deduped
 }
 
 export function getImageParts(message: GatewayMessage): Array<unknown> {

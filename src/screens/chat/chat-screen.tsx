@@ -390,6 +390,11 @@ export function ChatScreen({
   const messagesWithStreaming = useMemo(() => {
     if (!streamingMessage) return displayMessages
 
+    const lastVisibleIndex = [...displayMessages]
+      .map((message, index) => ({ message, index }))
+      .filter(({ message }) => message.role !== 'toolResult')
+      .map(({ index }) => index)
+      .pop()
     const lastAssistantIndex = [...displayMessages]
       .map((message, index) => ({ message, index }))
       .filter(({ message }) => message.role === 'assistant')
@@ -401,10 +406,12 @@ export function ChatScreen({
       .map(({ index }) => index)
       .pop()
 
-    // If the latest turn in history is already assistant, we can compare lengths
-    // and replace it while stream text is ahead.
+    // Treat toolResult messages as attachments to the assistant turn, not as a
+    // new visible turn. Otherwise we append the synthetic streaming message in
+    // addition to the persisted assistant message and render duplicates.
     const assistantIsLatestTurn =
       typeof lastAssistantIndex === 'number' &&
+      lastAssistantIndex === lastVisibleIndex &&
       (typeof lastUserIndex !== 'number' || lastAssistantIndex > lastUserIndex)
 
     // Once streaming is done, prefer the persisted history over the streaming
@@ -431,7 +438,7 @@ export function ChatScreen({
       merged = [...displayMessages]
       merged[lastAssistantIndex] = streamingMessage
     } else {
-      // No assistant response for the current turn in history yet — append streaming.
+      // No assistant response for the current turn in history yet, append streaming.
       merged = [...displayMessages, streamingMessage]
     }
 
@@ -577,6 +584,30 @@ export function ChatScreen({
       }, 1500)
     }
   }, [historyMessages, streamFinish])
+
+  useEffect(() => {
+    if (!isStreaming || streaming.active) return
+
+    const lastAssistantIndex = [...historyMessages]
+      .map((message, index) => ({ message, index }))
+      .filter(({ message }) => message.role === 'assistant')
+      .map(({ index }) => index)
+      .pop()
+    const lastUserIndex = [...historyMessages]
+      .map((message, index) => ({ message, index }))
+      .filter(({ message }) => message.role === 'user')
+      .map(({ index }) => index)
+      .pop()
+
+    const hasCompletedAssistantTurn =
+      typeof lastAssistantIndex === 'number' &&
+      (typeof lastUserIndex !== 'number' || lastAssistantIndex > lastUserIndex)
+
+    if (hasCompletedAssistantTurn) {
+      streamFinish()
+      pollingPhaseRef.current = 'fast'
+    }
+  }, [historyMessages, isStreaming, streamFinish, streaming.active])
 
   // Smart title generation effect
   // Triggers after first assistant response in a session

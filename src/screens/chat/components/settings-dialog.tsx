@@ -295,6 +295,10 @@ export function SettingsDialog({
 }: SettingsDialogProps) {
   const { settings, updateSettings } = useChatSettings()
   const [activeTab, setActiveTab] = useState('appearance')
+  const [llmModels, setLlmModels] = useState<
+    Array<{ id: string; agentId: string; displayName: string }>
+  >([])
+  const [llmModelsLoading, setLlmModelsLoading] = useState(false)
   const [textSize, setTextSize] = useState<TextSizeValue>(() => {
     if (typeof window === 'undefined') return '16px'
     try {
@@ -344,6 +348,36 @@ export function SettingsDialog({
       return 'auto'
     }
   })
+ 
+  useEffect(() => {
+    let mounted = true
+
+    async function loadLlmModels() {
+      setLlmModelsLoading(true)
+      try {
+        const res = await fetch('/api/llm-models')
+        const data = (await res.json()) as {
+          models?: Array<{ id: string; agentId: string; displayName: string }>
+        }
+
+        if (!mounted) return
+        setLlmModels(data.models ?? [])
+      } catch {
+        if (!mounted) return
+        setLlmModels([])
+      } finally {
+        if (mounted) {
+          setLlmModelsLoading(false)
+        }
+      }
+    }
+
+    loadLlmModels()
+
+    return () => {
+      mounted = false
+    }
+  }, [])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -1031,6 +1065,49 @@ export function SettingsDialog({
                       updateSettings({ showSearchSources: checked })
                     }
                   />
+                </SettingsRow>
+                <SettingsRow inline label="Follow-up suggestions">
+                  <Switch
+                    checked={settings.showFollowUps}
+                    onCheckedChange={(checked) =>
+                      updateSettings({ showFollowUps: checked })
+                    }
+                  />
+                </SettingsRow>
+                <SettingsRow
+                  inline
+                  label="LLM Features Model"
+                  description="Used for smart titles and follow-up suggestions"
+                >
+                  <select
+                    value={settings.llmFeaturesModel || 'gpt54mini'}
+                    onChange={(e) =>
+                      updateSettings({ llmFeaturesModel: e.target.value })
+                    }
+                    className="rounded-md border border-primary-200 bg-surface px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  >
+                    {llmModelsLoading && llmModels.length === 0 ? (
+                      <option value={settings.llmFeaturesModel || 'gpt54mini'}>
+                        {settings.llmFeaturesModel || 'gpt54mini'}
+                      </option>
+                    ) : null}
+                    {llmModels.length > 0
+                      ? llmModels.map((model) => (
+                          <option key={model.id} value={model.agentId}>
+                            {model.displayName}
+                          </option>
+                        ))
+                      : settings.llmFeaturesModel
+                        ? [
+                            <option
+                              key={settings.llmFeaturesModel}
+                              value={settings.llmFeaturesModel}
+                            >
+                              {settings.llmFeaturesModel}
+                            </option>,
+                          ]
+                        : null}
+                  </select>
                 </SettingsRow>
                 <SettingsRow
                   inline

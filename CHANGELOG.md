@@ -3,6 +3,27 @@
 All notable changes to OpenCami are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) + [Semantic Versioning](https://semver.org/).
 
+## [2.1.0] - 2026-04-08
+
+### Added
+
+- **Follow-up suggestions toggle** in Settings, so people can enable or disable suggestions to match their workflow.
+- **LLM Features model selector** in Settings with useful agents and friendlier model names.
+- **Server-side `/api/llm-models` route** to load available agents from the OpenClaw Gateway.
+
+### Fixed
+
+- **Duplicate AI messages** no longer render twice during chat history updates.
+- **Streaming whitespace** is preserved, so words no longer run together while responses stream in.
+- **Follow-up suggestions** now appear reliably after streaming finishes.
+- **Session titles** refresh correctly instead of showing raw session IDs after title generation.
+- **Sidebar Cron Jobs** stays visible in SSR environments with a safe `localStorage` guard.
+- **Follow-up suggestion language** now matches the conversation language.
+- **LLM title generation** now consistently generates titles instead of answering the chat prompt.
+- **Gateway URL handling** now converts `ws://` URLs to `http://` for LLM features API requests.
+- **Tailscale Serve routing** now uses the Tailscale IP instead of loopback for more reliable remote access.
+- **Tailscale hostname support** is allowed in Vite via updated `allowedHosts` handling.
+
 ## [2.0.0] - 2026-04-08
 
 ### ⚠️ Breaking

@@ -18,13 +18,17 @@ describe('Settings Persistence Integration', () => {
       
       // Set a theme
       act(() => {
-        useChatSettingsStore.getState().updateSettings({ theme: 'dark' })
+        useChatSettingsStore.getState().updateSettings({
+          theme: 'dark',
+          showFollowUps: false,
+        })
       })
       
       // Verify it was stored
       const stored = localStorage.getItem('chat-settings')
       expect(stored).toBeDefined()
       expect(JSON.parse(stored!).state.settings.theme).toBe('dark')
+      expect(JSON.parse(stored!).state.settings.showFollowUps).toBe(false)
       
       // Reset modules to simulate page reload
       vi.resetModules()
@@ -44,6 +48,7 @@ describe('Settings Persistence Integration', () => {
           theme: 'dark',
           accentColor: 'blue',
           density: 'spacious',
+          showFollowUps: true,
         })
       })
       
@@ -58,6 +63,7 @@ describe('Settings Persistence Integration', () => {
       expect(state.theme).toBe('dark')
       expect(state.accentColor).toBe('purple')
       expect(state.density).toBe('spacious')
+      expect(state.showFollowUps).toBe(true)
     })
   })
 

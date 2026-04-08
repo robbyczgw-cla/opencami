@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  dedupeHistoryMessages,
   getImageParts,
   mergeOptimisticHistoryMessages,
   restoreCachedImageParts,
@@ -110,5 +111,43 @@ describe('use-chat-history helpers', () => {
       type: 'image',
       source: { data: 'xyz789' },
     })
+  })
+
+  it('dedupes duplicate persisted assistant messages by id', () => {
+    const messages: GatewayMessage[] = [
+      {
+        id: 'msg-1',
+        role: 'assistant',
+        timestamp: 1_700_000_000_000,
+        content: [{ type: 'text', text: 'Hello there' }],
+      },
+      {
+        id: 'msg-1',
+        role: 'assistant',
+        timestamp: 1_700_000_000_100,
+        content: [{ type: 'text', text: 'Hello there' }],
+      },
+    ]
+
+    expect(dedupeHistoryMessages(messages)).toHaveLength(1)
+  })
+
+  it('dedupes duplicate tool results by toolCallId when ids are absent', () => {
+    const messages: GatewayMessage[] = [
+      {
+        role: 'toolResult',
+        toolCallId: 'tool-1',
+        timestamp: 1_700_000_000_000,
+        content: [{ type: 'text', text: 'done' }],
+      },
+      {
+        role: 'toolResult',
+        toolCallId: 'tool-1',
+        timestamp: 1_700_000_000_500,
+        content: [{ type: 'text', text: 'done' }],
+      },
+    ]
+
+    expect(dedupeHistoryMessages(messages)).toHaveLength(1)
   })
 })

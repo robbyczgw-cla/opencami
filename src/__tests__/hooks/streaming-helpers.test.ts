@@ -93,7 +93,7 @@ describe('deriveToolStatus', () => {
 // ─── handleAgentEvent: assistant text deltas ─────────────────────────────
 
 describe('handleAgentEvent — assistant text', () => {
-  it('accumulates text from delta events', () => {
+  it('accumulates text from delta events without stripping whitespace', () => {
     const state = applySetState(EMPTY_STATE, (setState) => {
       const options = {
         setState,
@@ -102,7 +102,7 @@ describe('handleAgentEvent — assistant text', () => {
       }
 
       handleAgentEvent(
-        { stream: 'assistant', data: { delta: 'Hello' }, runId: 'r1' },
+        { stream: 'assistant', data: { delta: 'Hello ' }, runId: 'r1' },
         'session-1',
         options,
       )
@@ -113,10 +113,9 @@ describe('handleAgentEvent — assistant text', () => {
       )
     })
 
-    // normalizeString trims each delta, so consecutive deltas are concatenated directly
-    expect(state.text).toBe('Helloworld')
+    expect(state.text).toBe('Hello world')
     expect(state.contentBlocks).toHaveLength(1)
-    expect(state.contentBlocks[0]).toEqual({ kind: 'text', text: 'Helloworld' })
+    expect(state.contentBlocks[0]).toEqual({ kind: 'text', text: 'Hello world' })
     expect(state.sessionKey).toBe('session-1')
   })
 
@@ -154,7 +153,7 @@ describe('handleAgentEvent — assistant text', () => {
     expect(onDelta).toHaveBeenCalledWith({ text: 'hey', sessionKey: 'key' })
   })
 
-  it('ignores assistant events with empty text', () => {
+  it('preserves whitespace-only assistant deltas', () => {
     const state = applySetState(EMPTY_STATE, (setState) => {
       handleAgentEvent(
         { stream: 'assistant', data: { delta: '   ' }, runId: 'r1' },
@@ -167,8 +166,9 @@ describe('handleAgentEvent — assistant text', () => {
       )
     })
 
-    expect(state.text).toBe('')
-    expect(state.contentBlocks).toHaveLength(0)
+    expect(state.text).toBe('   ')
+    expect(state.contentBlocks).toHaveLength(1)
+    expect(state.contentBlocks[0]).toEqual({ kind: 'text', text: '   ' })
   })
 })
 

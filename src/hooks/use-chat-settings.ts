@@ -14,7 +14,9 @@ export type ChatSettings = {
   showToolMessages: boolean
   showReasoningBlocks: boolean
   showSearchSources: boolean
+  showFollowUps: boolean
   inlineFilePreview: boolean
+  llmFeaturesModel: string
   theme: ThemeMode
   fontFamily: FontFamilyMode
   density: DensityMode
@@ -36,7 +38,9 @@ export const useChatSettingsStore = create<ChatSettingsState>()(
         showToolMessages: true,
         showReasoningBlocks: true,
         showSearchSources: true,
+        showFollowUps: true,
         inlineFilePreview: false,
+        llmFeaturesModel: 'gpt54mini',
         theme: 'system',
         fontFamily: 'system',
         density: 'comfortable',

@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from 'react'
+import { useChatSettings } from '@/hooks/use-chat-settings'
 import { getToolCallsFromMessage, textFromMessage } from '../utils'
 import { MessageItem } from './message-item'
 import type { SearchSource } from '@/components/search-sources-badge'
@@ -78,6 +79,7 @@ function ChatMessageListComponent({
   const [highlightedMessageId, setHighlightedMessageId] = useState<
     string | null
   >(null)
+  const { settings } = useChatSettings()
 
   // Filter out toolResult messages - they'll be displayed inside their associated tool calls
   const displayMessages = useMemo(() => {
@@ -268,11 +270,29 @@ function ChatMessageListComponent({
   const lastAssistantText = lastAssistantMessage
     ? textFromMessage(lastAssistantMessage)
     : ''
+  const followUpConversationContext = useMemo(() => {
+    if (typeof lastTextAssistantIndex !== 'number') {
+      return ''
+    }
+
+    const recentMessages = displayMessages
+      .slice(Math.max(0, lastTextAssistantIndex - 5), lastTextAssistantIndex + 1)
+      .map((message) => {
+        const text = textFromMessage(message).trim()
+        if (!text) return null
+        const role = message.role === 'user' ? 'User' : 'Assistant'
+        return `${role}: ${text}`
+      })
+      .filter((line): line is string => Boolean(line))
+
+    return recentMessages.join('\n\n').slice(0, 4000)
+  }, [displayMessages, lastTextAssistantIndex])
   // Show follow-ups only when:
   // - Not waiting for response
   // - There's a last assistant message
   // - The last message in conversation is from assistant (not user waiting for response)
   const showFollowUps =
+    settings.showFollowUps &&
     !waitingForResponse &&
     !isStreaming &&
     lastAssistantText.length > 0 &&
@@ -438,6 +458,7 @@ function ChatMessageListComponent({
                 <Suspense fallback={null}>
                   <FollowUpSuggestions
                     responseText={lastAssistantText}
+                    conversationContext={followUpConversationContext}
                     onSuggestionClick={onFollowUpClick}
                     disabled={waitingForResponse}
                   />
@@ -484,6 +505,7 @@ function ChatMessageListComponent({
               <Suspense fallback={null}>
                 <FollowUpSuggestions
                   responseText={lastAssistantText}
+                  conversationContext={followUpConversationContext}
                   onSuggestionClick={onFollowUpClick}
                   disabled={waitingForResponse}
                 />
