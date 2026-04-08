@@ -13,7 +13,7 @@ type ChatCompletionResponse = {
 
 const OPENCLAW_GATEWAY_URL = 'http://127.0.0.1:18789/v1/chat/completions'
 const OPENCLAW_MODEL = 'openclaw'
-const DEFAULT_TIMEOUT_MS = 10000
+const DEFAULT_TIMEOUT_MS = 30000
 
 function getGatewayToken(): string | null {
   return (
@@ -144,7 +144,7 @@ export async function isOpenclawAvailable(): Promise<boolean> {
     await chatCompletion([{ role: 'user', content: 'Hi' }], {
       maxTokens: 1,
       temperature: 0,
-      timeoutMs: 5000,
+      timeoutMs: 10000,
     })
     return true
   } catch {
