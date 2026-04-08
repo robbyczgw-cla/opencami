@@ -101,6 +101,15 @@ function ChatSidebarComponent({
   const [exportSessionKey, setExportSessionKey] = useState<string | null>(null)
   const [exportFriendlyId, setExportFriendlyId] = useState<string | null>(null)
   const [exportSessionTitle, setExportSessionTitle] = useState('')
+  const [showCrons] = useState(() => {
+    try {
+      return typeof window !== 'undefined'
+        ? localStorage.getItem('opencami-cron-manager') !== 'false'
+        : true
+    } catch {
+      return true
+    }
+  })
 
   const queryClient = useQueryClient()
 
@@ -455,13 +464,7 @@ function ChatSidebarComponent({
             </TooltipProvider>
           )}
 
-          {(() => {
-            try {
-              return localStorage.getItem('opencami-cron-manager') === 'true'
-            } catch {
-              return false
-            }
-          })() && (
+          {showCrons && (
             <TooltipProvider>
               <TooltipRoot>
                 <TooltipTrigger asChild>
@@ -503,7 +506,7 @@ function ChatSidebarComponent({
 
           {(() => {
             try {
-              return localStorage.getItem('feature_dashboard') === 'true'
+              return localStorage.getItem('opencami-feature_dashboard') === 'true'
             } catch {
               return false
             }
