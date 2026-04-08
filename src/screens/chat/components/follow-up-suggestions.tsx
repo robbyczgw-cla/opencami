@@ -53,7 +53,7 @@ function FollowUpSuggestionsComponent({
                 className="animate-spin text-primary-400"
               />
             </span>
-          ) : source === 'llm' ? (
+          ) : source === 'openclaw' ? (
             'AI suggestions'
           ) : (
             'Follow-up suggestions'
