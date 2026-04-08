@@ -10,7 +10,10 @@
 
 const OPENCLAW_GATEWAY_URL =
   process.env.OPENCLAW_GATEWAY_URL || 'http://127.0.0.1:18789'
-const OPENCLAW_TOKEN = process.env.OPENCLAW_GATEWAY_TOKEN || ''
+const OPENCLAW_TOKEN =
+  process.env.OPENCLAW_GATEWAY_TOKEN ||
+  process.env.CLAWDBOT_GATEWAY_TOKEN ||
+  ''
 
 type ChatMessage = {
   role: 'system' | 'user' | 'assistant'
