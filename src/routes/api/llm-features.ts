@@ -5,13 +5,26 @@ import {
   generateFollowUps,
   testApiKey,
 } from '../../lib/llm-client'
+import {
+  generateTitleViaOpenclaw,
+  generateFollowUpsViaOpenclaw,
+  isOpenclawAvailable,
+} from '../../lib/openclaw-client'
 
 /**
  * API Routes: /api/llm-features
- * 
- * Endpoints for LLM-enhanced features using OpenAI API.
- * Supports both user-provided API key (from request header) and
- * server environment variable OPENAI_API_KEY.
+ *
+ * Endpoints for LLM-enhanced features.
+ *
+ * NEW (default): Uses OpenClaw Gateway (/v1/chat/completions) when available.
+ * No API key required — routes through the locally configured OpenClaw providers.
+ *
+ * LEGACY (fallback): Uses OpenAI-compatible API with user-provided or env API key.
+ * Activated when OpenClaw Gateway is unavailable or explicitly disabled.
+ *
+ * Set OPENCLAW_GATEWAY_URL env var to override gateway URL (default: http://127.0.0.1:18789).
+ * Set OPENCLAW_GATEWAY_TOKEN env var for gateway auth token.
+ * Set DISABLE_OPENCLAW=true to force legacy mode.
  */
 
 type TitleRequest = {
@@ -225,7 +238,7 @@ export const Route = createFileRoute('/api/llm-features')({
           switch (action) {
             case 'title': {
               const { message } = body as TitleRequest & { action: string }
-              
+
               if (!message || typeof message !== 'string' || message.trim().length < 3) {
                 return json<TitleResponse>({
                   ok: false,
@@ -233,22 +246,27 @@ export const Route = createFileRoute('/api/llm-features')({
                 })
               }
 
+              const disableOpenclaw = process.env.DISABLE_OPENCLAW === 'true'
+
+              // NEW: Try OpenClaw Gateway first (no API key required)
+              if (!disableOpenclaw) {
+                try {
+                  const { title, source } = await generateTitleViaOpenclaw(message)
+                  return json<TitleResponse>({ ok: true, title, source })
+                } catch (err) {
+                  console.warn('[llm-features] OpenClaw title failed, falling back to legacy:', err)
+                }
+              }
+
+              // LEGACY: Use OpenAI-compatible API
               const llmConfig = getLlmConfig(request)
               if (llmConfig.error) {
-                return json<TitleResponse>({
-                  ok: false,
-                  error: llmConfig.error,
-                }, { status: 400 })
+                return json<TitleResponse>({ ok: false, error: llmConfig.error }, { status: 400 })
               }
-              
-              // If no API key and no Ollama-style local provider, use heuristic
+
               if (!llmConfig.apiKey && !llmConfig.baseUrl?.includes('localhost')) {
                 const title = generateHeuristicTitle(message)
-                return json<TitleResponse>({
-                  ok: true,
-                  title,
-                  source: 'heuristic',
-                })
+                return json<TitleResponse>({ ok: true, title, source: 'heuristic' })
               }
 
               try {
@@ -257,14 +275,9 @@ export const Route = createFileRoute('/api/llm-features')({
                   ...(llmConfig.baseUrl ? { baseUrl: llmConfig.baseUrl } : {}),
                   ...(llmConfig.model ? { model: llmConfig.model } : {}),
                 })
-                return json<TitleResponse>({
-                  ok: true,
-                  title,
-                  source: 'llm',
-                })
+                return json<TitleResponse>({ ok: true, title, source: 'llm' })
               } catch (err) {
-                // Fall back to heuristic on error
-                console.error('[llm-features] Title generation error:', err)
+                console.error('[llm-features] Legacy title generation error:', err)
                 const title = generateHeuristicTitle(message)
                 return json<TitleResponse>({
                   ok: true,
@@ -277,30 +290,31 @@ export const Route = createFileRoute('/api/llm-features')({
 
             case 'followups': {
               const { conversationContext } = body as FollowUpsRequest & { action: string }
-              
+
               if (!conversationContext || typeof conversationContext !== 'string' || conversationContext.trim().length < 10) {
-                return json<FollowUpsResponse>({
-                  ok: true,
-                  suggestions: [],
-                  source: 'heuristic',
-                })
+                return json<FollowUpsResponse>({ ok: true, suggestions: [], source: 'heuristic' })
               }
 
+              const disableOpenclaw = process.env.DISABLE_OPENCLAW === 'true'
+
+              // NEW: Try OpenClaw Gateway first
+              if (!disableOpenclaw) {
+                try {
+                  const { suggestions, source } = await generateFollowUpsViaOpenclaw(conversationContext)
+                  return json<FollowUpsResponse>({ ok: true, suggestions, source })
+                } catch (err) {
+                  console.warn('[llm-features] OpenClaw follow-ups failed, falling back to legacy:', err)
+                }
+              }
+
+              // LEGACY: Use OpenAI-compatible API
               const llmConfig = getLlmConfig(request)
               if (llmConfig.error) {
-                return json<FollowUpsResponse>({
-                  ok: false,
-                  error: llmConfig.error,
-                }, { status: 400 })
+                return json<FollowUpsResponse>({ ok: false, error: llmConfig.error }, { status: 400 })
               }
-              
-              // If no API key and no local provider, return empty
+
               if (!llmConfig.apiKey && !llmConfig.baseUrl?.includes('localhost')) {
-                return json<FollowUpsResponse>({
-                  ok: true,
-                  suggestions: [],
-                  source: 'heuristic',
-                })
+                return json<FollowUpsResponse>({ ok: true, suggestions: [], source: 'heuristic' })
               }
 
               try {
@@ -309,13 +323,9 @@ export const Route = createFileRoute('/api/llm-features')({
                   ...(llmConfig.baseUrl ? { baseUrl: llmConfig.baseUrl } : {}),
                   ...(llmConfig.model ? { model: llmConfig.model } : {}),
                 })
-                return json<FollowUpsResponse>({
-                  ok: true,
-                  suggestions,
-                  source: 'llm',
-                })
+                return json<FollowUpsResponse>({ ok: true, suggestions, source: 'llm' })
               } catch (err) {
-                console.error('[llm-features] Follow-ups generation error:', err)
+                console.error('[llm-features] Legacy follow-ups generation error:', err)
                 return json<FollowUpsResponse>({
                   ok: true,
                   suggestions: [],

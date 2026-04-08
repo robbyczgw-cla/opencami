@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/react-start'
-import { gatewayRpc } from '../../server/gateway'
+import { gatewayRpc } from '../../server/gateway' // legacy
+import { generateFollowUpsViaOpenclaw } from '../../lib/openclaw-client'
 
 /**
  * API Route: /api/follow-ups
@@ -77,26 +78,33 @@ export const Route = createFileRoute('/api/follow-ups')({
             ? `Context: ${contextSummary}\n\nAssistant's response:\n${truncatedResponse}`
             : `Assistant's response:\n${truncatedResponse}`
 
-          // Use chat.complete for a lightweight, fast completion
-          // Using a fast model and low token limit for speed
-          const res = await gatewayRpc<ChatCompleteResponse>('chat.complete', {
-            messages: [
-              { role: 'system', content: FOLLOW_UP_SYSTEM_PROMPT },
-              { role: 'user', content: userPrompt },
-            ],
-            maxTokens: 200,
-            temperature: 0.7,
-            // Use session's default model (no hardcoding!)
-          })
+          // NEW: Use OpenClaw Gateway /v1/chat/completions (standard, no API key needed)
+          const disableOpenclaw = process.env.DISABLE_OPENCLAW === 'true'
+          let suggestions: string[]
 
-          // Handle various response formats from the gateway
-          const content =
-            res.content ||
-            res.message?.content ||
-            res.choices?.[0]?.message?.content ||
-            ''
-
-          const suggestions = parseFollowUps(content)
+          if (!disableOpenclaw) {
+            const result = await generateFollowUpsViaOpenclaw(
+              responseText,
+              contextSummary || undefined,
+            )
+            suggestions = result.suggestions
+          } else {
+            // LEGACY: Use gatewayRpc
+            const res = await gatewayRpc<ChatCompleteResponse>('chat.complete', {
+              messages: [
+                { role: 'system', content: FOLLOW_UP_SYSTEM_PROMPT },
+                { role: 'user', content: userPrompt },
+              ],
+              maxTokens: 200,
+              temperature: 0.7,
+            })
+            const content =
+              res.content ||
+              res.message?.content ||
+              res.choices?.[0]?.message?.content ||
+              ''
+            suggestions = parseFollowUps(content)
+          }
 
           return json({ ok: true, suggestions })
         } catch (err) {
