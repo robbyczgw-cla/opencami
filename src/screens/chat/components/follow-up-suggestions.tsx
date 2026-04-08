@@ -5,15 +5,10 @@ import { useFollowUpSuggestions } from '../hooks/use-follow-up-suggestions'
 import { cn } from '@/lib/utils'
 
 type FollowUpSuggestionsProps = {
-  /** The assistant's response text to generate follow-ups from */
   responseText: string
-  /** Optional conversation context summary for better suggestions */
   contextSummary?: string
-  /** Callback when a suggestion is clicked */
   onSuggestionClick: (suggestion: string) => void
-  /** Whether suggestions are disabled (e.g., while waiting for response) */
   disabled?: boolean
-  /** Additional class name for the container */
   className?: string
 }
 
@@ -33,7 +28,6 @@ function FollowUpSuggestionsComponent({
     },
   )
 
-  // Don't render if no suggestions and not loading
   if (suggestions.length === 0 && !isLoading) {
     return null
   }
@@ -53,7 +47,7 @@ function FollowUpSuggestionsComponent({
                 className="animate-spin text-primary-400"
               />
             </span>
-          ) : source === 'llm' ? (
+          ) : source === 'openclaw' ? (
             'AI suggestions'
           ) : (
             'Follow-up suggestions'
@@ -74,7 +68,6 @@ function FollowUpSuggestionsComponent({
               'focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:ring-offset-1',
               'transition-all duration-150 cursor-pointer',
               'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-primary-50 disabled:hover:border-primary-200',
-              // Subtle animation when suggestions update from heuristic to LLM
               isLoading && 'opacity-75',
             )}
           >
