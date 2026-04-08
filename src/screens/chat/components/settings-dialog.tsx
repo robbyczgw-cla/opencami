@@ -3,22 +3,18 @@ import { useArtifactsStore } from '@/hooks/use-artifacts'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
   Add01Icon,
-  AiBrain01Icon,
   Cancel01Icon,
-  Cancel02Icon,
   ComputerIcon,
   Delete02Icon,
   DropletIcon,
   InformationCircleIcon,
   Leaf01Icon,
   Link01Icon,
-  Loading02Icon,
   MessageEdit01Icon,
   Moon01Icon,
   PaintBoardIcon,
   Settings02Icon,
   Sun01Icon,
-  Tick01Icon,
   UserIcon,
   VoiceIcon,
 } from '@hugeicons/core-free-icons'
@@ -44,10 +40,6 @@ import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsList, TabsTab } from '@/components/ui/tabs'
 import { useChatSettings } from '@/hooks/use-chat-settings'
 import { Button } from '@/components/ui/button'
-import {
-  getLlmProviderDefaults,
-  useLlmSettings,
-} from '@/hooks/use-llm-settings'
 
 type SettingsSectionProps = {
   title: string
@@ -302,21 +294,7 @@ export function SettingsDialog({
   onClose,
 }: SettingsDialogProps) {
   const { settings, updateSettings } = useChatSettings()
-  const {
-    settings: llmSettings,
-    updateSettings: updateLlmSettings,
-    status: llmStatus,
-    testApiKey,
-  } = useLlmSettings()
-
   const [activeTab, setActiveTab] = useState('appearance')
-  const [apiKeyInput, setApiKeyInput] = useState(llmSettings.llmApiKey)
-  const [testingKey, setTestingKey] = useState(false)
-  const [testResult, setTestResult] = useState<{
-    valid: boolean
-    error?: string
-  } | null>(null)
-
   const [textSize, setTextSize] = useState<TextSizeValue>(() => {
     if (typeof window === 'undefined') return '16px'
     try {
@@ -720,31 +698,7 @@ export function SettingsDialog({
     )
   }
 
-  const handleTestApiKey = async () => {
-    if (!apiKeyInput.trim()) return
-    setTestingKey(true)
-    setTestResult(null)
-    try {
-      const result = await testApiKey(apiKeyInput.trim())
-      setTestResult(result)
-      if (result.valid) {
-        updateLlmSettings({ llmApiKey: apiKeyInput.trim() })
-      }
-    } finally {
-      setTestingKey(false)
-    }
-  }
 
-  const handleSaveApiKey = () => {
-    updateLlmSettings({ llmApiKey: apiKeyInput.trim() })
-    setTestResult(null)
-  }
-
-  const handleClearApiKey = () => {
-    setApiKeyInput('')
-    updateLlmSettings({ llmApiKey: '' })
-    setTestResult(null)
-  }
 
   const themeOptions = [
     { value: 'system', label: 'Auto', icon: ComputerIcon },
@@ -832,7 +786,6 @@ export function SettingsDialog({
                   { id: 'workspace', label: 'Workspace', icon: Settings02Icon },
                   { id: 'personas', label: 'Personas', icon: UserIcon },
                   { id: 'voice', label: 'Voice', icon: VoiceIcon },
-                  { id: 'llm', label: 'LLM Features', icon: AiBrain01Icon },
                   { id: 'about', label: 'About', icon: InformationCircleIcon },
                 ] as const
               ).map((tab) => (
@@ -1384,225 +1337,6 @@ export function SettingsDialog({
                 </SettingsRow>
               </SettingsSection>
 
-              <SettingsSection
-                title="LLM Features"
-                tabId="llm"
-                activeTab={activeTab}
-              >
-                <div className="text-xs text-primary-500 mb-3">
-                  Enhance session titles and follow-up suggestions using an LLM
-                  provider.
-                  {llmStatus.hasEnvKey && (
-                    <span className="block mt-1 text-green-600">
-                      ✓ Server has OPENAI_API_KEY configured
-                    </span>
-                  )}
-                  {llmStatus.hasOpenRouterKey && (
-                    <span className="block mt-1 text-green-600">
-                      ✓ Server has OPENROUTER_API_KEY configured
-                    </span>
-                  )}
-                  {llmStatus.hasKilocodeKey && (
-                    <span className="block mt-1 text-green-600">
-                      ✓ Server has KILOCODE_API_KEY configured
-                    </span>
-                  )}
-                </div>
-
-                <SettingsRow
-                  inline
-                  label="Provider"
-                  description="Choose LLM provider for titles & follow-ups"
-                >
-                  <select
-                    value={llmSettings.llmProvider}
-                    onChange={(e) => {
-                      const provider = e.target.value as
-                        | 'openai'
-                        | 'openrouter'
-                        | 'kilocode'
-                        | 'ollama'
-                        | 'custom'
-                      updateLlmSettings({
-                        llmProvider: provider,
-                        llmBaseUrl: '',
-                        llmModel: '',
-                      })
-                    }}
-                    className="px-2 py-1 text-sm rounded-md border border-primary-200 bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  >
-                    <option value="openai">OpenAI</option>
-                    <option value="openrouter">OpenRouter</option>
-                    <option value="kilocode">Kilo Gateway</option>
-                    <option value="ollama">Ollama (local)</option>
-                    <option value="custom">Custom</option>
-                  </select>
-                </SettingsRow>
-
-                <SettingsRow
-                  inline
-                  label="Smart session titles"
-                  description="Generate concise titles using AI"
-                >
-                  <Switch
-                    checked={llmSettings.useLlmTitles}
-                    onCheckedChange={(checked) =>
-                      updateLlmSettings({ useLlmTitles: checked })
-                    }
-                    disabled={!llmStatus.isAvailable}
-                  />
-                </SettingsRow>
-
-                <SettingsRow
-                  inline
-                  label="Smart follow-up suggestions"
-                  description="AI-generated contextual follow-ups"
-                >
-                  <Switch
-                    checked={llmSettings.useLlmFollowUps}
-                    onCheckedChange={(checked) =>
-                      updateLlmSettings({ useLlmFollowUps: checked })
-                    }
-                    disabled={!llmStatus.isAvailable}
-                  />
-                </SettingsRow>
-
-                <div className="mt-2 space-y-2">
-                  <div>
-                    <div className="text-xs text-primary-500 mb-1">Model</div>
-                    <input
-                      type="text"
-                      value={llmSettings.llmModel}
-                      onChange={(e) =>
-                        updateLlmSettings({ llmModel: e.target.value })
-                      }
-                      placeholder={
-                        getLlmProviderDefaults(llmSettings.llmProvider).model ||
-                        'model-name'
-                      }
-                      className="w-full px-3 py-1.5 text-sm rounded-md border border-primary-200 bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    />
-                  </div>
-                  {(llmSettings.llmProvider === 'custom' ||
-                    llmSettings.llmProvider === 'ollama') && (
-                    <div>
-                      <div className="text-xs text-primary-500 mb-1">
-                        Base URL
-                      </div>
-                      <input
-                        type="text"
-                        value={llmSettings.llmBaseUrl}
-                        onChange={(e) =>
-                          updateLlmSettings({ llmBaseUrl: e.target.value })
-                        }
-                        placeholder={
-                          getLlmProviderDefaults(llmSettings.llmProvider)
-                            .baseUrl || 'https://...'
-                        }
-                        className="w-full px-3 py-1.5 text-sm rounded-md border border-primary-200 bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      />
-                    </div>
-                  )}
-                </div>
-
-                <div className="mt-4 pt-3 border-t border-primary-100">
-                  <div className="text-sm text-primary-800 mb-2">
-                    {llmSettings.llmProvider === 'ollama'
-                      ? 'API Key (optional)'
-                      : 'API Key'}
-                  </div>
-                  <div className="text-xs text-primary-500 mb-2">
-                    {llmSettings.llmProvider === 'ollama'
-                      ? 'Not required for local Ollama'
-                      : llmStatus.hasEnvKey &&
-                          llmSettings.llmProvider === 'openai'
-                        ? 'Optional: Override server key with your own'
-                        : `Required for ${llmSettings.llmProvider === 'openrouter' ? 'OpenRouter' : llmSettings.llmProvider === 'kilocode' ? 'Kilo Gateway' : 'LLM features'} (stored locally)`}
-                  </div>
-                  <div className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5 mb-2">
-                    ⚠️ <strong>Security Note:</strong> API keys are stored in
-                    your browser's localStorage. This is convenient but not
-                    secure for shared computers. For production use, configure
-                    keys server-side via environment variables (OPENAI_API_KEY,
-                    OPENROUTER_API_KEY, KILOCODE_API_KEY).
-                  </div>
-                  <div className="flex gap-2">
-                    <input
-                      type="password"
-                      value={apiKeyInput}
-                      onChange={(e) => {
-                        setApiKeyInput(e.target.value)
-                        setTestResult(null)
-                      }}
-                      placeholder="sk-..."
-                      className="flex-1 px-3 py-1.5 text-sm rounded-md border border-primary-200 bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    />
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={handleTestApiKey}
-                      disabled={!apiKeyInput.trim() || testingKey}
-                      className="min-w-[60px]"
-                    >
-                      {testingKey ? (
-                        <HugeiconsIcon
-                          icon={Loading02Icon}
-                          size={16}
-                          className="animate-spin"
-                        />
-                      ) : (
-                        'Test'
-                      )}
-                    </Button>
-                  </div>
-
-                  {testResult && (
-                    <div
-                      className={`mt-2 flex items-center gap-1.5 text-xs ${
-                        testResult.valid ? 'text-green-600' : 'text-red-600'
-                      }`}
-                    >
-                      <HugeiconsIcon
-                        icon={testResult.valid ? Tick01Icon : Cancel02Icon}
-                        size={14}
-                      />
-                      {testResult.valid
-                        ? 'API key is valid'
-                        : testResult.error || 'Invalid API key'}
-                    </div>
-                  )}
-
-                  {llmSettings.llmApiKey && (
-                    <div className="mt-2 flex items-center justify-between">
-                      <span className="text-xs text-green-600 flex items-center gap-1">
-                        <HugeiconsIcon icon={Tick01Icon} size={14} />
-                        Key saved
-                      </span>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={handleClearApiKey}
-                        className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
-                      >
-                        Clear
-                      </Button>
-                    </div>
-                  )}
-
-                  {apiKeyInput &&
-                    apiKeyInput !== llmSettings.llmApiKey &&
-                    !testResult?.valid && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={handleSaveApiKey}
-                        className="mt-2 w-full"
-                      >
-                        Save without testing
-                      </Button>
-                    )}
-                </div>
-              </SettingsSection>
 
               <SettingsSection
                 title="About"
