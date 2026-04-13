@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { Link } from '@tanstack/react-router'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
@@ -151,6 +152,14 @@ function SessionItemComponent({
       ? getLastMessageTimestamp(session.lastMessage)
       : null
 
+  // Client-side only relative time to avoid hydration mismatch
+  const [relativeTime, setRelativeTime] = useState<string>('')
+  useEffect(() => {
+    if (cronLastRun) {
+      setRelativeTime(formatRelativeTime(cronLastRun))
+    }
+  }, [cronLastRun])
+
   return (
     <Link
       to="/chat/$sessionKey"
@@ -235,9 +244,9 @@ function SessionItemComponent({
               {subagentPreview}
             </div>
           ) : null}
-          {session.kind === 'cron' && cronLastRun ? (
+          {session.kind === 'cron' && cronLastRun && relativeTime ? (
             <div className="text-[10px] text-primary-500/75 line-clamp-1 mt-0.5 pl-[18px] font-mono">
-              {formatRelativeTime(cronLastRun)}
+              {relativeTime}
             </div>
           ) : null}
         </div>

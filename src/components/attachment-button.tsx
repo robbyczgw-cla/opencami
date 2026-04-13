@@ -5,6 +5,7 @@ import { HugeiconsIcon } from '@hugeicons/react'
 import { Attachment01Icon } from '@hugeicons/core-free-icons'
 
 import { Button } from '@/components/ui/button'
+import { generateUUID } from '@/lib/uuid'
 
 /** Maximum file size before compression (10MB) */
 const MAX_FILE_SIZE = 10 * 1024 * 1024
@@ -169,7 +170,7 @@ export function isAcceptedNonImage(file: File): boolean {
 }
 
 export async function createAttachmentFromFile(file: File): Promise<AttachmentFile> {
-  const id = crypto.randomUUID()
+  const id = generateUUID()
 
   if (!isAcceptedImage(file)) {
     return {

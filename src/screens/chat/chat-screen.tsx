@@ -54,6 +54,7 @@ import { useStreaming } from './hooks/use-streaming'
 import type { ChatComposerHelpers } from './components/chat-composer'
 import type { HistoryResponse, GatewayMessage } from './types'
 import { cn } from '@/lib/utils'
+import { generateUUID } from '@/lib/uuid'
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
 import { useSwipeGesture } from './hooks/use-swipe-gesture'
 import type { SearchResult } from '@/hooks/use-search'
@@ -114,7 +115,7 @@ function extractRetryImageAttachments(message: GatewayMessage): {
     const content = part.source.data
 
     attachments.push({
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       file: new File([], `retry-attachment-${index + 1}`, { type: mimeType }),
       preview: null,
       type: 'image',
@@ -210,7 +211,7 @@ export function ChatScreen({
     refetchOnReconnect: true,
     refetchOnMount: 'always',
   })
-  const gatewayStatusMountRef = useRef(Date.now())
+  const gatewayStatusMountRef = useRef<number>(0)
   const gatewayStatusError =
     gatewayStatusQuery.error instanceof Error
       ? gatewayStatusQuery.error.message
@@ -231,6 +232,13 @@ export function ChatScreen({
       void gatewayStatusQuery.refetch()
     }
   }, [sessionsQuery.isSuccess, gatewayStatusQuery.isError]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Initialize mount timestamp on client only to avoid hydration mismatch
+  useEffect(() => {
+    if (gatewayStatusMountRef.current === 0) {
+      gatewayStatusMountRef.current = Date.now()
+    }
+  }, [])
 
   // Sidebar edge-swipe gesture (mobile only)
   const sidebarSwipeHandlers = useSwipeGesture({
@@ -338,6 +346,13 @@ export function ChatScreen({
   // Build a synthetic "streaming" assistant message from SSE deltas.
   // Uses contentBlocks to preserve the correct interleaving of text and
   // tool-call events (e.g. text → tool → more text).
+  // NOTE: timestamp is generated client-side only to avoid hydration mismatch
+  const [streamingTimestamp, setStreamingTimestamp] = useState<number>(0)
+  useEffect(() => {
+    if (streaming.contentBlocks.length > 0 && streamingTimestamp === 0) {
+      setStreamingTimestamp(Date.now())
+    }
+  }, [streaming.contentBlocks, streamingTimestamp])
   const streamingMessage = useMemo<GatewayMessage | null>(() => {
     if (streaming.contentBlocks.length === 0) return null
 
@@ -362,9 +377,9 @@ export function ChatScreen({
       content,
       id: '__streaming__',
       __streaming: true,
-      timestamp: Date.now(),
+      timestamp: streamingTimestamp || Date.now(),
     } as GatewayMessage
-  }, [streaming.contentBlocks])
+  }, [streaming.contentBlocks, streamingTimestamp])
 
   // Build synthetic tool-result messages for streaming tools that have completed.
   // These are placed in the message array so `toolResultsByCallId` picks them
@@ -825,7 +840,7 @@ export function ChatScreen({
         friendlyId,
         message: body,
         thinking: thinkingLevel,
-        idempotencyKey: crypto.randomUUID(),
+        idempotencyKey: generateUUID(),
         attachments: attachmentsPayload,
         model: model || undefined,
       }),

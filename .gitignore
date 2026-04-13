@@ -25,3 +25,29 @@ docs/design-roadmap.md
 docs/FEATURE_WISHLIST.md
 .device-keys.json
 .env.local.backup*
+
+# Logs
+logs/
+*.log
+
+# Screenshots & images
+*.png
+page-html.html
+
+# Debug / diagnostic JSON files
+hydration-check-*.json
+test-results/
+.last-run.json
+
+# Stray root files
+!
+1
+project-analysis-report.md
+
+# Diagnostic scripts & tests in root
+check-hydration.cjs
+check-hydration-detail.cjs
+check-hydration.spec.ts
+
+# PM2 config
+ecosystem.config.cjs

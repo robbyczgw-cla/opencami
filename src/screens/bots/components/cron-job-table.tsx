@@ -1,4 +1,6 @@
-import { useCallback, useState } from 'react'
+'use client'
+
+import { useCallback, useState, useEffect } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { PlayIcon, Loading02Icon, Clock01Icon, Calendar01Icon } from '@hugeicons/core-free-icons'
 import { AnimatePresence } from 'motion/react'
@@ -45,8 +47,7 @@ function humanSchedule(job: CronJob): string {
   return schedule.expr ?? 'Unknown'
 }
 
-function formatRelativeMs(ms?: number): string {
-  if (!ms) return '—'
+function formatRelativeMs(ms: number): string {
   const diff = Date.now() - ms
   if (diff < 60_000) return 'just now'
   if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`
@@ -54,14 +55,37 @@ function formatRelativeMs(ms?: number): string {
   return new Date(ms).toLocaleDateString()
 }
 
-function formatFutureMs(ms?: number): string {
-  if (!ms) return '—'
+function formatFutureMs(ms: number): string {
   const diff = ms - Date.now()
   if (diff < 0) return 'overdue'
   if (diff < 60_000) return 'in <1m'
   if (diff < 3_600_000) return `in ${Math.floor(diff / 60_000)}m`
   if (diff < 86_400_000) return `in ${Math.floor(diff / 3_600_000)}h`
   return new Date(ms).toLocaleDateString()
+}
+
+function LastRunTime({ lastRunAtMs }: { lastRunAtMs?: number }) {
+  const [value, setValue] = useState<string>('—')
+  useEffect(() => {
+    if (lastRunAtMs) {
+      setValue(formatRelativeMs(lastRunAtMs))
+    } else {
+      setValue('—')
+    }
+  }, [lastRunAtMs])
+  return <>{value}</>
+}
+
+function NextRunTime({ nextRunAtMs }: { nextRunAtMs?: number }) {
+  const [value, setValue] = useState<string>('—')
+  useEffect(() => {
+    if (nextRunAtMs) {
+      setValue(formatFutureMs(nextRunAtMs))
+    } else {
+      setValue('—')
+    }
+  }, [nextRunAtMs])
+  return <>{value}</>
 }
 
 function StatusBadge({ status }: { status?: 'ok' | 'error' | null }) {
@@ -159,11 +183,11 @@ export function CronJobTable({ jobs }: { jobs: CronJob[] }) {
                 <div className="flex items-center gap-4">
                   <span className="text-[11px] text-primary-400 flex items-center gap-1">
                     <HugeiconsIcon icon={Clock01Icon} size={11} strokeWidth={1.5} />
-                    Last: {formatRelativeMs(job.state?.lastRunAtMs)}
+                    Last: <LastRunTime lastRunAtMs={job.state?.lastRunAtMs} />
                   </span>
                   <span className="text-[11px] text-primary-400 flex items-center gap-1">
                     <HugeiconsIcon icon={Calendar01Icon} size={11} strokeWidth={1.5} />
-                    Next: {formatFutureMs(job.state?.nextRunAtMs)}
+                    Next: <NextRunTime nextRunAtMs={job.state?.nextRunAtMs} />
                   </span>
                 </div>
 
