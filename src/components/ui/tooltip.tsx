@@ -1,52 +1,72 @@
-'use client'
-
-import { Tooltip } from '@base-ui/react/tooltip'
+import * as React from 'react'
 import { cn } from '@/lib/utils'
 
-type TooltipRootProps = React.ComponentProps<typeof Tooltip.Root>
+// Simple CSS-only tooltip to avoid Base UI hydration issues
 
-function TooltipProvider({ children }: { children: React.ReactNode }) {
-  return (
-    <Tooltip.Provider delay={0} closeDelay={0} timeout={0}>
-      {children}
-    </Tooltip.Provider>
-  )
-}
-
-function TooltipRoot({ children, ...props }: TooltipRootProps) {
-  return <Tooltip.Root {...props}>{children}</Tooltip.Root>
-}
-
-type TooltipTriggerProps = React.ComponentProps<typeof Tooltip.Trigger>
-
-function TooltipTrigger({ className, ...props }: TooltipTriggerProps) {
-  return <Tooltip.Trigger className={cn(className)} {...props} />
-}
-
-type TooltipContentProps = {
-  className?: string
-  side?: 'top' | 'bottom' | 'left' | 'right'
+type TooltipProviderProps = {
   children: React.ReactNode
 }
 
-function TooltipContent({
-  className,
-  side = 'top',
-  children,
-}: TooltipContentProps) {
+function TooltipProvider({ children }: TooltipProviderProps) {
+  return <>{children}</>
+}
+
+type TooltipRootProps = {
+  children: React.ReactNode
+}
+
+function TooltipRoot({ children }: TooltipRootProps) {
+  return <div className="group relative inline-flex">{children}</div>
+}
+
+type TooltipTriggerProps = {
+  children: React.ReactNode
+  className?: string
+  onClick?: () => void
+  render?: React.ReactElement
+} & React.HTMLAttributes<HTMLElement>
+
+function TooltipTrigger({ children, className, onClick, render, ...props }: TooltipTriggerProps) {
+  if (render) {
+    return React.cloneElement(render, {
+      className: cn(render.props.className, className),
+      onClick: onClick || render.props.onClick,
+      ...props,
+    })
+  }
   return (
-    <Tooltip.Portal>
-      <Tooltip.Positioner side={side}>
-        <Tooltip.Popup
-          className={cn(
-            'rounded-md border border-primary-900 bg-primary-950 px-2 py-1 text-xs text-primary-50 shadow-sm',
-            className,
-          )}
-        >
-          {children}
-        </Tooltip.Popup>
-      </Tooltip.Positioner>
-    </Tooltip.Portal>
+    <span className={cn('inline-flex', className)} onClick={onClick} {...props}>
+      {children}
+    </span>
+  )
+}
+
+type TooltipContentProps = {
+  children: React.ReactNode
+  className?: string
+  side?: 'top' | 'bottom' | 'left' | 'right'
+}
+
+function TooltipContent({ children, className, side = 'top' }: TooltipContentProps) {
+  const sideClasses = {
+    top: 'bottom-full left-1/2 -translate-x-1/2 mb-2',
+    bottom: 'top-full left-1/2 -translate-x-1/2 mt-2',
+    left: 'right-full top-1/2 -translate-y-1/2 mr-2',
+    right: 'left-full top-1/2 -translate-y-1/2 ml-2',
+  }
+
+  return (
+    <div
+      className={cn(
+        'absolute z-50 hidden group-hover:block',
+        'rounded-md border border-primary-900 bg-primary-950 px-2 py-1 text-xs text-primary-50 shadow-sm',
+        'pointer-events-none whitespace-nowrap',
+        sideClasses[side],
+        className,
+      )}
+    >
+      {children}
+    </div>
   )
 }
 

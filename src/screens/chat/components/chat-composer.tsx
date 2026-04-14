@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { ArrowUp02Icon, Mic02Icon, StopIcon } from '@hugeicons/core-free-icons'
+import { generateUUID } from '@/lib/uuid'
 
 import { ThinkingLevelSelector } from './thinking-level-selector'
 import { SlashCommandMenu } from './slash-command-menu'
@@ -212,7 +213,7 @@ function ChatComposerComponent({
 
   const uploadAttachmentFile = useCallback(
     async (file: File): Promise<AttachmentFile> => {
-      const id = crypto.randomUUID()
+      const id = generateUUID()
 
       if (!isAcceptedNonImage(file)) {
         return {

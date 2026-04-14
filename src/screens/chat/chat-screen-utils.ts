@@ -1,5 +1,6 @@
 import type { GatewayMessage } from './types'
 import type { AttachmentFile } from '@/components/attachment-button'
+import { generateUUID } from '@/lib/uuid'
 
 /**
  * Payload returned when creating an optimistic message.
@@ -25,7 +26,7 @@ export function createOptimisticMessage(
   body: string,
   attachments?: AttachmentFile[],
 ): OptimisticMessagePayload {
-  const clientId = crypto.randomUUID()
+  const clientId = generateUUID()
   const optimisticId = `opt-${clientId}`
   const timestamp = Date.now()
   

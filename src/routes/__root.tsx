@@ -341,8 +341,8 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <script dangerouslySetInnerHTML={{ __html: swRegisterScript }} />
         <HeadContent />
       </head>
-      <body>
-        <div className="root">{children}</div>
+      <body suppressHydrationWarning>
+        <div className="root" suppressHydrationWarning data-hydration-root>{children}</div>
         <Scripts />
       </body>
     </html>

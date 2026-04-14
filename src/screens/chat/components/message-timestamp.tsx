@@ -1,3 +1,6 @@
+'use client'
+
+import { useState, useEffect } from 'react'
 import {
   TooltipContent,
   TooltipProvider,
@@ -17,9 +20,8 @@ function isSameDay(a: Date, b: Date): boolean {
   )
 }
 
-function formatShort(timestamp: number): string {
+function formatShort(timestamp: number, now: Date): string {
   const date = new Date(timestamp)
-  const now = new Date()
   if (isSameDay(date, now)) {
     return new Intl.DateTimeFormat('en-GB', {
       hour: '2-digit',
@@ -44,7 +46,13 @@ function formatFull(timestamp: number): string {
 }
 
 export function MessageTimestamp({ timestamp }: MessageTimestampProps) {
-  const shortLabel = formatShort(timestamp)
+  // Client-side only to avoid hydration mismatch
+  const [now, setNow] = useState<Date | null>(null)
+  useEffect(() => {
+    setNow(new Date())
+  }, [])
+
+  const shortLabel = now ? formatShort(timestamp, now) : formatFull(timestamp)
   const fullLabel = formatFull(timestamp)
 
   return (

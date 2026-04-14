@@ -1,3 +1,6 @@
+'use client'
+
+import { useState, useEffect } from 'react'
 import { HugeiconsIcon } from '@hugeicons/react'
 import { Clock01Icon, SmartPhone01Icon } from '@hugeicons/core-free-icons'
 import { cn } from '@/lib/utils'
@@ -8,8 +11,7 @@ export interface BotGroup {
   jobs: CronJob[]
 }
 
-function formatRelativeMs(ms?: number): string {
-  if (!ms) return 'never'
+function formatRelativeMs(ms: number): string {
   const diff = Date.now() - ms
   if (diff < 60_000) return 'just now'
   if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`
@@ -48,6 +50,16 @@ export function BotCard({ bot }: { bot: BotGroup }) {
   const hasErrors = bot.jobs.some((job) => job.state?.lastStatus === 'error')
   const enabledCount = bot.jobs.filter((job) => job.enabled).length
 
+  // Client-side only relative time to avoid hydration mismatch
+  const [relativeTime, setRelativeTime] = useState<string>('never')
+  useEffect(() => {
+    if (lastActivity) {
+      setRelativeTime(formatRelativeMs(lastActivity))
+    } else {
+      setRelativeTime('never')
+    }
+  }, [lastActivity])
+
   return (
     <div className="group rounded-lg border border-primary-100 bg-surface p-4 transition-all duration-150 ease-out hover:border-primary-200 hover:shadow-sm">
       {/* Header row */}
@@ -80,7 +92,7 @@ export function BotCard({ bot }: { bot: BotGroup }) {
         <div className="flex items-center gap-3">
           <span className="text-[11px] text-primary-400 flex items-center gap-1">
             <HugeiconsIcon icon={Clock01Icon} size={11} strokeWidth={1.5} />
-            {formatRelativeMs(lastActivity || undefined)}
+            {relativeTime}
           </span>
         </div>
         <div className="flex items-center gap-2">
