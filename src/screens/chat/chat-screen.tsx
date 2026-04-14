@@ -353,6 +353,12 @@ export function ChatScreen({
       setStreamingTimestamp(Date.now())
     }
   }, [streaming.contentBlocks, streamingTimestamp])
+
+  useEffect(() => {
+    if (streaming.contentBlocks.length === 0 && streamingTimestamp !== 0) {
+      setStreamingTimestamp(0)
+    }
+  }, [streaming.contentBlocks, streamingTimestamp])
   const streamingMessage = useMemo<GatewayMessage | null>(() => {
     if (streaming.contentBlocks.length === 0) return null
 
@@ -871,7 +877,7 @@ export function ChatScreen({
         friendlyId,
         message: body,
         thinking: thinkingLevel,
-        idempotencyKey: generateUUID(),
+        idempotencyKey: crypto.randomUUID(),
         attachments: attachmentsPayload,
         model: model || undefined,
       }),

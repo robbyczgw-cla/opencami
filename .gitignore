@@ -31,7 +31,6 @@ logs/
 *.log
 
 # Screenshots & images
-*.png
 page-html.html
 
 # Debug / diagnostic JSON files
@@ -40,8 +39,6 @@ test-results/
 .last-run.json
 
 # Stray root files
-!
-1
 project-analysis-report.md
 
 # Diagnostic scripts & tests in root
