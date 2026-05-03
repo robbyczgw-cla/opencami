@@ -12,7 +12,8 @@ const config = defineConfig({
   server: {
     host: '0.0.0.0',
     port: 3003,
-    allowedHosts: ['openclaw-server.tail8a9ea9.ts.net'],
+    // Set VITE_ALLOWED_HOSTS=host1,host2 in .env.local to restrict; defaults to permissive for dev.
+    allowedHosts: process.env.VITE_ALLOWED_HOSTS?.split(',').map((h) => h.trim()) ?? true,
   },
   resolve: {
     alias: {
