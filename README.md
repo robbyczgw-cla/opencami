@@ -14,7 +14,7 @@ Latest release: **v2.1.0**
 ### Option 1 (recommended)
 
 ```bash
-curl -fsSL https://opencami.xyz/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/robbyczgw-cla/opencami/main/scripts/install.sh | bash
 ```
 
 ### Option 2
@@ -310,7 +310,6 @@ Powered by [OpenClaw](https://github.com/openclaw/openclaw).
 
 ## Links
 
-- 🌐 [opencami.xyz](https://opencami.xyz)
 - 📦 [npm](https://www.npmjs.com/package/opencami)
 - 💻 [GitHub](https://github.com/robbyczgw-cla/opencami)
 
